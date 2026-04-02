@@ -20,7 +20,8 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: 'dist',
+    outDir: '../backend/public/h5',  // 直接构建到后端静态目录
+    emptyOutDir: true,
     assetsDir: 'assets',
   },
 })

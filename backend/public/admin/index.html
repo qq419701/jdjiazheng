@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>京东家政代下单 - 后台管理</title>
+  <base href="/admin/">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif; background: #f0f2f5; }
+    .loading { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+    .loading .icon { font-size: 48px; margin-bottom: 16px; }
+    .loading .text { color: #333; font-size: 18px; font-weight: bold; }
+    .loading .tip { color: #999; font-size: 13px; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="loading">
+      <div class="icon">⚙️</div>
+      <div class="text">京东家政代下单系统 - 后台管理</div>
+      <div class="tip">后台文件加载中，请稍候...</div>
+      <div class="tip" style="margin-top:16px;color:#409EFF">如长时间未加载，请执行后台构建：<br>cd frontend-admin &amp;&amp; npm install &amp;&amp; npm run build</div>
+    </div>
+  </div>
+</body>
+</html>

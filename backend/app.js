@@ -72,44 +72,36 @@ const 页面限流 = rateLimit({
 });
 
 // ===== 静态文件托管 =====
-// 后台管理页面（/admin 路径）
-app.use('/admin', express.static(path.join(__dirname, '../frontend-admin/dist')));
-// 前端H5页面（/ 根路径）
-app.use(express.static(path.join(__dirname, '../frontend-h5/dist')));
+// 后台管理静态文件（/admin 路径）
+app.use('/admin', express.static(path.join(__dirname, 'public/admin')));
+// 前端H5静态文件（/ 根路径）
+app.use(express.static(path.join(__dirname, 'public/h5')));
 
 // ===== API路由 =====
-// 对特定接口应用限流中间件
 const apiRouter = require('./routes/api');
 const adminRouter = require('./routes/admin');
+
+// 后台管理接口（登录接口独立限流 + 所有管理接口通用限流）
+// 注意：/admin/api 必须在 /api 之前注册，避免路由冲突
+app.use('/admin/api/login', 登录限流);
+app.use('/admin/api', 管理API限流, adminRouter);
 
 // H5前端接口（应用卡密验证和订单限流）
 app.use('/api/verify-card', 卡密限流);
 app.use('/api/orders', 订单限流);
 app.use('/api', apiRouter);
 
-// 后台管理接口（登录接口独立限流 + 所有管理接口通用限流）
-app.use('/admin/api/login', 登录限流);
-app.use('/admin/api', 管理API限流, adminRouter);
-
 // ===== 前端路由处理（SPA支持）=====
-// 后台管理页面路由
+
+// 后台管理页面路由兜底（/admin/* 返回后台首页）
 app.get('/admin/*', 页面限流, (req, res) => {
-  const adminDist = path.join(__dirname, '../frontend-admin/dist/index.html');
-  if (require('fs').existsSync(adminDist)) {
-    res.sendFile(adminDist);
-  } else {
-    res.send('<h1>后台管理页面未构建，请执行 npm run build</h1>');
-  }
+  res.sendFile(path.join(__dirname, 'public/admin/index.html'));
 });
 
-// H5前端路由（卡密链接）
-app.get('/link/:code', 页面限流, (req, res) => {
-  const h5Dist = path.join(__dirname, '../frontend-h5/dist/index.html');
-  if (require('fs').existsSync(h5Dist)) {
-    res.sendFile(h5Dist);
-  } else {
-    res.send('<h1>前端页面未构建，请执行 npm run build</h1>');
-  }
+// H5前端路由兜底（所有非 /api /admin 路径均返回H5首页）
+// 路由格式：/{卡密}  例如 /TJR93VDP9Q3Q9984
+app.get('*', 页面限流, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/h5/index.html'));
 });
 
 // ===== 启动服务 =====
@@ -118,9 +110,9 @@ const 端口 = 配置.端口;
 app.listen(端口, async () => {
   console.log(`\n🚀 京东家政预约代下单系统启动成功`);
   console.log(`📡 服务端口：${端口}`);
-  console.log(`🌐 前端H5：http://localhost:${端口}/link/{卡密}`);
+  console.log(`🌐 前端H5：http://localhost:${端口}/{卡密}`);
   console.log(`🖥️  后台管理：http://localhost:${端口}/admin`);
-  console.log(`📋 API文档：http://localhost:${端口}/api\n`);
+  console.log(`📋 后端接口：http://localhost:${端口}/api\n`);
 
   // 尝试连接数据库
   try {
