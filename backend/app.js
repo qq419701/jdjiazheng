@@ -1,0 +1,140 @@
+// 京东家政预约代下单系统 - 后端主入口
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const rateLimit = require('express-rate-limit');
+const 配置 = require('./config/config');
+const { 请求日志 } = require('./middleware/logger');
+
+const app = express();
+
+// ===== 中间件配置 =====
+
+// 跨域配置（H5页面需要跨域访问）
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+// 请求体解析
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// 请求日志
+app.use(请求日志);
+
+// ===== 接口限流配置 =====
+
+// 登录接口限流：每IP每15分钟最多10次
+const 登录限流 = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15分钟
+  max: 10,
+  message: { code: -1, message: '登录尝试过于频繁，请15分钟后再试' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// 卡密验证限流：每IP每分钟最多30次
+const 卡密限流 = rateLimit({
+  windowMs: 60 * 1000, // 1分钟
+  max: 30,
+  message: { code: -1, message: '请求过于频繁，请稍后再试' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// 提交订单限流：每IP每分钟最多5次
+const 订单限流 = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  message: { code: -1, message: '提交过于频繁，请稍后再试' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// 后台管理API通用限流：每IP每分钟最多60次
+const 管理API限流 = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: { code: -1, message: '请求过于频繁，请稍后再试' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// 页面访问限流：每IP每分钟最多120次
+const 页面限流 = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// ===== 静态文件托管 =====
+// 后台管理页面（/admin 路径）
+app.use('/admin', express.static(path.join(__dirname, '../frontend-admin/dist')));
+// 前端H5页面（/ 根路径）
+app.use(express.static(path.join(__dirname, '../frontend-h5/dist')));
+
+// ===== API路由 =====
+// 对特定接口应用限流中间件
+const apiRouter = require('./routes/api');
+const adminRouter = require('./routes/admin');
+
+// H5前端接口（应用卡密验证和订单限流）
+app.use('/api/verify-card', 卡密限流);
+app.use('/api/orders', 订单限流);
+app.use('/api', apiRouter);
+
+// 后台管理接口（登录接口独立限流 + 所有管理接口通用限流）
+app.use('/admin/api/login', 登录限流);
+app.use('/admin/api', 管理API限流, adminRouter);
+
+// ===== 前端路由处理（SPA支持）=====
+// 后台管理页面路由
+app.get('/admin/*', 页面限流, (req, res) => {
+  const adminDist = path.join(__dirname, '../frontend-admin/dist/index.html');
+  if (require('fs').existsSync(adminDist)) {
+    res.sendFile(adminDist);
+  } else {
+    res.send('<h1>后台管理页面未构建，请执行 npm run build</h1>');
+  }
+});
+
+// H5前端路由（卡密链接）
+app.get('/link/:code', 页面限流, (req, res) => {
+  const h5Dist = path.join(__dirname, '../frontend-h5/dist/index.html');
+  if (require('fs').existsSync(h5Dist)) {
+    res.sendFile(h5Dist);
+  } else {
+    res.send('<h1>前端页面未构建，请执行 npm run build</h1>');
+  }
+});
+
+// ===== 启动服务 =====
+const 端口 = 配置.端口;
+
+app.listen(端口, async () => {
+  console.log(`\n🚀 京东家政预约代下单系统启动成功`);
+  console.log(`📡 服务端口：${端口}`);
+  console.log(`🌐 前端H5：http://localhost:${端口}/link/{卡密}`);
+  console.log(`🖥️  后台管理：http://localhost:${端口}/admin`);
+  console.log(`📋 API文档：http://localhost:${端口}/api\n`);
+
+  // 尝试连接数据库
+  try {
+    const 数据库连接 = require('./config/database');
+    await 数据库连接.authenticate();
+    console.log('✅ 数据库连接成功');
+
+    // 自动同步数据库结构（仅创建不存在的表，不修改已有表）
+    await 数据库连接.sync({ alter: false });
+    console.log('✅ 数据库结构已同步');
+  } catch (错误) {
+    console.error('❌ 数据库连接失败:', 错误.message);
+    console.log('💡 请检查数据库配置（.env文件）并运行：node init/initDB.js');
+  }
+});
+
+module.exports = app;
