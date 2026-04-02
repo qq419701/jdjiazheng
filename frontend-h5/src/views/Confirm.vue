@@ -91,6 +91,7 @@ const 提交预约 = async () => {
       // 跳转到成功页
       router.replace({
         name: 'Success',
+        params: { code: 订单Store.卡密 },
         query: 结果.data,
       })
     } else {

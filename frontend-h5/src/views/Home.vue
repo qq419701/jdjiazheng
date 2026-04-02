@@ -147,7 +147,7 @@ onMounted(async () => {
 
 // 跳转填写地址
 const 跳转填写地址 = () => {
-  router.push({ name: 'Address' })
+  router.push({ name: 'Address', params: { code: route.params.code } })
 }
 
 // 点击选择上门时间
@@ -176,7 +176,7 @@ const 点击立即预约 = () => {
     showToast('请选择上门时间')
     return
   }
-  router.push({ name: 'Confirm' })
+  router.push({ name: 'Confirm', params: { code: route.params.code } })
 }
 </script>
 

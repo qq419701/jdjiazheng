@@ -4,6 +4,7 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [vue()],
+  base: '/admin/',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -19,7 +20,8 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: 'dist',
+    outDir: '../backend/public/admin',  // 直接构建到后端静态目录
+    emptyOutDir: true,
     assetsDir: 'assets',
   },
 })
