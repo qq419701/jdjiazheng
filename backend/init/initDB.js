@@ -18,8 +18,9 @@ const 初始化数据库 = async () => {
     console.log('✅ 数据库连接成功');
 
     // 同步所有模型（创建表）
-    await 数据库连接.sync({ alter: true });
-    console.log('✅ 数据库表创建/更新完成');
+    // 使用 force: false 避免删除现有数据，仅创建不存在的表
+    await 数据库连接.sync({ alter: false });
+    console.log('✅ 数据库表创建完成（如需更新表结构，请手动执行ALTER语句）');
 
     // 创建默认管理员
     const 管理员数量 = await Admin.count();

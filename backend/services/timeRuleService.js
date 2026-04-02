@@ -8,7 +8,9 @@ const { 安全解析JSON, 获取今天, 获取星期中文 } = require('../utils
  * @param {string} 城市名 - 用户所在城市
  * @returns {Object} 匹配到的时间规则
  */
-const 获取城市规则 = async (城市名) => {
+const 获取城市规则 = async (城市名Input) => {
+  // 防止参数类型混淆：确保城市名为字符串
+  const 城市名 = Array.isArray(城市名Input) ? String(城市名Input[0] || '') : String(城市名Input || '');
   // 获取所有启用的规则，按排序升序
   const 所有规则 = await TimeRule.findAll({
     where: { is_active: 1 },
