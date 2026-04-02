@@ -16,13 +16,16 @@
     </div>
 
     <!-- 服务信息卡片 -->
-    <div class="服务信息卡片">
+    <div
+      class="服务信息卡片"
+      :class="{ '地址未填边框': !订单Store.已填写地址 }"
+    >
       <!-- 地址区域 -->
       <div class="地址区域" @click="跳转填写地址">
         <div class="地址标题行">
           <span class="定位图标">📍</span>
           <span class="服务信息标题">服务信息</span>
-          <span class="编辑图标">✏️</span>
+          <span class="编辑图标" :class="{ '编辑图标红色': !订单Store.已填写地址 }">✏️</span>
         </div>
         <div class="地址内容">
           <template v-if="订单Store.已填写地址">
@@ -33,7 +36,7 @@
             <div class="完整地址文字">{{ 订单Store.完整地址 }}</div>
           </template>
           <template v-else>
-            <div class="未填写提示">请输入您的服务地址信息</div>
+            <div class="未填写引导文字">👆 点击此处填写上门地址（必填）</div>
           </template>
         </div>
       </div>
@@ -55,9 +58,15 @@
       <!-- 上门时间 -->
       <div class="信息行" @click="点击选择时间">
         <span class="信息标签">上门时间</span>
-        <span class="信息值橙色" v-if="!订单Store.已选择时间">
+        <!-- 未填地址时：红色警示文字 -->
+        <span class="信息值红色" v-if="!订单Store.已填写地址">
+          请先填写上门地址
+        </span>
+        <!-- 已填地址未选时间 -->
+        <span class="信息值橙色" v-else-if="!订单Store.已选择时间">
           暂不预约 &gt;
         </span>
+        <!-- 已选时间 -->
         <span class="信息值" v-else>
           {{ 订单Store.预约时间显示 }}
         </span>
@@ -70,6 +79,11 @@
       </div>
     </div>
 
+    <!-- 步骤引导卡片（地址未填时显示，填完后隐藏） -->
+    <div v-if="!订单Store.已填写地址" class="步骤引导卡片">
+      预约步骤：① 填写上门地址 ← 当前步骤 &nbsp; ② 选择上门时间 &nbsp; ③ 点击立即预约
+    </div>
+
     <!-- 服务内容 -->
     <ServiceContent :服务内容列表="订单Store.服务内容列表" />
 
@@ -78,8 +92,13 @@
 
     <!-- 底部立即预约按钮 -->
     <div class="底部按钮容器">
-      <div class="立即预约按钮" @click="点击立即预约">
-        立即预约
+      <div
+        class="立即预约按钮"
+        :class="按钮样式类"
+        :style="按钮样式"
+        @click="点击立即预约"
+      >
+        {{ 按钮文字 }}
       </div>
     </div>
 
@@ -103,7 +122,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { useOrderStore } from '../stores/order'
@@ -153,7 +172,7 @@ const 跳转填写地址 = () => {
 // 点击选择上门时间
 const 点击选择时间 = () => {
   if (!订单Store.已填写地址) {
-    showToast('请先填写服务地址')
+    showToast({ message: '请先点击上方蓝色区域填写服务地址', duration: 3000 })
     return
   }
   显示时间选择.value = true
@@ -165,6 +184,28 @@ const 处理时间选择 = ({ 日期, 时间段 }) => {
   显示时间选择.value = false
   showToast('已选择：' + 日期 + ' ' + 时间段)
 }
+
+// 按钮三态计算
+const 按钮文字 = computed(() => {
+  if (!订单Store.已填写地址) return '请先填写地址'
+  if (!订单Store.已选择时间) return '请选择上门时间'
+  return '立即预约'
+})
+
+const 按钮样式 = computed(() => {
+  if (!订单Store.已填写地址) {
+    return { background: '#cccccc', boxShadow: 'none' }
+  }
+  if (!订单Store.已选择时间) {
+    return { background: '#ff6b35', boxShadow: '0 4px 12px rgba(255, 107, 53, 0.4)' }
+  }
+  return {}
+})
+
+const 按钮样式类 = computed(() => {
+  if (订单Store.已填写地址 && 订单Store.已选择时间) return '按钮激活'
+  return ''
+})
 
 // 点击立即预约
 const 点击立即预约 = () => {
@@ -258,6 +299,23 @@ const 点击立即预约 = () => {
   z-index: 1;
 }
 
+/* 地址未填时橙色虚线边框 */
+.地址未填边框 {
+  border: 2px dashed #ff6b35;
+}
+
+/* 步骤引导卡片 */
+.步骤引导卡片 {
+  background: #fff5f5;
+  border: 1px solid #ffcccc;
+  border-radius: 8px;
+  margin: 0 16px 12px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #e54635;
+  line-height: 1.6;
+}
+
 /* 地址区域 */
 .地址区域 {
   cursor: pointer;
@@ -287,6 +345,10 @@ const 点击立即预约 = () => {
   color: #999;
 }
 
+.编辑图标红色 {
+  color: #e54635;
+}
+
 .地址内容 {
   padding-left: 22px;
 }
@@ -314,9 +376,11 @@ const 点击立即预约 = () => {
   line-height: 1.5;
 }
 
-.未填写提示 {
+/* 未填写地址引导文字 */
+.未填写引导文字 {
   font-size: 14px;
-  color: #ccc;
+  color: #ff6b35;
+  font-weight: 500;
 }
 
 .分割线 {
@@ -354,6 +418,13 @@ const 点击立即预约 = () => {
   color: #ff6b35;
 }
 
+/* 红色警示文字 */
+.信息值红色 {
+  font-size: 14px;
+  color: #e54635;
+  font-weight: 500;
+}
+
 .信息值灰色 {
   font-size: 13px;
   color: #bbb;
@@ -387,6 +458,7 @@ const 点击立即预约 = () => {
   align-items: center;
   justify-content: center;
   box-shadow: 0 4px 12px rgba(229, 70, 53, 0.4);
+  transition: background 0.3s, box-shadow 0.3s;
 }
 
 /* 加载页面 */

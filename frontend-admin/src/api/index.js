@@ -19,6 +19,10 @@ export const 生成卡密API = (数据) => 请求实例.post('/cards/generate', 
 export const 导出卡密API = (参数) => `/admin/api/cards/export?${new URLSearchParams(参数)}`
 export const 删除卡密API = (id) => 请求实例.delete(`/cards/${id}`)
 
+// ===== 卡密批次管理 =====
+export const 获取批次列表API = () => 请求实例.get('/card-batches')
+export const 获取批次卡密API = (id) => 请求实例.get(`/card-batches/${id}/cards`)
+
 // ===== 京东账号 =====
 export const 获取账号列表API = () => 请求实例.get('/jd-accounts')
 export const 新增账号API = (数据) => 请求实例.post('/jd-accounts', 数据)

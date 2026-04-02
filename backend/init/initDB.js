@@ -126,6 +126,12 @@ const 初始化数据库 = async () => {
           updated_at: new Date(),
         },
         {
+          key_name: 'site_url',
+          key_value: '',
+          description: '站点域名，用于生成卡密完整链接，如 http://yourdomain.com',
+          updated_at: new Date(),
+        },
+        {
           key_name: 'auto_order_enabled',
           key_value: '1',
           description: '是否开启自动下单',

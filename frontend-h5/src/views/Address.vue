@@ -47,7 +47,7 @@
           readonly
           is-link
           :rules="[{ required: true, message: '请选择省市区' }]"
-          @click="显示省市区选择器 = true"
+          @click="打开省市区选择器"
           class="表单项"
         />
 
@@ -85,10 +85,10 @@
     <van-popup v-model:show="显示省市区选择器" position="bottom" round :style="{ height: '50%' }">
       <van-picker
         title="选择省市区"
-        :columns="省市区数据"
+        :columns="选择器列数据"
+        @change="选择器变化处理"
         @confirm="确认省市区选择"
         @cancel="显示省市区选择器 = false"
-        :columns-field-names="{ text: '名称', children: '子列表' }"
       />
     </van-popup>
   </div>
@@ -130,8 +130,8 @@ const 显示省市区选择器 = ref(false)
 // 返回上页
 const 返回上页 = () => router.back()
 
-// 省市区数据（简化版主要城市）
-const 省市区数据 = [
+// 省市区完整数据
+const 所有省市区数据 = [
   {
     名称: '北京市', 子列表: [
       { 名称: '北京市', 子列表: [{ 名称: '东城区' }, { 名称: '西城区' }, { 名称: '朝阳区' }, { 名称: '丰台区' }, { 名称: '石景山区' }, { 名称: '海淀区' }, { 名称: '门头沟区' }, { 名称: '房山区' }, { 名称: '通州区' }, { 名称: '顺义区' }, { 名称: '昌平区' }, { 名称: '大兴区' }, { 名称: '怀柔区' }, { 名称: '平谷区' }, { 名称: '密云区' }, { 名称: '延庆区' }] }
@@ -201,13 +201,79 @@ const 省市区数据 = [
   },
 ]
 
+// ===== 三列分离的省市区数据（支持联动） =====
+
+// 省份列（所有省名）
+const 省份列 = computed(() => 所有省市区数据.map(p => ({ text: p.名称 })))
+
+// 当前选中省份的数据
+const 当前省数据 = computed(() => {
+  const index = 所有省市区数据.findIndex(p => p.名称 === 临时选省.value)
+  return index >= 0 ? 所有省市区数据[index] : 所有省市区数据[0]
+})
+
+// 市份列（根据选中省份变化）
+const 市份列 = computed(() => 当前省数据.value.子列表.map(c => ({ text: c.名称 })))
+
+// 当前选中城市的数据
+const 当前市数据 = computed(() => {
+  const cities = 当前省数据.value.子列表
+  const index = cities.findIndex(c => c.名称 === 临时选市.value)
+  return index >= 0 ? cities[index] : cities[0]
+})
+
+// 区县列（根据选中城市变化）
+const 区县列 = computed(() => 当前市数据.value.子列表.map(d => ({ text: d.名称 })))
+
+// 三列数据合并
+const 选择器列数据 = computed(() => [省份列.value, 市份列.value, 区县列.value])
+
+// 临时选中状态（弹窗内部交互时使用，确认后才更新正式值）
+const 临时选省 = ref(选中省份.value || 所有省市区数据[0].名称)
+const 临时选市 = ref(选中城市.value || 所有省市区数据[0].子列表[0].名称)
+const 临时选区 = ref(选中区县.value || 所有省市区数据[0].子列表[0].子列表[0].名称)
+
+// 打开选择器时同步已有值
+const 打开省市区选择器 = () => {
+  临时选省.value = 选中省份.value || 所有省市区数据[0].名称
+  临时选市.value = 选中城市.value || 所有省市区数据[0].子列表[0].名称
+  临时选区.value = 选中区县.value || 所有省市区数据[0].子列表[0].子列表[0].名称
+  显示省市区选择器.value = true
+}
+
+// 选择器内部change事件（列切换时联动重置）
+const 选择器变化处理 = ({ columnIndex, selectedValues, selectedOptions }) => {
+  if (columnIndex === 0) {
+    // 省份变化：重置市和区为第一项
+    const 新省名 = selectedOptions[0]?.text || ''
+    临时选省.value = 新省名
+    const 新省数据 = 所有省市区数据.find(p => p.名称 === 新省名)
+    if (新省数据 && 新省数据.子列表.length > 0) {
+      临时选市.value = 新省数据.子列表[0].名称
+      if (新省数据.子列表[0].子列表.length > 0) {
+        临时选区.value = 新省数据.子列表[0].子列表[0].名称
+      }
+    }
+  } else if (columnIndex === 1) {
+    // 城市变化：重置区为第一项
+    const 新市名 = selectedOptions[1]?.text || ''
+    临时选市.value = 新市名
+    const 城市列表 = 当前省数据.value.子列表
+    const 新市数据 = 城市列表.find(c => c.名称 === 新市名)
+    if (新市数据 && 新市数据.子列表.length > 0) {
+      临时选区.value = 新市数据.子列表[0].名称
+    }
+  } else if (columnIndex === 2) {
+    临时选区.value = selectedOptions[2]?.text || ''
+  }
+}
+
 // 确认省市区选择
-const 确认省市区选择 = (选中值) => {
-  const { selectedOptions } = 选中值
+const 确认省市区选择 = ({ selectedOptions }) => {
   if (selectedOptions && selectedOptions.length >= 3) {
-    选中省份.value = selectedOptions[0]?.名称 || ''
-    选中城市.value = selectedOptions[1]?.名称 || ''
-    选中区县.value = selectedOptions[2]?.名称 || ''
+    选中省份.value = selectedOptions[0]?.text || ''
+    选中城市.value = selectedOptions[1]?.text || ''
+    选中区县.value = selectedOptions[2]?.text || ''
   }
   显示省市区选择器.value = false
 }

@@ -23,7 +23,12 @@
       <!-- 日期和时间列表 -->
       <div v-else class="时间选择主体">
         <!-- 左侧日期列表 -->
-        <div class="日期列表">
+        <div class="日期列表" ref="日期列表引用">
+          <!-- 提示横幅 -->
+          <div class="忙碌提示横幅">
+            ⏰ 近期较忙，请选择后面的日期 &nbsp;↓ 向下滑动查看可预约时间
+          </div>
+
           <div
             v-for="(日期项, 索引) in 日期时间列表"
             :key="索引"
@@ -32,6 +37,7 @@
               '日期选中': 选中日期索引 === 索引,
               '日期约满': 日期项.is_full
             }"
+            :data-index="索引"
             @click="选择日期(索引, 日期项)"
           >
             <div class="周几文字">{{ 日期项.week }}</div>
@@ -43,7 +49,7 @@
         <!-- 右侧时间格子 -->
         <div class="时间格子区">
           <template v-if="当前日期约满">
-            <div class="约满提示">该日期已约满</div>
+            <div class="约满提示">该日期已约满，请选择其他日期</div>
           </template>
           <template v-else-if="选中日期索引 >= 0">
             <div class="时间格子列表">
@@ -67,10 +73,9 @@
       <!-- 确认按钮 -->
       <div class="时间确认按钮区">
         <van-button
-          type="primary"
           block
           round
-          color="linear-gradient(135deg, #e54635, #ff6b35)"
+          :color="选中时间段 ? 'linear-gradient(135deg, #e54635, #ff6b35)' : '#cccccc'"
           :disabled="!选中时间段"
           @click="确认时间选择"
         >
@@ -82,7 +87,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { showToast } from 'vant'
 import { 获取时间表API } from '../api/index'
 
@@ -115,6 +120,7 @@ const 日期时间列表 = ref([])
 const 选中日期索引 = ref(-1)
 const 选中时间段 = ref('')
 const 选中日期字符串 = ref('')
+const 日期列表引用 = ref(null)
 
 // 当前选中日期是否约满
 const 当前日期约满 = computed(() => {
@@ -140,6 +146,9 @@ const 加载时间表 = async () => {
       if (第一个可选 >= 0) {
         选中日期索引.value = 第一个可选
         选中日期字符串.value = 日期时间列表.value[第一个可选].date
+        // 等待DOM更新后滚动到选中日期
+        await nextTick()
+        滚动到选中日期(第一个可选)
       }
     }
   } catch (错误) {
@@ -149,9 +158,19 @@ const 加载时间表 = async () => {
   }
 }
 
+// 滚动日期列表到指定索引
+const 滚动到选中日期 = (索引) => {
+  if (!日期列表引用.value) return
+  const 所有日期项 = 日期列表引用.value.querySelectorAll('.日期项')
+  if (所有日期项[索引]) {
+    所有日期项[索引].scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+}
+
 // 监听弹窗显示
 watch(() => props.显示, (新值) => {
   if (新值) {
+    选中时间段.value = ''
     加载时间表()
   }
 })
@@ -230,18 +249,42 @@ const 关闭弹窗 = () => {
 }
 
 .日期列表 {
-  width: 90px;
+  width: 100px;
   overflow-y: auto;
   border-right: 1px solid #f0f0f0;
   background: #fafafa;
 }
 
+/* 忙碌提示横幅 */
+.忙碌提示横幅 {
+  background: #fff8f0;
+  color: #ff6b35;
+  font-size: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin: 6px 6px 4px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* 普通日期项：正常高度 */
 .日期项 {
-  padding: 12px 8px;
+  height: 80px;
+  box-sizing: border-box;
+  padding: 10px 8px;
   text-align: center;
   cursor: pointer;
   border-bottom: 1px solid #f0f0f0;
   transition: background 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 约满日期项：压缩高度 */
+.日期约满.日期项 {
+  height: 60px;
 }
 
 .日期选中 {
@@ -319,6 +362,8 @@ const 关闭弹窗 = () => {
   justify-content: center;
   color: #999;
   font-size: 14px;
+  text-align: center;
+  padding: 20px;
 }
 
 .时间确认按钮区 {

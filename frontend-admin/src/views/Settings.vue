@@ -6,6 +6,11 @@
 
       <el-form :model="设置表单" label-width="120px" style="max-width: 600px">
 
+        <el-form-item label="站点域名">
+          <el-input v-model="设置表单.site_url" placeholder="http://39.103.98.34:5500 或 https://yourdomain.com" />
+          <div class="字段说明">填写后卡密管理页可一键复制带域名的完整链接</div>
+        </el-form-item>
+
         <el-form-item label="Banner图片URL">
           <el-input v-model="设置表单.banner_url" placeholder="输入Banner图片的URL地址" />
           <div class="字段说明">顶部横幅图片地址，留空显示默认样式</div>
@@ -58,6 +63,7 @@ const 加载中 = ref(false)
 const 保存中 = ref(false)
 
 const 设置表单 = ref({
+  site_url: '',
   banner_url: '',
   service_type: '日常保洁',
   service_hours: 2,
@@ -72,6 +78,7 @@ const 加载设置 = async () => {
     if (结果.code === 1) {
       const 数据 = 结果.data
       设置表单.value = {
+        site_url: 数据.site_url || '',
         banner_url: 数据.banner_url || '',
         service_type: 数据.service_type || '日常保洁',
         service_hours: parseInt(数据.service_hours) || 2,
