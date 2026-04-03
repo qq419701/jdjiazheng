@@ -240,4 +240,69 @@ const 获取洗衣订单详情 = async (req, res) => {
   }
 };
 
-module.exports = { 获取订单列表, 获取订单详情, 获取洗衣订单详情, 更新订单状态, 触发自动下单, 重置订单 };
+/**
+ * 导出订单（CSV格式）
+ * GET /admin/api/orders/export
+ * 支持与列表相同的筛选参数：keyword, status, city, date_start, date_end, business_type, ids
+ */
+const 导出订单 = async (req, res) => {
+  try {
+    const { keyword = '', status, city, date_start, date_end, business_type, ids } = req.query;
+    const 条件 = {};
+
+    if (ids) {
+      const idList = ids.split(',').map(Number).filter(Boolean);
+      条件.id = { [Op.in]: idList };
+    } else {
+      if (keyword) {
+        条件[Op.or] = [
+          { order_no: { [Op.like]: `%${keyword}%` } },
+          { name: { [Op.like]: `%${keyword}%` } },
+          { phone: { [Op.like]: `%${keyword}%` } },
+        ];
+      }
+      if (status !== undefined && status !== '') 条件.status = parseInt(status);
+      if (city) 条件.city = { [Op.like]: `%${city}%` };
+      if (business_type) 条件.business_type = business_type;
+      if (date_start || date_end) {
+        条件.created_at = {};
+        if (date_start) 条件.created_at[Op.gte] = new Date(date_start);
+        if (date_end) 条件.created_at[Op.lte] = new Date(date_end + ' 23:59:59');
+      }
+    }
+
+    const 订单列表 = await Order.findAll({ where: 条件, order: [['created_at', 'DESC']] });
+
+    const 状态文字映射 = ['待处理', '下单中', '已下单', '失败', '已取消', '安排中', '预约完成', '预约失败'];
+    const BOM = '\uFEFF';
+    const 表头 = '订单号,客户姓名,手机号,省,市,区/县,街道,详细地址,完整地址,预约日期,预约时间段,服务类型,服务时长(小时),状态,下单方式,京东订单号,失败原因,备注,创建时间\n';
+
+    const 转义CSV字段 = (val) => {
+      if (val === null || val === undefined) return '';
+      const str = String(val);
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const 数据行 = 订单列表.map(o => [
+      o.order_no, o.name, o.phone, o.province, o.city, o.district, o.street,
+      o.address, o.full_address, o.visit_date, o.visit_time, o.service_type,
+      o.service_hours, 状态文字映射[o.status] || o.status,
+      o.auto_order === 1 ? '自动' : '手动',
+      o.jd_order_id, o.fail_reason, o.remark,
+      o.created_at ? new Date(o.created_at).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) : '',
+    ].map(转义CSV字段).join(',')).join('\n');
+
+    const 日期 = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="orders_${日期}.csv"`);
+    res.send(BOM + 表头 + 数据行);
+  } catch (错误) {
+    console.error('导出订单出错:', 错误);
+    res.status(500).json({ code: -1, message: '导出失败' });
+  }
+};
+
+module.exports = { 获取订单列表, 获取订单详情, 获取洗衣订单详情, 更新订单状态, 触发自动下单, 重置订单, 导出订单 };

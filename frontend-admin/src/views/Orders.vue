@@ -1,6 +1,34 @@
 <template>
   <!-- 订单管理页面 -->
   <div class="订单管理">
+    <!-- 顶部统计卡片区 -->
+    <el-row :gutter="16" class="统计卡片区">
+      <el-col :span="6">
+        <div class="统计卡片 今日">
+          <div class="统计数字">{{ 统计数据.今日新增 }}</div>
+          <div class="统计标签">🆕 今日新订单</div>
+        </div>
+      </el-col>
+      <el-col :span="6">
+        <div class="统计卡片 待处理">
+          <div class="统计数字">{{ 统计数据.待处理 }}</div>
+          <div class="统计标签">⏳ 待处理</div>
+        </div>
+      </el-col>
+      <el-col :span="6">
+        <div class="统计卡片 完成">
+          <div class="统计数字">{{ 统计数据.预约完成 }}</div>
+          <div class="统计标签">✅ 预约完成</div>
+        </div>
+      </el-col>
+      <el-col :span="6">
+        <div class="统计卡片 失败">
+          <div class="统计数字">{{ 统计数据.失败 }}</div>
+          <div class="统计标签">❌ 失败</div>
+        </div>
+      </el-col>
+    </el-row>
+
     <!-- 搜索筛选 -->
     <el-card class="搜索卡片">
       <el-form :inline="true" :model="搜索条件">
@@ -36,26 +64,32 @@
         <el-form-item>
           <el-button type="primary" @click="搜索订单" :icon="Search">搜索</el-button>
           <el-button @click="重置筛选">重置</el-button>
+          <el-button type="success" @click="导出订单">📥 导出全部</el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
     <!-- 订单表格 -->
     <el-card>
-      <el-table :data="订单列表" v-loading="加载中" stripe>
+      <el-table :data="订单列表" v-loading="加载中" stripe @selection-change="选中变更">
+        <el-table-column type="selection" width="50" />
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column prop="order_no" label="订单号" width="180" />
         <el-table-column prop="name" label="姓名" width="80" />
         <el-table-column prop="phone" label="手机号" width="120" />
         <el-table-column prop="city" label="城市" width="80" />
+        <el-table-column prop="street" label="街道" width="100" />
         <el-table-column label="预约时间" width="150">
           <template #default="{ row }">{{ row.visit_date }} {{ row.visit_time }}</template>
         </el-table-column>
         <el-table-column prop="card_code" label="卡密" width="160" />
-        <el-table-column label="状态" width="120">
+        <el-table-column label="状态" width="140">
           <template #default="{ row }">
-            <el-tag :type="获取状态类型(row.status)" size="small">{{ 获取状态文字(row.status) }}</el-tag>
-            <!-- 失败状态显示查看原因链接 -->
+            <el-tag
+              :type="获取状态类型(row.status)"
+              :class="row.status === 1 ? '下单中标签' : ''"
+              size="small"
+            >{{ row.status === 6 ? '✅ ' : '' }}{{ 获取状态文字(row.status) }}</el-tag>
             <span
               v-if="(row.status === 3 || row.status === 7) && row.fail_reason"
               class="查看原因链接"
@@ -63,10 +97,9 @@
             >查看原因</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="300" fixed="right">
+        <el-table-column label="操作" width="320" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="查看详情(row.id)">详情</el-button>
-            <!-- 家政服务操作 -->
             <template v-if="!是洗衣服务">
               <el-button
                 v-if="row.status === 0 || row.status === 3 || row.status === 7"
@@ -105,7 +138,6 @@
                 @click="执行重置订单(row.id)"
               >重置</el-button>
             </template>
-            <!-- 洗衣服务操作（预留） -->
             <template v-else>
               <el-tooltip content="接口配置后可用" placement="top">
                 <span>
@@ -118,11 +150,23 @@
                 </span>
               </el-tooltip>
             </template>
-            <!-- 复制按钮 -->
             <el-button size="small" @click="打开复制面板(row)">复制</el-button>
           </template>
         </el-table-column>
       </el-table>
+
+      <!-- 底部工具栏 -->
+      <div class="底部工具栏">
+        <span class="选中提示">已选中 {{ 选中订单.length }} 条</span>
+        <div>
+          <el-button
+            :disabled="选中订单.length === 0"
+            size="small"
+            type="success"
+            @click="批量导出选中"
+          >导出选中({{ 选中订单.length }})</el-button>
+        </div>
+      </div>
 
       <!-- 分页 -->
       <el-pagination
@@ -191,12 +235,11 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import { 获取订单列表API, 更新订单状态API, 触发自动下单API, 重置订单API } from '../api/index'
+import { 获取订单列表API, 更新订单状态API, 触发自动下单API, 重置订单API, 导出订单API } from '../api/index'
 
 const router = useRouter()
 const route = useRoute()
 
-// 业务类型（从路由参数读取，默认 jiazheng）
 const 业务类型 = computed(() => route.params.businessType || 'jiazheng')
 const 是洗衣服务 = computed(() => 业务类型.value === 'xiyifu')
 
@@ -205,49 +248,57 @@ const 订单列表 = ref([])
 const 总数 = ref(0)
 const 当前页 = ref(1)
 const 每页数量 = ref(20)
-
-// 日期范围（[开始日期, 结束日期]）
 const 日期范围 = ref([])
+const 搜索条件 = ref({ keyword: '', city: '', status: '' })
+const 选中订单 = ref([])
+const 选中变更 = (rows) => { 选中订单.value = rows }
 
-const 搜索条件 = ref({
-  keyword: '',
-  city: '',
-  status: '',
-})
+const 统计数据 = ref({ 今日新增: 0, 待处理: 0, 预约完成: 0, 失败: 0 })
 
-// ===== 失败原因弹窗 =====
 const 显示失败原因弹窗 = ref(false)
 const 失败原因表单 = ref({ 原因: '' })
-// 待标记失败的订单信息
 const 待失败订单 = ref(null)
 
-// ===== 查看原因弹窗 =====
 const 显示查看原因弹窗 = ref(false)
 const 当前查看原因 = ref('')
 
-// ===== 复制面板 =====
 const 显示复制面板 = ref(false)
 const 当前复制行 = ref(null)
 const 复制选中字段 = ref(['姓名', '手机号', '地址'])
 const 复制字段列表 = ref([])
 
-// 获取状态样式（包含新增状态5安排中 6预约完成 7预约失败）
 const 获取状态类型 = (status) => {
   const 映射 = { 0: 'info', 1: 'primary', 2: 'success', 3: 'danger', 4: 'warning', 5: 'primary', 6: 'success', 7: 'danger' }
   return 映射[status] || 'info'
 }
 
-// 获取状态文字（包含新增状态）
 const 获取状态文字 = (status) => {
   const 映射 = { 0: '待处理', 1: '下单中', 2: '已下单', 3: '失败', 4: '已取消', 5: '安排中', 6: '预约完成', 7: '预约失败' }
   return 映射[status] || '未知'
 }
 
-// 加载订单列表
+const 加载统计数据 = async () => {
+  try {
+    const 今天 = new Date().toISOString().slice(0, 10)
+    const [今日结果, 待处理结果, 完成结果, 失败3结果, 失败7结果] = await Promise.all([
+      获取订单列表API({ limit: 1, date_start: 今天, date_end: 今天, business_type: 业务类型.value }),
+      获取订单列表API({ limit: 1, status: 0, business_type: 业务类型.value }),
+      获取订单列表API({ limit: 1, status: 6, business_type: 业务类型.value }),
+      获取订单列表API({ limit: 1, status: 3, business_type: 业务类型.value }),
+      获取订单列表API({ limit: 1, status: 7, business_type: 业务类型.value }),
+    ])
+    统计数据.value = {
+      今日新增: 今日结果.data?.total || 0,
+      待处理: 待处理结果.data?.total || 0,
+      预约完成: 完成结果.data?.total || 0,
+      失败: (失败3结果.data?.total || 0) + (失败7结果.data?.total || 0),
+    }
+  } catch {}
+}
+
 const 加载订单 = async () => {
   加载中.value = true
   try {
-    // 处理日期范围参数
     const 查询参数 = {
       page: 当前页.value,
       limit: 每页数量.value,
@@ -258,7 +309,6 @@ const 加载订单 = async () => {
       查询参数.date_start = 日期范围.value[0]
       查询参数.date_end = 日期范围.value[1]
     }
-
     const 结果 = await 获取订单列表API(查询参数)
     if (结果.code === 1) {
       订单列表.value = 结果.data.list
@@ -269,44 +319,32 @@ const 加载订单 = async () => {
   }
 }
 
-// 搜索
-const 搜索订单 = () => {
-  当前页.value = 1
-  加载订单()
-}
+const 搜索订单 = () => { 当前页.value = 1; 加载订单() }
 
-// 重置筛选条件
 const 重置筛选 = () => {
   搜索条件.value = { keyword: '', city: '', status: '' }
   日期范围.value = []
   搜索订单()
 }
 
-// 查看详情（使用带 businessType 参数的路由）
 const 查看详情 = (id) => router.push(`/admin/orders/${业务类型.value}/${id}`)
 
-// 业务类型切换时重新加载
 watch(业务类型, () => {
   当前页.value = 1
   搜索条件.value = { keyword: '', city: '', status: '' }
   日期范围.value = []
   加载订单()
+  加载统计数据()
 })
 
-// 触发自动下单
 const 触发下单 = async (id) => {
   try {
     const 结果 = await 触发自动下单API(id)
-    if (结果.code === 1) {
-      ElMessage.success(结果.message)
-      加载订单()
-    } else {
-      ElMessage.warning(结果.message)
-    }
+    if (结果.code === 1) { ElMessage.success(结果.message); 加载订单() }
+    else ElMessage.warning(结果.message)
   } catch {}
 }
 
-// 手动标记状态（安排中/预约完成等无需填写原因）
 const 手动标记状态 = async (行, 状态) => {
   try {
     await 更新订单状态API(行.id, { status: 状态 })
@@ -315,14 +353,12 @@ const 手动标记状态 = async (行, 状态) => {
   } catch {}
 }
 
-// 标记预约失败（弹窗填写原因）
 const 标记预约失败 = (行) => {
   待失败订单.value = { id: 行.id, status: 7 }
   失败原因表单.value.原因 = ''
   显示失败原因弹窗.value = true
 }
 
-// 确认标记失败（提交失败原因）
 const 确认标记失败 = async () => {
   if (!待失败订单.value) return
   try {
@@ -338,13 +374,11 @@ const 确认标记失败 = async () => {
   }
 }
 
-// 查看失败原因
 const 查看失败原因 = (行) => {
   当前查看原因.value = 行.fail_reason || '（未填写原因）'
   显示查看原因弹窗.value = true
 }
 
-// 标记取消
 const 标记取消 = async (id) => {
   try {
     await ElMessageBox.confirm('确认取消该订单？', '提示', { type: 'warning' })
@@ -354,26 +388,46 @@ const 标记取消 = async (id) => {
   } catch {}
 }
 
-// 执行重置订单（失败→待处理）
 const 执行重置订单 = async (id) => {
   try {
     await ElMessageBox.confirm('确认重置该订单为待处理状态？重置后可重新下单。', '提示', { type: 'warning' })
     const 结果 = await 重置订单API(id)
-    if (结果.code === 1) {
-      ElMessage.success('订单已重置为待处理')
-      加载订单()
-    } else {
-      ElMessage.warning(结果.message)
-    }
+    if (结果.code === 1) { ElMessage.success('订单已重置为待处理'); 加载订单() }
+    else ElMessage.warning(结果.message)
   } catch {}
 }
 
-// 打开复制面板
+const 导出订单 = () => {
+  const 参数 = { ...搜索条件.value }
+  if (日期范围.value?.length === 2) {
+    参数.date_start = 日期范围.value[0]
+    参数.date_end = 日期范围.value[1]
+  }
+  参数.business_type = 业务类型.value
+  const url = 导出订单API(参数)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `家政订单_${new Date().toLocaleDateString('zh-CN')}.csv`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+}
+
+const 批量导出选中 = () => {
+  if (!选中订单.value.length) return
+  const ids = 选中订单.value.map(r => r.id).join(',')
+  const url = 导出订单API({ ids })
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `选中订单_${Date.now()}.csv`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+}
+
 const 打开复制面板 = (行) => {
   当前复制行.value = 行
-  // 构建完整地址（包含街道）
   const 完整地址 = [行.province, 行.city, 行.district, 行.street, 行.address].filter(Boolean).join(' ')
-  // 构建字段列表（默认勾选：姓名、手机号、地址）
   复制字段列表.value = [
     { key: '姓名', 标签: '姓名', 值: 行.name },
     { key: '手机号', 标签: '手机号', 值: 行.phone },
@@ -388,7 +442,6 @@ const 打开复制面板 = (行) => {
   显示复制面板.value = true
 }
 
-// 生成复制文本
 const 生成复制文本 = () => {
   if (!当前复制行.value) return ''
   const 标签映射 = {
@@ -402,19 +455,14 @@ const 生成复制文本 = () => {
     .join('\n')
 }
 
-// 确认复制到剪贴板
 const 确认复制 = async () => {
   const 文本 = 生成复制文本()
-  if (!文本) {
-    ElMessage.warning('没有可复制的内容')
-    return
-  }
+  if (!文本) { ElMessage.warning('没有可复制的内容'); return }
   try {
     await navigator.clipboard.writeText(文本)
     ElMessage.success('已复制到剪贴板')
     显示复制面板.value = false
   } catch {
-    // 降级方案
     const 临时输入框 = document.createElement('textarea')
     临时输入框.value = 文本
     document.body.appendChild(临时输入框)
@@ -426,14 +474,31 @@ const 确认复制 = async () => {
   }
 }
 
-onMounted(() => 加载订单())
+onMounted(() => {
+  加载订单()
+  加载统计数据()
+})
 </script>
 
 <style scoped>
-.搜索卡片 { margin-bottom: 16px; }
+.统计卡片区 { margin-bottom: 16px; }
+.统计卡片 { background: white; border-radius: 8px; padding: 20px 24px; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+.统计数字 { font-size: 32px; font-weight: 700; color: #303133; line-height: 1.2; }
+.统计标签 { font-size: 13px; color: #909399; margin-top: 6px; }
+.统计卡片.今日 .统计数字 { color: #409eff; }
+.统计卡片.待处理 .统计数字 { color: #e6a23c; }
+.统计卡片.完成 .统计数字 { color: #67c23a; }
+.统计卡片.失败 .统计数字 { color: #f56c6c; }
+
+.搜索卡片 { margin-bottom: 12px; }
 .分页器 { margin-top: 16px; display: flex; justify-content: flex-end; }
 
-/* 查看原因链接样式 */
+.下单中标签 { animation: 闪烁 1.5s ease-in-out infinite; }
+@keyframes 闪烁 { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+.底部工具栏 { display: flex; align-items: center; justify-content: space-between; padding: 10px 0 0; margin-top: 8px; border-top: 1px solid #ebeef5; }
+.选中提示 { font-size: 13px; color: #606266; }
+
 .查看原因链接 {
   margin-left: 6px;
   color: #409eff;
@@ -443,7 +508,6 @@ onMounted(() => 加载订单())
 }
 .查看原因链接:hover { color: #66b1ff; }
 
-/* 复制面板样式 */
 .复制面板 { padding: 0 4px; }
 .复制说明 { color: #666; margin-bottom: 12px; font-size: 14px; }
 .复制字段项 { margin-bottom: 10px; }
