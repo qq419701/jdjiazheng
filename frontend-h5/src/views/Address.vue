@@ -111,7 +111,7 @@ const 表单数据 = ref({
   详细地址: 订单Store.详细地址 || '',
 })
 
-// 选中的省市区
+// 选中的省市区（最终确认后的值）
 const 选中省份 = ref(订单Store.省份 || '')
 const 选中城市 = ref(订单Store.城市 || '')
 const 选中区县 = ref(订单Store.区县 || '')
@@ -206,6 +206,12 @@ const 所有省市区数据 = [
 // 省份列（所有省名）
 const 省份列 = computed(() => 所有省市区数据.map(p => ({ text: p.名称 })))
 
+// 临时选中状态（弹窗内部交互时使用，确认后才更新正式值）
+// 必须在 computed 之前定义，因为 computed 依赖这些值
+const 临时选省 = ref(选中省份.value || 所有省市区数据[0].名称)
+const 临时选市 = ref(选中城市.value || 所有省市区数据[0].子列表[0].名称)
+const 临时选区 = ref(选中区县.value || 所有省市区数据[0].子列表[0].子列表[0].名称)
+
 // 当前选中省份的数据
 const 当前省数据 = computed(() => {
   const index = 所有省市区数据.findIndex(p => p.名称 === 临时选省.value)
@@ -228,11 +234,6 @@ const 区县列 = computed(() => 当前市数据.value.子列表.map(d => ({ tex
 // 三列数据合并
 const 选择器列数据 = computed(() => [省份列.value, 市份列.value, 区县列.value])
 
-// 临时选中状态（弹窗内部交互时使用，确认后才更新正式值）
-const 临时选省 = ref(选中省份.value || 所有省市区数据[0].名称)
-const 临时选市 = ref(选中城市.value || 所有省市区数据[0].子列表[0].名称)
-const 临时选区 = ref(选中区县.value || 所有省市区数据[0].子列表[0].子列表[0].名称)
-
 // 打开选择器时同步已有值
 const 打开省市区选择器 = () => {
   临时选省.value = 选中省份.value || 所有省市区数据[0].名称
@@ -242,7 +243,7 @@ const 打开省市区选择器 = () => {
 }
 
 // 选择器内部change事件（列切换时联动重置）
-const 选择器变化处理 = ({ picker, columnIndex, selectedValues, selectedOptions }) => {
+const 选择器变化处理 = ({ picker, columnIndex, selectedOptions }) => {
   if (columnIndex === 0) {
     // 省份变化：重置市和区为第一项
     const 新省名 = selectedOptions[0]?.text || ''
@@ -251,8 +252,10 @@ const 选择器变化处理 = ({ picker, columnIndex, selectedValues, selectedOp
     if (新省数据 && 新省数据.子列表.length > 0) {
       const 新城市列表 = 新省数据.子列表.map(c => ({ text: c.名称 }))
       const 新区列表 = 新省数据.子列表[0].子列表.map(d => ({ text: d.名称 }))
+      // 先更新临时状态
       临时选市.value = 新省数据.子列表[0].名称
       临时选区.value = 新省数据.子列表[0].子列表[0]?.名称 || ''
+      // 再更新picker显示
       picker.setColumnValues(1, 新城市列表)
       picker.setColumnValues(2, 新区列表)
       picker.setColumnIndex(1, 0)
@@ -271,17 +274,21 @@ const 选择器变化处理 = ({ picker, columnIndex, selectedValues, selectedOp
       picker.setColumnIndex(2, 0)
     }
   } else if (columnIndex === 2) {
+    // 区变化：直接更新临时区
     临时选区.value = selectedOptions[2]?.text || ''
   }
 }
 
-// 确认省市区选择
+// 确认省市区选择（使用临时变量，避免selectedOptions读取到旧列数据）
 const 确认省市区选择 = ({ selectedOptions }) => {
-  if (selectedOptions && selectedOptions.length >= 3) {
-    选中省份.value = selectedOptions[0]?.text || ''
-    选中城市.value = selectedOptions[1]?.text || ''
-    选中区县.value = selectedOptions[2]?.text || ''
-  }
+  // 优先使用临时变量（在change事件中已实时更新）
+  // 若临时变量有值则用临时变量，否则降级读selectedOptions
+  const 省 = 临时选省.value || selectedOptions[0]?.text || ''
+  const 市 = 临时选市.value || selectedOptions[1]?.text || ''
+  const 区 = 临时选区.value || selectedOptions[2]?.text || ''
+  选中省份.value = 省
+  选中城市.value = 市
+  选中区县.value = 区
   显示省市区选择器.value = false
 }
 
