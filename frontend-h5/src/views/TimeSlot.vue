@@ -14,6 +14,11 @@
         <van-icon name="cross" class="关闭图标" @click="关闭弹窗" />
       </div>
 
+      <!-- 顶部约满横幅（仅当前3天全约满时显示） -->
+      <div v-if="前三天全约满 && !加载中" class="近期约满横幅">
+        📅 近期约满，请向下滑动选择后面的日期 ↓
+      </div>
+
       <!-- 加载中 -->
       <div v-if="加载中" class="加载提示">
         <van-loading color="#e54635" />
@@ -24,11 +29,6 @@
       <div v-else class="时间选择主体">
         <!-- 左侧日期列表 -->
         <div class="日期列表" ref="日期列表引用">
-          <!-- 提示横幅 -->
-          <div class="忙碌提示横幅">
-            ⏰ 近期较忙，请选择后面的日期 &nbsp;↓ 向下滑动查看可预约时间
-          </div>
-
           <div
             v-for="(日期项, 索引) in 日期时间列表"
             :key="索引"
@@ -49,7 +49,10 @@
         <!-- 右侧时间格子 -->
         <div class="时间格子区">
           <template v-if="当前日期约满">
-            <div class="约满提示">该日期已约满，请选择其他日期</div>
+            <div class="约满占位卡">
+              <div class="约满占位图标">🚫</div>
+              <div class="约满占位文字">该日期已约满<br/>请在左侧选择其他日期</div>
+            </div>
           </template>
           <template v-else-if="选中日期索引 >= 0">
             <div class="时间格子列表">
@@ -128,6 +131,13 @@ const 当前日期约满 = computed(() => {
   return 日期时间列表.value[选中日期索引.value]?.is_full || false
 })
 
+// 前3个日期是否全约满
+const 前三天全约满 = computed(() => {
+  if (日期时间列表.value.length === 0) return false
+  const 前三 = 日期时间列表.value.slice(0, 3)
+  return 前三.every(d => d.is_full)
+})
+
 // 当前日期的可用时间段
 const 当前时间段列表 = computed(() => {
   if (选中日期索引.value < 0) return []
@@ -148,7 +158,7 @@ const 加载时间表 = async () => {
         选中日期字符串.value = 日期时间列表.value[第一个可选].date
         // 等待DOM更新后滚动到选中日期
         await nextTick()
-        滚动到选中日期(第一个可选)
+        setTimeout(() => 滚动到选中日期(第一个可选), 100)
       }
     }
   } catch (错误) {
@@ -255,21 +265,24 @@ const 关闭弹窗 = () => {
   background: #fafafa;
 }
 
-/* 忙碌提示横幅 */
-.忙碌提示横幅 {
-  background: #fff8f0;
-  color: #ff6b35;
-  font-size: 10px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  margin: 6px 6px 4px;
-  line-height: 1.4;
+/* 顶部约满横幅 */
+.近期约满横幅 {
+  background: linear-gradient(135deg, #ff6b35, #ff8c42);
+  color: white;
+  font-size: 13px;
+  font-weight: bold;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
+  padding: 0 12px;
+  flex-shrink: 0;
 }
 
 /* 普通日期项：正常高度 */
 .日期项 {
-  height: 80px;
+  height: 64px;
   box-sizing: border-box;
   padding: 10px 8px;
   text-align: center;
@@ -282,18 +295,20 @@ const 关闭弹窗 = () => {
   justify-content: center;
 }
 
-/* 约满日期项：压缩高度 */
+/* 约满日期项：压缩高度，半透明 */
 .日期约满.日期项 {
-  height: 60px;
+  height: 48px;
+  opacity: 0.6;
 }
 
 .日期选中 {
   background: white;
-  border-right: 2px solid #e54635;
+  border-left: 3px solid #e53935;
+  border-right: none;
 }
 
 .日期约满 {
-  color: #ccc;
+  color: #999;
 }
 
 .周几文字 {
@@ -303,7 +318,7 @@ const 关闭弹窗 = () => {
 }
 
 .日期约满 .周几文字 {
-  color: #ccc;
+  color: #999;
 }
 
 .日期文字 {
@@ -313,7 +328,7 @@ const 关闭弹窗 = () => {
 }
 
 .日期约满 .日期文字 {
-  color: #ccc;
+  color: #999;
 }
 
 .约满标签 {
@@ -364,6 +379,28 @@ const 关闭弹窗 = () => {
   font-size: 14px;
   text-align: center;
   padding: 20px;
+}
+
+.约满占位卡 {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #999;
+  text-align: center;
+  padding: 20px;
+}
+
+.约满占位图标 {
+  font-size: 36px;
+}
+
+.约满占位文字 {
+  font-size: 14px;
+  color: #999;
+  line-height: 1.6;
 }
 
 .时间确认按钮区 {
