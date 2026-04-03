@@ -20,10 +20,10 @@
         </el-form-item>
         <el-form-item label="级别">
           <el-select v-model="搜索条件.level" clearable placeholder="全部级别" style="width: 120px">
-            <el-option label="省" value="province" />
-            <el-option label="市" value="city" />
-            <el-option label="区/县" value="district" />
-            <el-option label="街道" value="street" />
+            <el-option label="省" :value="1" />
+            <el-option label="市" :value="2" />
+            <el-option label="区/县" :value="3" />
+            <el-option label="街道/乡镇" :value="4" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -92,10 +92,10 @@
         </el-form-item>
         <el-form-item label="级别" prop="level">
           <el-select v-model="编辑表单.level" placeholder="选择级别" style="width: 100%">
-            <el-option label="省" value="province" />
-            <el-option label="市" value="city" />
-            <el-option label="区/县" value="district" />
-            <el-option label="街道" value="street" />
+            <el-option label="省" :value="1" />
+            <el-option label="市" :value="2" />
+            <el-option label="区/县" :value="3" />
+            <el-option label="街道/乡镇" :value="4" />
           </el-select>
         </el-form-item>
         <el-form-item label="父级ID">
@@ -148,7 +148,7 @@ const 编辑表单引用 = ref(null)
 const 编辑表单 = ref({
   name: '',
   code: '',
-  level: 'province',
+  level: 1,
   parent_id: 0,
   sort: 0,
   is_enabled: 1,
@@ -162,13 +162,13 @@ const 表单规则 = {
 
 // 级别文字映射
 const 级别文字 = (level) => {
-  const 映射 = { province: '省', city: '市', district: '区/县', street: '街道' }
+  const 映射 = { 1: '省', 2: '市', 3: '区/县', 4: '街道/乡镇' }
   return 映射[level] || level
 }
 
 // 级别标签类型
 const 级别标签类型 = (level) => {
-  const 映射 = { province: 'danger', city: 'warning', district: 'success', street: '' }
+  const 映射 = { 1: 'danger', 2: 'warning', 3: 'success', 4: '' }
   return 映射[level] || 'info'
 }
 
@@ -203,7 +203,7 @@ const 重置筛选 = () => {
 // 打开新增弹窗
 const 打开新增弹窗 = () => {
   编辑中地区.value = null
-  编辑表单.value = { name: '', code: '', level: 'province', parent_id: 0, sort: 0, is_enabled: 1 }
+  编辑表单.value = { name: '', code: '', level: 1, parent_id: 0, sort: 0, is_enabled: 1 }
   显示编辑弹窗.value = true
 }
 

@@ -46,7 +46,7 @@ const 获取地区列表 = async (req, res) => {
     const 条件 = {};
     if (name) 条件.name = { [Op.like]: `%${name}%` };
     if (code) 条件.code = { [Op.like]: `%${code}%` };
-    if (level) 条件.level = level;
+    if (level !== undefined && level !== '') 条件.level = parseInt(level);
     if (parent_id !== undefined && parent_id !== '') 条件.parent_id = parseInt(parent_id);
 
     const { count, rows } = await Region.findAndCountAll({
@@ -115,19 +115,22 @@ const 新增地区 = async (req, res) => {
   try {
     const { name, code, level, parent_id = 0, sort = 0 } = req.body;
 
-    if (!name || !code || !level) {
-      return res.json({ code: 0, message: '名称、代码、级别为必填项' });
+    if (!name || !level) {
+      return res.json({ code: 0, message: '名称、级别为必填项' });
     }
 
-    const 已存在 = await Region.findOne({ where: { code } });
-    if (已存在) {
-      return res.json({ code: 0, message: '地区代码已存在' });
+    // 仅当提供了代码时检查重复
+    if (code) {
+      const 已存在 = await Region.findOne({ where: { code } });
+      if (已存在) {
+        return res.json({ code: 0, message: '地区代码已存在' });
+      }
     }
 
     const 地区 = await Region.create({
       name,
-      code,
-      level,
+      code: code || null,
+      level: parseInt(level),
       parent_id: parseInt(parent_id),
       sort: parseInt(sort),
       is_enabled: 1,
@@ -154,8 +157,8 @@ const 更新地区 = async (req, res) => {
     const { name, code, level, parent_id, sort, is_enabled } = req.body;
     const 更新数据 = {};
     if (name !== undefined) 更新数据.name = name;
-    if (code !== undefined) 更新数据.code = code;
-    if (level !== undefined) 更新数据.level = level;
+    if (code !== undefined) 更新数据.code = code || null;
+    if (level !== undefined) 更新数据.level = parseInt(level);
     if (parent_id !== undefined) 更新数据.parent_id = parseInt(parent_id);
     if (sort !== undefined) 更新数据.sort = parseInt(sort);
     if (is_enabled !== undefined) 更新数据.is_enabled = parseInt(is_enabled);

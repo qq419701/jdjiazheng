@@ -8,9 +8,9 @@
         <!-- 省市区街道选择（点击打开步骤弹窗） -->
         <van-field
           v-model="地区显示文本"
-          name="省市区"
-          label="省市区"
-          placeholder="请选择省市区"
+          name="省市区街"
+          label="省市区街"
+          placeholder="请选择省市区（街道可选）"
           readonly
           is-link
           :rules="[{ required: true, message: '请选择省市区' }]"
