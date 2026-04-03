@@ -7,17 +7,15 @@ const 配置 = require('../config/config');
  * 检查请求头中的Authorization字段
  */
 const 验证Token = (req, res, next) => {
-  // 获取请求头中的Token
-  const authHeader = req.headers.authorization;
+  // 获取Token：优先从请求头读取，其次从查询参数读取（用于导出下载场景）
+  const token = (req.headers.authorization || '').replace('Bearer ', '') || req.query.token;
   
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  if (!token) {
     return res.status(401).json({
       code: 401,
       message: '未登录，请先登录',
     });
   }
-  
-  const token = authHeader.substring(7);
   
   try {
     // 验证Token
