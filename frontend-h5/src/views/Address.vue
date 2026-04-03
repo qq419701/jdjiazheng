@@ -242,17 +242,21 @@ const 打开省市区选择器 = () => {
 }
 
 // 选择器内部change事件（列切换时联动重置）
-const 选择器变化处理 = ({ columnIndex, selectedValues, selectedOptions }) => {
+const 选择器变化处理 = ({ picker, columnIndex, selectedValues, selectedOptions }) => {
   if (columnIndex === 0) {
     // 省份变化：重置市和区为第一项
     const 新省名 = selectedOptions[0]?.text || ''
     临时选省.value = 新省名
     const 新省数据 = 所有省市区数据.find(p => p.名称 === 新省名)
     if (新省数据 && 新省数据.子列表.length > 0) {
+      const 新城市列表 = 新省数据.子列表.map(c => ({ text: c.名称 }))
+      const 新区列表 = 新省数据.子列表[0].子列表.map(d => ({ text: d.名称 }))
       临时选市.value = 新省数据.子列表[0].名称
-      if (新省数据.子列表[0].子列表.length > 0) {
-        临时选区.value = 新省数据.子列表[0].子列表[0].名称
-      }
+      临时选区.value = 新省数据.子列表[0].子列表[0]?.名称 || ''
+      picker.setColumnValues(1, 新城市列表)
+      picker.setColumnValues(2, 新区列表)
+      picker.setColumnIndex(1, 0)
+      picker.setColumnIndex(2, 0)
     }
   } else if (columnIndex === 1) {
     // 城市变化：重置区为第一项
@@ -261,7 +265,10 @@ const 选择器变化处理 = ({ columnIndex, selectedValues, selectedOptions })
     const 城市列表 = 当前省数据.value.子列表
     const 新市数据 = 城市列表.find(c => c.名称 === 新市名)
     if (新市数据 && 新市数据.子列表.length > 0) {
+      const 新区列表 = 新市数据.子列表.map(d => ({ text: d.名称 }))
       临时选区.value = 新市数据.子列表[0].名称
+      picker.setColumnValues(2, 新区列表)
+      picker.setColumnIndex(2, 0)
     }
   } else if (columnIndex === 2) {
     临时选区.value = selectedOptions[2]?.text || ''

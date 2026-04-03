@@ -157,6 +157,32 @@ import { ref, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 获取卡密列表API, 删除卡密API, 获取批次列表API, 获取批次卡密API, 获取设置API } from '../api/index'
 
+// 兼容HTTP和HTTPS环境的复制函数
+const copyToClipboard = (text) => {
+  return new Promise((resolve, reject) => {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(resolve).catch(reject)
+      return
+    }
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.style.position = 'fixed'
+    textarea.style.left = '-9999px'
+    textarea.style.top = '-9999px'
+    document.body.appendChild(textarea)
+    textarea.focus()
+    textarea.select()
+    try {
+      const success = document.execCommand('copy')
+      document.body.removeChild(textarea)
+      success ? resolve() : reject(new Error('execCommand失败'))
+    } catch (e) {
+      document.body.removeChild(textarea)
+      reject(e)
+    }
+  })
+}
+
 // 当前激活的标签页
 const 当前标签 = ref('batches')
 
@@ -251,39 +277,32 @@ const 复制单个链接 = (code) => {
   if (!站点域名.value) {
     ElMessage.warning('请先在系统设置中配置站点域名')
   }
-  navigator.clipboard.writeText(内容).then(() => {
-    ElMessage.success('已复制')
-  }).catch(() => {
-    ElMessage.error('复制失败')
-  })
+  copyToClipboard(内容)
+    .then(() => ElMessage.success('已复制！'))
+    .catch(() => ElMessage.error('复制失败，请手动复制'))
 }
 
 // 批量复制完整链接（传入卡密数组）
 const 批量复制完整链接 = (卡密数组) => {
   if (!站点域名.value) {
-    // 仅复制卡密并提示
     const 内容 = 卡密数组.map(c => c.code).join('\n')
-    navigator.clipboard.writeText(内容).then(() => {
-      ElMessage.warning(`请先在系统设置中配置站点域名，已复制${卡密数组.length}个卡密`)
-    })
+    copyToClipboard(内容)
+      .then(() => ElMessage.warning(`请先在系统设置中配置站点域名，已复制${卡密数组.length}个卡密`))
+      .catch(() => ElMessage.error('复制失败，请手动复制'))
     return
   }
   const 内容 = 卡密数组.map(c => `${站点域名.value}/${c.code}`).join('\n')
-  navigator.clipboard.writeText(内容).then(() => {
-    ElMessage.success(`已复制${卡密数组.length}条链接`)
-  }).catch(() => {
-    ElMessage.error('复制失败')
-  })
+  copyToClipboard(内容)
+    .then(() => ElMessage.success(`已复制${卡密数组.length}条链接`))
+    .catch(() => ElMessage.error('复制失败，请手动复制'))
 }
 
 // 批量复制仅卡密
 const 批量复制仅卡密 = (卡密数组) => {
   const 内容 = 卡密数组.map(c => c.code).join('\n')
-  navigator.clipboard.writeText(内容).then(() => {
-    ElMessage.success(`已复制${卡密数组.length}个卡密`)
-  }).catch(() => {
-    ElMessage.error('复制失败')
-  })
+  copyToClipboard(内容)
+    .then(() => ElMessage.success(`已复制${卡密数组.length}个卡密`))
+    .catch(() => ElMessage.error('复制失败，请手动复制'))
 }
 
 // 复制批次完整链接（需要先获取该批次卡密）

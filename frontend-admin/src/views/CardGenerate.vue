@@ -75,6 +75,32 @@ import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { 生成卡密API, 获取设置API } from '../api/index'
 
+// 兼容HTTP和HTTPS环境的复制函数
+const copyToClipboard = (text) => {
+  return new Promise((resolve, reject) => {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(resolve).catch(reject)
+      return
+    }
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.style.position = 'fixed'
+    textarea.style.left = '-9999px'
+    textarea.style.top = '-9999px'
+    document.body.appendChild(textarea)
+    textarea.focus()
+    textarea.select()
+    try {
+      const success = document.execCommand('copy')
+      document.body.removeChild(textarea)
+      success ? resolve() : reject(new Error('execCommand失败'))
+    } catch (e) {
+      document.body.removeChild(textarea)
+      reject(e)
+    }
+  })
+}
+
 const 生成中 = ref(false)
 // 生成结果包含 codes 数组、batch_no 批次号
 const 生成结果 = ref({ codes: [], batch_no: '' })
@@ -133,28 +159,23 @@ const 生成卡密 = async () => {
 const 一键复制完整链接 = () => {
   const codes = 生成结果.value.codes
   if (!站点域名.value) {
-    // 没有域名时复制仅卡密并提示
-    navigator.clipboard.writeText(codes.join('\n')).then(() => {
-      ElMessage.warning('请先在系统设置中配置站点域名，已复制仅卡密')
-    })
+    copyToClipboard(codes.join('\n'))
+      .then(() => ElMessage.warning('请先在系统设置中配置站点域名，已复制仅卡密'))
+      .catch(() => ElMessage.error('复制失败，请手动复制'))
     return
   }
   const 内容 = codes.map(code => `${站点域名.value}/${code}`).join('\n')
-  navigator.clipboard.writeText(内容).then(() => {
-    ElMessage.success(`已复制${codes.length}条完整链接`)
-  }).catch(() => {
-    ElMessage.error('复制失败，请手动选择复制')
-  })
+  copyToClipboard(内容)
+    .then(() => ElMessage.success(`已复制${codes.length}条完整链接`))
+    .catch(() => ElMessage.error('复制失败，请手动复制'))
 }
 
 // 一键复制仅卡密
 const 一键复制仅卡密 = () => {
   const 内容 = 生成结果.value.codes.join('\n')
-  navigator.clipboard.writeText(内容).then(() => {
-    ElMessage.success(`已复制${生成结果.value.codes.length}个卡密`)
-  }).catch(() => {
-    ElMessage.error('复制失败，请手动选择复制')
-  })
+  copyToClipboard(内容)
+    .then(() => ElMessage.success(`已复制${生成结果.value.codes.length}个卡密`))
+    .catch(() => ElMessage.error('复制失败，请手动复制'))
 }
 
 // 下载TXT文件
