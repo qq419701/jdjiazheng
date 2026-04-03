@@ -128,11 +128,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { 获取设置API, 保存设置API } from '../api/index'
-
-const router = useRouter()
 const 加载中 = ref(false)
 const 保存中 = ref(false)
 const 当前标签 = ref('general')
