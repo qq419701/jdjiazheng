@@ -23,6 +23,7 @@ const 批量生成卡密 = async (参数) => {
     备注 = '',
     过期时间 = null,
     创建人ID = null,
+    批次ID = null,
   } = 参数;
 
   // 限制单次最大生成数量
@@ -52,6 +53,7 @@ const 批量生成卡密 = async (参数) => {
         remark: 备注,
         status: 0,
         created_by: 创建人ID,
+        batch_id: 批次ID,
         expired_at: 过期时间,
         created_at: new Date(),
       });

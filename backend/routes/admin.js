@@ -7,7 +7,7 @@ const 配置 = require('../config/config');
 const { Admin, Order } = require('../models');
 const { 验证Token } = require('../middleware/auth');
 const { 获取订单列表, 获取订单详情, 更新订单状态, 触发自动下单 } = require('../controllers/orderController');
-const { 获取卡密列表, 生成卡密, 导出卡密, 删除卡密 } = require('../controllers/cardController');
+const { 获取卡密列表, 生成卡密, 导出卡密, 删除卡密, 获取批次列表, 获取批次卡密 } = require('../controllers/cardController');
 const { 获取账号列表, 新增账号, 更新账号, 删除账号, 触发自动登录 } = require('../controllers/jdAccountController');
 const { 获取规则列表, 新增规则, 更新规则, 删除规则 } = require('../controllers/timeRuleController');
 const { 获取所有设置, 批量更新设置 } = require('../controllers/settingController');
@@ -130,6 +130,10 @@ router.get('/cards', 验证Token, 获取卡密列表);
 router.post('/cards/generate', 验证Token, 生成卡密);
 router.get('/cards/export', 验证Token, 导出卡密);
 router.delete('/cards/:id', 验证Token, 删除卡密);
+
+// 卡密批次管理
+router.get('/card-batches', 验证Token, 获取批次列表);
+router.get('/card-batches/:id/cards', 验证Token, 获取批次卡密);
 
 // 京东账号管理
 router.get('/jd-accounts', 验证Token, 获取账号列表);

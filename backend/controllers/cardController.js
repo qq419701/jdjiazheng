@@ -1,6 +1,6 @@
 // 卡密控制器
 const { Op } = require('sequelize');
-const { Card } = require('../models');
+const { Card, CardBatch } = require('../models');
 const { 批量生成卡密 } = require('../services/cardService');
 
 /**
@@ -9,7 +9,7 @@ const { 批量生成卡密 } = require('../services/cardService');
  */
 const 获取卡密列表 = async (req, res) => {
   try {
-    const { page = 1, limit = 20, keyword = '', status, category } = req.query;
+    const { page = 1, limit = 20, keyword = '', status, category, batch_id } = req.query;
     const 条件 = {};
 
     if (keyword) {
@@ -20,6 +20,7 @@ const 获取卡密列表 = async (req, res) => {
     }
     if (status !== undefined && status !== '') 条件.status = parseInt(status);
     if (category) 条件.category = { [Op.like]: `%${category}%` };
+    if (batch_id !== undefined && batch_id !== '') 条件.batch_id = parseInt(batch_id);
 
     const { count, rows } = await Card.findAndCountAll({
       where: 条件,
@@ -40,7 +41,7 @@ const 获取卡密列表 = async (req, res) => {
 };
 
 /**
- * 批量生成卡密
+ * 批量生成卡密（先创建批次记录）
  * POST /admin/api/cards/generate
  */
 const 生成卡密 = async (req, res) => {
@@ -58,6 +59,19 @@ const 生成卡密 = async (req, res) => {
       return res.json({ code: 0, message: '生成数量必须在1-1000之间' });
     }
 
+    // 先创建批次记录
+    const 批次号 = 'BATCH' + Date.now();
+    const 批次 = await CardBatch.create({
+      batch_no: 批次号,
+      category,
+      service_type,
+      service_hours: parseInt(service_hours),
+      count: parseInt(count),
+      remark,
+      created_by: req.管理员?.id,
+      created_at: new Date(),
+    });
+
     const 结果 = await 批量生成卡密({
       数量: parseInt(count),
       分类: category,
@@ -66,12 +80,17 @@ const 生成卡密 = async (req, res) => {
       备注: remark,
       过期时间: expired_at ? new Date(expired_at) : null,
       创建人ID: req.管理员?.id,
+      批次ID: 批次.id,
     });
 
     res.json({
       code: 1,
       message: `成功生成${结果.length}个卡密`,
-      data: 结果.map(c => c.code),
+      data: {
+        codes: 结果.map(c => c.code),
+        batch_no: 批次号,
+        batch_id: 批次.id,
+      },
     });
   } catch (错误) {
     console.error('生成卡密出错:', 错误);
@@ -124,4 +143,55 @@ const 删除卡密 = async (req, res) => {
   }
 };
 
-module.exports = { 获取卡密列表, 生成卡密, 导出卡密, 删除卡密 };
+/**
+ * 获取批次列表
+ * GET /admin/api/card-batches
+ */
+const 获取批次列表 = async (req, res) => {
+  try {
+    const 批次列表 = await CardBatch.findAll({
+      order: [['created_at', 'DESC']],
+    });
+
+    // 统计每个批次的实际卡密数量
+    const 批次数据 = await Promise.all(批次列表.map(async (批次) => {
+      const 实际数量 = await Card.count({ where: { batch_id: 批次.id } });
+      return {
+        ...批次.toJSON(),
+        actual_count: 实际数量,
+      };
+    }));
+
+    res.json({ code: 1, message: '获取成功', data: 批次数据 });
+  } catch (错误) {
+    console.error('获取批次列表出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+};
+
+/**
+ * 获取某批次的所有卡密
+ * GET /admin/api/card-batches/:id/cards
+ */
+const 获取批次卡密 = async (req, res) => {
+  try {
+    const 批次 = await CardBatch.findByPk(req.params.id);
+    if (!批次) return res.json({ code: 0, message: '批次不存在' });
+
+    const 卡密列表 = await Card.findAll({
+      where: { batch_id: req.params.id },
+      order: [['created_at', 'ASC']],
+    });
+
+    res.json({
+      code: 1,
+      message: '获取成功',
+      data: { 批次: 批次.toJSON(), 卡密列表: 卡密列表 },
+    });
+  } catch (错误) {
+    console.error('获取批次卡密出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+};
+
+module.exports = { 获取卡密列表, 生成卡密, 导出卡密, 删除卡密, 获取批次列表, 获取批次卡密 };
