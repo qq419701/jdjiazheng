@@ -47,6 +47,9 @@ export const 新增地区API = (数据) => 请求实例.post('/regions', 数据)
 export const 更新地区API = (id, 数据) => 请求实例.put(`/regions/${id}`, 数据)
 export const 删除地区API = (id) => 请求实例.delete(`/regions/${id}`)
 
+// 地区数据统计
+export const 获取地区统计API = () => 请求实例.get('/regions/stats')
+
 // ===== 洗衣服务（预留）=====
 export const 触发洗衣下单API = (id) => 请求实例.post(`/laundry/orders/${id}/place-order`)
 export const 查询洗衣订单状态API = (id) => 请求实例.get(`/laundry/orders/${id}/status`)

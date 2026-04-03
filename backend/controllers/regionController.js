@@ -216,5 +216,130 @@ const 切换地区状态 = async (req, res) => {
   }
 };
 
-module.exports = { 查询地区, 获取地区列表, 后台查询地区, 新增地区, 更新地区, 删除地区, 切换地区状态 };
+/**
+ * 获取地区数据统计
+ * GET /admin/api/regions/stats
+ */
+const 获取地区统计 = async (req, res) => {
+  try {
+    const { QueryTypes } = require('sequelize');
+    const 数据库 = require('../config/database');
+    const rows = await 数据库.query(
+      'SELECT level, is_enabled, COUNT(*) as cnt FROM regions GROUP BY level, is_enabled ORDER BY level, is_enabled',
+      { type: QueryTypes.SELECT }
+    );
+    const 结果 = {
+      1: { total: 0, enabled: 0 },
+      2: { total: 0, enabled: 0 },
+      3: { total: 0, enabled: 0 },
+      4: { total: 0, enabled: 0 },
+    };
+    rows.forEach(r => {
+      const lv = parseInt(r.level);
+      if (结果[lv]) {
+        结果[lv].total += parseInt(r.cnt);
+        if (parseInt(r.is_enabled) === 1) 结果[lv].enabled += parseInt(r.cnt);
+      }
+    });
+    res.json({ code: 1, data: 结果 });
+  } catch (错误) {
+    console.error('获取地区统计出错:', 错误);
+    res.status(500).json({ code: -1, message: '查询失败' });
+  }
+};
+
+/**
+ * 导入地区CSV数据
+ * POST /admin/api/regions/import-csv
+ * 接收 multipart/form-data，字段名 file
+ * CSV格式（第一行表头）：name,code,parent_id,level,is_enabled,sort
+ */
+const 导入地区CSV = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.json({ code: 0, message: '未收到文件，请确认上传了 CSV 文件' });
+    }
+
+    const content = req.file.buffer.toString('utf-8')
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n');
+    const allLines = content.split('\n');
+    const nonEmpty = allLines.filter(l => l.trim());
+    if (nonEmpty.length === 0) {
+      return res.json({ code: 0, message: 'CSV 文件为空' });
+    }
+
+    // 判断第一行是否是表头（含 name 字样）
+    const firstLower = nonEmpty[0].toLowerCase();
+    const dataLines = (firstLower.includes('name') || firstLower.startsWith('省') || firstLower.startsWith('地区'))
+      ? nonEmpty.slice(1)
+      : nonEmpty;
+
+    let success = 0;
+    const errors = [];
+    let batch = [];
+
+    const flushBatch = async () => {
+      if (batch.length === 0) return;
+      await Region.bulkCreate(batch);
+      success += batch.length;
+      batch = [];
+    };
+
+    for (let i = 0; i < dataLines.length; i++) {
+      const line = dataLines[i].trim();
+      if (!line) continue;
+
+      // 简单 CSV 解析（支持引号包裹）
+      const parts = [];
+      let cur = '';
+      let inQ = false;
+      for (let c = 0; c < line.length; c++) {
+        if (line[c] === '"') { inQ = !inQ; continue; }
+        if (line[c] === ',' && !inQ) { parts.push(cur.trim()); cur = ''; continue; }
+        cur += line[c];
+      }
+      parts.push(cur.trim());
+
+      const [name, code, parent_id_raw, level_raw, is_enabled_raw, sort_raw] = parts;
+      const lineNum = i + 2; // 人类可读行号（含表头）
+
+      if (!name || name === '') {
+        errors.push({ line: lineNum, reason: 'name（名称）字段不能为空' });
+        continue;
+      }
+      const levelNum = parseInt(level_raw);
+      if (![1, 2, 3, 4].includes(levelNum)) {
+        errors.push({ line: lineNum, reason: `level 值无效: "${level_raw}"，必须是 1/2/3/4` });
+        continue;
+      }
+
+      batch.push({
+        name,
+        code: (code && code !== '' && code.toLowerCase() !== 'null') ? code : null,
+        parent_id: parseInt(parent_id_raw) || 0,
+        level: levelNum,
+        is_enabled: (is_enabled_raw === undefined || is_enabled_raw === '') ? 1 : (parseInt(is_enabled_raw) || 1),
+        sort: parseInt(sort_raw) || 0,
+      });
+
+      if (batch.length >= 500) {
+        await flushBatch();
+      }
+    }
+
+    await flushBatch();
+
+    res.json({
+      code: 1,
+      message: '导入完成',
+      data: { success, fail: errors.length, errors: errors.slice(0, 20) },
+    });
+  } catch (错误) {
+    console.error('导入地区CSV出错:', 错误);
+    res.status(500).json({ code: -1, message: '导入失败: ' + 错误.message });
+  }
+};
+
+module.exports = { 查询地区, 获取地区列表, 后台查询地区, 新增地区, 更新地区, 删除地区, 切换地区状态, 获取地区统计, 导入地区CSV };
 
