@@ -105,7 +105,7 @@ const 触发自动下单 = async () => {
   }
 }
 
-const 返回 = () => router.push('/admin/orders')
+const 返回 = () => router.push(`/admin/orders/${route.params.businessType || 'jiazheng'}`)
 
 onMounted(() => 加载详情())
 </script>

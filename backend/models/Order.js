@@ -123,6 +123,31 @@ const Order = 数据库连接.define('Order', {
     allowNull: true,
     comment: '操作日志（JSON格式）',
   },
+  business_type: {
+    type: DataTypes.STRING(20),
+    defaultValue: 'jiazheng',
+    comment: '业务类型：jiazheng=京东家政 xiyifu=京东洗衣服',
+  },
+  laundry_order_id: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: '洗衣订单API返回的订单ID（洗衣服务专用）',
+  },
+  express_order_id: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: '快递API返回的快递单号（洗衣服务专用）',
+  },
+  express_company: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: '快递公司（洗衣服务专用）',
+  },
+  laundry_status: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: '洗衣订单状态（洗衣服务专用）',
+  },
 }, {
   tableName: 'orders',
   timestamps: false,

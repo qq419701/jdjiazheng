@@ -9,6 +9,12 @@
         <el-card>
           <template #header><span>⚙️ 生成参数</span></template>
           <el-form :model="表单" label-width="100px">
+            <el-form-item label="业务类型">
+              <el-select v-model="表单.business_type" style="width: 100%">
+                <el-option label="京东家政" value="jiazheng" />
+                <el-option label="京东洗衣服" value="xiyifu" />
+              </el-select>
+            </el-form-item>
             <el-form-item label="服务分类">
               <el-input v-model="表单.category" placeholder="如：日常保洁" />
             </el-form-item>
@@ -50,7 +56,7 @@
               <el-button type="primary" @click="一键复制完整链接">一键复制完整链接</el-button>
               <el-button @click="一键复制仅卡密">一键复制仅卡密</el-button>
               <el-button @click="下载TXT">下载TXT文件</el-button>
-              <el-button type="success" @click="$router.push('/admin/cards')">查看批次管理</el-button>
+              <el-button type="success" @click="$router.push(`/admin/cards/${表单.business_type}`)">查看批次管理</el-button>
             </el-col>
           </el-row>
 
@@ -72,8 +78,11 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { 生成卡密API, 获取设置API } from '../api/index'
+
+const route = useRoute()
 
 // 兼容HTTP和HTTPS环境的复制函数
 const copyToClipboard = (text) => {
@@ -114,6 +123,7 @@ const 表单 = ref({
   count: 10,
   remark: '',
   expired_at: null,
+  business_type: route.params.businessType || 'jiazheng',
 })
 
 // 计算预览内容（有域名显示完整链接，否则只显示卡密）

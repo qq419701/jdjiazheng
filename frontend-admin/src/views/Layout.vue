@@ -4,9 +4,8 @@
     <!-- 左侧导航菜单 -->
     <aside class="侧边栏">
       <div class="系统标志">
-        <span class="系统图标">🏠</span>
-        <span class="系统名称">京东家政</span>
-        <span class="系统副名">代下单系统</span>
+        <span class="系统图标">🛒</span>
+        <span class="系统名称">京东代下单系统</span>
       </div>
 
       <el-menu
@@ -21,26 +20,47 @@
           <el-icon><DataAnalysis /></el-icon>
           <span>数据看板</span>
         </el-menu-item>
-        <el-menu-item index="/admin/orders">
-          <el-icon><List /></el-icon>
-          <span>订单管理</span>
-        </el-menu-item>
-        <el-menu-item index="/admin/cards">
-          <el-icon><Ticket /></el-icon>
-          <span>卡密管理</span>
-        </el-menu-item>
-        <el-menu-item index="/admin/jd-accounts">
-          <el-icon><User /></el-icon>
-          <span>京东账号</span>
-        </el-menu-item>
-        <el-menu-item index="/admin/time-rules">
-          <el-icon><Clock /></el-icon>
-          <span>时间规则</span>
-        </el-menu-item>
-        <el-menu-item index="/admin/settings">
-          <el-icon><Setting /></el-icon>
-          <span>系统设置</span>
-        </el-menu-item>
+
+        <el-menu-item-group title="京东家政">
+          <el-menu-item index="/admin/orders/jiazheng">
+            <el-icon><List /></el-icon>
+            <span>家政订单管理</span>
+          </el-menu-item>
+          <el-menu-item index="/admin/cards/jiazheng">
+            <el-icon><Ticket /></el-icon>
+            <span>家政卡密管理</span>
+          </el-menu-item>
+          <el-menu-item index="/admin/jd-accounts">
+            <el-icon><User /></el-icon>
+            <span>京东账号管理</span>
+          </el-menu-item>
+          <el-menu-item index="/admin/time-rules">
+            <el-icon><Clock /></el-icon>
+            <span>时间规则</span>
+          </el-menu-item>
+        </el-menu-item-group>
+
+        <el-menu-item-group title="京东洗衣服">
+          <el-menu-item index="/admin/orders/xiyifu">
+            <el-icon><List /></el-icon>
+            <span>洗衣订单管理</span>
+          </el-menu-item>
+          <el-menu-item index="/admin/cards/xiyifu">
+            <el-icon><Ticket /></el-icon>
+            <span>洗衣卡密管理</span>
+          </el-menu-item>
+        </el-menu-item-group>
+
+        <el-menu-item-group title="系统管理">
+          <el-menu-item index="/admin/regions">
+            <el-icon><MapLocation /></el-icon>
+            <span>地区管理</span>
+          </el-menu-item>
+          <el-menu-item index="/admin/settings">
+            <el-icon><Setting /></el-icon>
+            <span>系统设置</span>
+          </el-menu-item>
+        </el-menu-item-group>
       </el-menu>
     </aside>
 
@@ -69,7 +89,7 @@
 import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
-import { DataAnalysis, List, Ticket, User, Clock, Setting } from '@element-plus/icons-vue'
+import { DataAnalysis, List, Ticket, User, Clock, Setting, MapLocation } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
@@ -80,7 +100,7 @@ const authStore = useAuthStore()
 const 当前路由 = computed(() => route.path)
 
 // 当前页面标题
-const 当前页标题 = computed(() => route.meta?.标题 || '京东家政代下单系统')
+const 当前页标题 = computed(() => route.meta?.标题 || '京东代下单系统')
 
 // 退出登录
 const 退出登录 = async () => {
@@ -109,6 +129,7 @@ const 退出登录 = async () => {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  overflow-y: auto;
 }
 
 .系统标志 {
@@ -125,21 +146,26 @@ const 退出登录 = async () => {
 
 .系统名称 {
   display: block;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: white;
-}
-
-.系统副名 {
-  display: block;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
-  margin-top: 2px;
 }
 
 .侧边菜单 {
   flex: 1;
   border-right: none;
+}
+
+:deep(.el-menu-item-group__title) {
+  color: rgba(255, 255, 255, 0.35) !important;
+  font-size: 11px;
+  padding-left: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+:deep(.el-menu-item-group .el-menu-item) {
+  padding-left: 24px !important;
 }
 
 /* 主内容区 */

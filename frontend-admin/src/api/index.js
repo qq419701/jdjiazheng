@@ -40,3 +40,15 @@ export const 删除规则API = (id) => 请求实例.delete(`/time-rules/${id}`)
 // ===== 系统设置 =====
 export const 获取设置API = () => 请求实例.get('/settings')
 export const 保存设置API = (数据) => 请求实例.put('/settings', 数据)
+
+// ===== 地区管理 =====
+export const 获取地区列表API = (参数) => 请求实例.get('/regions', { params: 参数 })
+export const 新增地区API = (数据) => 请求实例.post('/regions', 数据)
+export const 更新地区API = (id, 数据) => 请求实例.put(`/regions/${id}`, 数据)
+export const 删除地区API = (id) => 请求实例.delete(`/regions/${id}`)
+
+// ===== 洗衣服务（预留）=====
+export const 触发洗衣下单API = (id) => 请求实例.post(`/laundry/orders/${id}/place-order`)
+export const 查询洗衣订单状态API = (id) => 请求实例.get(`/laundry/orders/${id}/status`)
+export const 触发快递取件API = (id) => 请求实例.post(`/laundry/orders/${id}/express-pickup`)
+export const 查询快递状态API = (id) => 请求实例.get(`/laundry/orders/${id}/express-status`)

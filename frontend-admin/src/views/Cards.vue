@@ -6,7 +6,7 @@
       <!-- ===== 标签页一：批次管理 ===== -->
       <el-tab-pane label="批次管理" name="batches">
         <el-row justify="end" style="margin-bottom: 16px">
-          <el-button type="success" @click="$router.push('/admin/cards/generate')">批量生成卡密</el-button>
+          <el-button type="success" @click="$router.push(`/admin/cards/${业务类型}/generate`)">批量生成卡密</el-button>
         </el-row>
 
         <el-table :data="批次列表" v-loading="批次加载中" stripe>
@@ -153,7 +153,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 获取卡密列表API, 删除卡密API, 获取批次列表API, 获取批次卡密API, 获取设置API } from '../api/index'
 
@@ -185,6 +186,10 @@ const copyToClipboard = (text) => {
 
 // 当前激活的标签页
 const 当前标签 = ref('batches')
+
+// 路由参数：业务类型
+const route = useRoute()
+const 业务类型 = computed(() => route.params.businessType || 'jiazheng')
 
 // 站点域名（从系统设置读取）
 const 站点域名 = ref('')
@@ -241,7 +246,7 @@ const 加载批次列表 = async () => {
 const 加载卡密 = async () => {
   卡密加载中.value = true
   try {
-    const 结果 = await 获取卡密列表API({ page: 当前页.value, limit: 20, ...搜索.value })
+    const 结果 = await 获取卡密列表API({ page: 当前页.value, limit: 20, ...搜索.value, business_type: 业务类型.value })
     if (结果.code === 1) {
       卡密列表.value = 结果.data.list
       总数.value = 结果.data.total
@@ -341,6 +346,13 @@ const 删除卡密 = async (id) => {
 
 onMounted(async () => {
   await Promise.all([加载站点域名(), 加载批次列表()])
+  加载卡密()
+})
+
+// 业务类型变化时重新加载
+watch(业务类型, () => {
+  当前页.value = 1
+  搜索.value = { keyword: '', status: '', batch_id: '' }
   加载卡密()
 })
 </script>

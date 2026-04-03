@@ -65,6 +65,11 @@ const Card = 数据库连接.define('Card', {
     allowNull: true,
     comment: '过期时间',
   },
+  business_type: {
+    type: DataTypes.STRING(20),
+    defaultValue: 'jiazheng',
+    comment: '业务类型：jiazheng=京东家政 xiyifu=京东洗衣服',
+  },
 }, {
   tableName: 'cards',
   timestamps: false,
