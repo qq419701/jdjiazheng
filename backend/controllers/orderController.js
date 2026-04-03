@@ -103,7 +103,7 @@ const 获取订单详情 = async (req, res) => {
  */
 const 更新订单状态 = async (req, res) => {
   try {
-    const { status, remark } = req.body;
+    const { status, remark, fail_reason } = req.body;
     const 订单 = await Order.findByPk(req.params.id);
 
     if (!订单) {
@@ -112,9 +112,14 @@ const 更新订单状态 = async (req, res) => {
 
     const 更新数据 = { status };
     if (remark) 更新数据.remark = remark;
+    // 保存失败原因（状态3失败或7预约失败时）
+    if (fail_reason !== undefined) 更新数据.fail_reason = fail_reason;
+
+    // 状态文字映射（包含新增状态5安排中 6预约完成 7预约失败）
+    const 状态文字映射 = ['待处理', '下单中', '已下单', '失败', '已取消', '安排中', '预约完成', '预约失败'];
+    const 状态文字 = 状态文字映射[status] || '未知';
 
     // 记录操作日志
-    const 状态文字 = ['待处理', '下单中', '已下单', '失败', '已取消'][status] || '未知';
     const 现有日志 = 安全解析JSON(订单.order_log, []);
     现有日志.push({
       时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
@@ -165,4 +170,43 @@ const 触发自动下单 = async (req, res) => {
   }
 };
 
-module.exports = { 获取订单列表, 获取订单详情, 更新订单状态, 触发自动下单 };
+/**
+ * 重置订单（将失败订单重置为待处理）
+ * POST /admin/api/orders/:id/reset
+ */
+const 重置订单 = async (req, res) => {
+  try {
+    const 订单 = await Order.findByPk(req.params.id);
+
+    if (!订单) {
+      return res.json({ code: 0, message: '订单不存在' });
+    }
+
+    // 只有失败(3)或预约失败(7)的订单才能重置
+    if (订单.status !== 3 && 订单.status !== 7) {
+      return res.json({ code: 0, message: '只有失败或预约失败的订单才能重置' });
+    }
+
+    // 记录操作日志
+    const 现有日志 = 安全解析JSON(订单.order_log, []);
+    现有日志.push({
+      时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+      操作: `管理员重置订单，状态恢复为待处理`,
+      状态: 'info',
+    });
+
+    // 重置状态为0（待处理），清空失败原因
+    await 订单.update({
+      status: 0,
+      fail_reason: null,
+      order_log: JSON.stringify(现有日志),
+    });
+
+    res.json({ code: 1, message: '订单已重置为待处理' });
+  } catch (错误) {
+    console.error('重置订单出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+};
+
+module.exports = { 获取订单列表, 获取订单详情, 更新订单状态, 触发自动下单, 重置订单 };
