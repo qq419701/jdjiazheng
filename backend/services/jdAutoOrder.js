@@ -5,6 +5,12 @@ const { JdAccount, Order } = require('../models');
 const { 安全解析JSON } = require('../utils/helpers');
 const 配置 = require('../config/config');
 
+// 跟踪正在进行中的登录会话，key=账号ID，value=Browser实例
+const 进行中的登录会话 = new Map();
+
+// Cookie有效期（30天）
+const Cookie有效期毫秒 = 30 * 24 * 60 * 60 * 1000;
+
 /**
  * 查找系统中可用的 Chrome/Chromium 可执行路径
  * 按优先级依次尝试：环境变量 > 常见系统路径 > 不传（让puppeteer自行查找）
@@ -153,51 +159,56 @@ const 执行自动下单 = async (订单ID) => {
         }
       }
 
-      // 访问京东收货地址页面，添加客户地址
-      await 页面.goto('https://newaddress.m.jd.com/newAddress/add', {
+      // 访问京东我的页面，验证Cookie是否有效
+      await 页面.goto('https://home.m.jd.com/myJd/newhome.action', {
         waitUntil: 'networkidle2',
         timeout: 配置.Puppeteer.超时时间,
       });
 
-      await 添加操作日志(订单ID, '已打开京东收货地址页面', 'info');
+      const 验证URL = 页面.url();
+      let 跳转到登录页 = false;
+      try {
+        const { hostname } = new URL(验证URL);
+        跳转到登录页 = hostname === 'passport.jd.com';
+      } catch {
+        // URL解析失败时保守处理，视为需要重新登录
+        跳转到登录页 = true;
+      }
+      if (跳转到登录页) {
+        // Cookie已过期，将账号标记为异常
+        await 使用账号.update({ status: 0 });
+        throw new Error('Cookie已过期，请重新登录');
+      }
 
-      // 等待页面加载
-      await 页面.waitForTimeout(2000);
+      await 添加操作日志(订单ID, '登录状态验证通过', 'info');
 
-      // 这里根据京东实际页面结构进行操作
-      // 注意：京东页面结构可能随时变化，需要根据实际情况调整
-      // 以下为示例代码，需要根据实际页面元素调整选择器
+      // 记录本次处理的订单信息
+      const 地址信息 = [订单.province, 订单.city, 订单.district, 订单.street, 订单.address]
+        .filter(Boolean)
+        .join('');
+      await 添加操作日志(
+        订单ID,
+        `订单信息：收货人 ${订单.name}（${订单.phone}），地址：${地址信息}，服务：${订单.service_type}，时间：${订单.visit_date} ${订单.visit_time}`,
+        'info',
+      );
 
-      // TODO: 根据实际京东页面结构完善自动化操作
-      // 1. 填写收货人姓名
-      // 2. 填写手机号
-      // 3. 选择省市区
-      // 4. 填写详细地址
-      // 5. 保存地址
-
-      // 模拟下单成功（实际需要完善Puppeteer操作）
-      const 模拟订单号 = `JD${Date.now()}`;
-      
-      // 更新订单状态为已下单
+      // 自动化下单流程尚未实现，将订单重置为待处理，由人工完成后续操作
       await 订单.update({
-        status: 2,
-        jd_order_id: 模拟订单号,
+        status: 0,
         jd_account_id: 使用账号.id,
-        ordered_at: new Date(),
         auto_order: 1,
       });
 
-      // 更新账号使用记录
       await 使用账号.update({
         is_busy: 0,
         last_used: new Date(),
-        use_count: (使用账号.use_count || 0) + 1,
       });
 
-      await 添加操作日志(订单ID, `下单成功，京东订单号：${模拟订单号}`, 'success');
+      await 添加操作日志(订单ID, '自动下单功能开发中，请人工处理', 'info');
 
       await 浏览器.close();
-      return { 成功: true, 订单号: 模拟订单号 };
+      浏览器 = null;
+      return { 成功: false, 原因: '自动下单功能开发中，请人工处理' };
 
     } catch (错误) {
       await 添加操作日志(订单ID, `第${重试次数}次下单失败：${错误.message}`, 'error');
@@ -228,9 +239,68 @@ const 执行自动下单 = async (订单ID) => {
 };
 
 /**
+ * 后台轮询检测登录状态，登录成功后保存Cookie
+ * @param {Browser} 浏览器实例
+ * @param {Page} 页面实例
+ * @param {Object} 账号 - JdAccount实例
+ * @param {number} 账号ID
+ */
+const 后台轮询登录状态 = async (浏览器实例, 页面实例, 账号, 账号ID) => {
+  const 开始时间 = Date.now();
+  const 超时毫秒 = 120 * 1000; // 最多等待120秒
+
+  try {
+    while (Date.now() - 开始时间 < 超时毫秒) {
+      await new Promise(r => setTimeout(r, 2000));
+
+      try {
+        const Cookie列表 = await 页面实例.cookies();
+        // 检测京东主要登录凭证Cookie（pt_key + pt_pin）
+        const 已有ptKey = Cookie列表.some(c => c.name === 'pt_key' && c.value);
+        const 已有ptPin = Cookie列表.some(c => c.name === 'pt_pin' && c.value);
+
+        if (已有ptKey && 已有ptPin) {
+          await 账号.update({
+            cookie: JSON.stringify(Cookie列表),
+            cookie_expire: new Date(Date.now() + Cookie有效期毫秒),
+            status: 1,
+          });
+          break;
+        }
+
+        // 也检测URL跳转（已离开登录页则视为登录成功）
+        const 当前URL = 页面实例.url();
+        let 仍在登录页 = true;
+        try {
+          const { hostname } = new URL(当前URL);
+          仍在登录页 = hostname === 'passport.jd.com';
+        } catch {
+          // URL解析失败，保守处理，继续等待
+        }
+        if (!仍在登录页) {
+          const 全部Cookie = await 页面实例.cookies();
+          await 账号.update({
+            cookie: JSON.stringify(全部Cookie),
+            cookie_expire: new Date(Date.now() + Cookie有效期毫秒),
+            status: 1,
+          });
+          break;
+        }
+      } catch {
+        // 页面可能已关闭或发生异常，结束轮询
+      }
+    }
+  } finally {
+    进行中的登录会话.delete(账号ID);
+    await 浏览器实例.close().catch(() => {});
+  }
+};
+
+/**
  * 触发京东账号自动登录并保存Cookie
+ * 以无头模式打开浏览器，截取二维码返回给前端，后台轮询检测登录成功
  * @param {number} 账号ID - 京东账号ID
- * @returns {Object} 登录结果
+ * @returns {Object} 登录结果（包含二维码base64数据）
  */
 const 账号自动登录 = async (账号ID) => {
   let puppeteer;
@@ -245,11 +315,18 @@ const 账号自动登录 = async (账号ID) => {
     return { 成功: false, 原因: '账号不存在' };
   }
 
+  // 若该账号已有进行中的登录会话，先关闭旧的
+  if (进行中的登录会话.has(账号ID)) {
+    const 旧浏览器 = 进行中的登录会话.get(账号ID);
+    await 旧浏览器.close().catch(() => {});
+    进行中的登录会话.delete(账号ID);
+  }
+
   let 浏览器 = null;
   try {
     const ChromePath登录 = 查找Chrome路径();
     const 登录启动选项 = {
-      headless: false, // 登录时不使用无头模式，方便手动操作验证码
+      headless: true,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -257,39 +334,92 @@ const 账号自动登录 = async (账号ID) => {
         '--disable-gpu',
         '--no-first-run',
         '--no-zygote',
+        '--single-process',
+        '--window-size=1280,800',
       ],
-      defaultViewport: { width: 414, height: 896 },
+      defaultViewport: { width: 1280, height: 800 },
     };
     if (ChromePath登录) {
       登录启动选项.executablePath = ChromePath登录;
     }
     浏览器 = await puppeteer.launch(登录启动选项);
+    进行中的登录会话.set(账号ID, 浏览器);
 
     const 页面 = await 浏览器.newPage();
-    await 页面.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15');
+    await 页面.setUserAgent(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
+    );
 
-    // 打开京东登录页
+    // 打开京东登录页（PC扫码登录）
     await 页面.goto('https://passport.jd.com/new/login.aspx', {
       waitUntil: 'networkidle2',
+      timeout: 30000,
     });
 
-    // 等待用户手动登录（60秒超时）
-    await 页面.waitForNavigation({ timeout: 60000 }).catch(() => {});
+    // 尝试切换到扫码登录选项卡（若当前显示的是账号密码登录）
+    const QR码切换选择器列表 = [
+      'a[href*="qr"]',
+      '.login-tab-r a',
+      '.login-tab a:last-child',
+      'a.tab-r',
+    ];
+    for (const 选择器 of QR码切换选择器列表) {
+      try {
+        const 按钮 = await 页面.$(选择器);
+        if (按钮) {
+          await 按钮.click();
+          await new Promise(r => setTimeout(r, 1500));
+          break;
+        }
+      } catch {
+        // 忽略，继续尝试下一个选择器
+      }
+    }
 
-    // 获取Cookie
-    const Cookie列表 = await 浏览器.cookies();
+    // 等待二维码出现，依次尝试常见选择器
+    const QR码图片选择器列表 = [
+      '.login-qrcode-img',
+      '.login-qrcode img',
+      '#qrcode img',
+      '.qrcode img',
+      'img.qrcode',
+      'img[src*="qrcode"]',
+    ];
+    let QR码元素 = null;
+    for (const 选择器 of QR码图片选择器列表) {
+      try {
+        QR码元素 = await 页面.waitForSelector(选择器, { timeout: 5000 });
+        if (QR码元素) break;
+      } catch {
+        // 继续尝试下一个选择器
+      }
+    }
 
-    // 保存Cookie到数据库
-    await 账号.update({
-      cookie: JSON.stringify(Cookie列表),
-      cookie_expire: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30天有效期
-      status: 1,
+    // 截图获取二维码（优先截取元素，否则截取整个页面）
+    let 截图Buffer;
+    if (QR码元素) {
+      截图Buffer = await QR码元素.screenshot();
+    } else {
+      截图Buffer = await 页面.screenshot({ fullPage: false });
+    }
+
+    // 转为base64供前端展示（无需写磁盘）
+    const 二维码Base64 = `data:image/png;base64,${截图Buffer.toString('base64')}`;
+
+    // 启动后台轮询（不等待，异步执行）
+    后台轮询登录状态(浏览器, 页面, 账号, 账号ID).catch(() => {
+      进行中的登录会话.delete(账号ID);
     });
 
-    await 浏览器.close();
-    return { 成功: true, 消息: 'Cookie保存成功' };
+    return {
+      成功: true,
+      需要扫码: true,
+      二维码: 二维码Base64,
+      消息: '请用手机扫描二维码登录',
+    };
 
   } catch (错误) {
+    进行中的登录会话.delete(账号ID);
     if (浏览器) await 浏览器.close().catch(() => {});
     return { 成功: false, 原因: 错误.message };
   }

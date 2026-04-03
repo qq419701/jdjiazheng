@@ -71,11 +71,42 @@
         <el-button type="primary" @click="保存账号">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 扫码登录弹窗 -->
+    <el-dialog
+      v-model="显示二维码弹窗"
+      title="手机扫码登录京东"
+      width="360px"
+      :close-on-click-modal="false"
+      @close="关闭二维码弹窗"
+    >
+      <div style="text-align: center; padding: 16px 0;">
+        <p style="color: #666; margin-bottom: 12px; font-size: 14px;">
+          请用京东 App 扫描下方二维码完成登录
+        </p>
+        <img
+          v-if="二维码图片"
+          :src="二维码图片"
+          alt="京东扫码登录二维码"
+          style="width: 240px; height: auto; border: 1px solid #eee; border-radius: 4px;"
+        />
+        <p style="color: #999; margin-top: 12px; font-size: 12px;">
+          二维码有效期约60秒，若过期请点击"刷新二维码"；后台最多等待120秒
+        </p>
+        <p v-if="扫码等待提示" style="color: #409eff; font-size: 13px; margin-top: 8px;">
+          {{ 扫码等待提示 }}
+        </p>
+      </div>
+      <template #footer>
+        <el-button @click="关闭二维码弹窗">取消</el-button>
+        <el-button type="primary" @click="重新获取二维码(当前登录账号ID)">刷新二维码</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 获取账号列表API, 新增账号API, 更新账号API, 删除账号API, 触发账号登录API } from '../api/index'
 
@@ -84,6 +115,13 @@ const 账号列表 = ref([])
 const 显示新增弹窗 = ref(false)
 const 编辑中ID = ref(null)
 const 账号表单 = ref({ nickname: '', username: '', password: '', daily_limit: 20 })
+
+// 扫码登录相关状态
+const 显示二维码弹窗 = ref(false)
+const 二维码图片 = ref('')
+const 扫码等待提示 = ref('等待扫码中...')
+const 当前登录账号ID = ref(null)
+let 轮询定时器 = null
 
 // 检查Cookie是否有效
 const 检查Cookie是否有效 = (账号) => {
@@ -120,11 +158,82 @@ const 保存账号 = async () => {
   加载账号()
 }
 
-const 触发自动登录 = async (id) => {
-  ElMessage.info('正在启动自动登录，请稍候...')
+// 启动定时轮询，检测登录是否完成（每5秒刷新账号列表检查cookie_expire变化）
+const 启动轮询 = (账号ID) => {
+  停止轮询()
+  // 记录初始状态，避免 undefined 引起误判
+  const 初始账号 = 账号列表.value.find(a => a.id === 账号ID)
+  const 初始Cookie过期 = 初始账号 ? (初始账号.cookie_expire || null) : null
+  let 检查次数 = 0
+  轮询定时器 = setInterval(async () => {
+    检查次数++
+    const 列表结果 = await 获取账号列表API().catch(() => null)
+    if (列表结果 && 列表结果.code === 1) {
+      账号列表.value = 列表结果.data
+      const 最新账号 = 列表结果.data.find(a => a.id === 账号ID)
+      if (
+        最新账号 &&
+        最新账号.cookie_expire &&
+        最新账号.cookie_expire !== 初始Cookie过期 &&
+        检查Cookie是否有效(最新账号)
+      ) {
+        停止轮询()
+        显示二维码弹窗.value = false
+        ElMessage.success('扫码登录成功！Cookie已保存')
+        return
+      }
+    }
+    if (检查次数 >= 24) { // 120秒后停止（24次 × 5秒）
+      停止轮询()
+      扫码等待提示.value = '等待超时，请重新获取二维码'
+    }
+  }, 5000)
+}
+
+const 停止轮询 = () => {
+  if (轮询定时器) {
+    clearInterval(轮询定时器)
+    轮询定时器 = null
+  }
+}
+
+const 关闭二维码弹窗 = () => {
+  停止轮询()
+  显示二维码弹窗.value = false
+  二维码图片.value = ''
+  扫码等待提示.value = '等待扫码中...'
+  当前登录账号ID.value = null
+}
+
+const 重新获取二维码 = async (id) => {
+  停止轮询()
+  二维码图片.value = ''
+  扫码等待提示.value = '正在获取新二维码...'
+  ElMessage.info('正在刷新二维码，请稍候...')
   const 结果 = await 触发账号登录API(id)
-  ElMessage[结果.code === 1 ? 'success' : 'error'](结果.message || (结果.code === 1 ? '登录成功' : '登录失败'))
-  加载账号()
+  if (结果.code === 1 && 结果.data && 结果.data.需要扫码) {
+    二维码图片.value = 结果.data.二维码
+    扫码等待提示.value = '等待扫码中...'
+    启动轮询(id)
+  } else {
+    ElMessage.error(结果.message || '获取二维码失败')
+    扫码等待提示.value = '获取失败，请重试'
+  }
+}
+
+const 触发自动登录 = async (id) => {
+  ElMessage.info('正在启动扫码登录，请稍候...')
+  当前登录账号ID.value = id
+  const 结果 = await 触发账号登录API(id)
+  if (结果.code === 1 && 结果.data && 结果.data.需要扫码) {
+    二维码图片.value = 结果.data.二维码
+    扫码等待提示.value = '等待扫码中...'
+    显示二维码弹窗.value = true
+    启动轮询(id)
+  } else {
+    ElMessage[结果.code === 1 ? 'success' : 'error'](结果.message || (结果.code === 1 ? '登录成功' : '登录失败'))
+    加载账号()
+  }
 }
 
 const 删除账号 = async (id) => {
@@ -135,6 +244,7 @@ const 删除账号 = async (id) => {
 }
 
 onMounted(() => 加载账号())
+onUnmounted(() => 停止轮询())
 </script>
 
 <style scoped>
