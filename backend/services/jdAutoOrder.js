@@ -1,8 +1,35 @@
 // 京东自动下单引擎
 // 使用Puppeteer自动化操作京东H5页面
+const fs = require('fs');
 const { JdAccount, Order } = require('../models');
 const { 安全解析JSON } = require('../utils/helpers');
 const 配置 = require('../config/config');
+
+/**
+ * 查找系统中可用的 Chrome/Chromium 可执行路径
+ * 按优先级依次尝试：环境变量 > 常见系统路径 > 不传（让puppeteer自行查找）
+ * @returns {string|undefined} 可执行文件路径，未找到则返回 undefined
+ */
+const 查找Chrome路径 = () => {
+  const 候选路径 = [
+    process.env.CHROME_PATH,
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+    '/usr/local/bin/chromium',
+  ].filter(Boolean);
+
+  for (const 路径 of 候选路径) {
+    try {
+      if (fs.existsSync(路径)) {
+        return 路径;
+      }
+    } catch {
+      // 忽略访问错误，继续尝试下一个
+    }
+  }
+  return undefined;
+};
 
 /**
  * 从账号池获取可用的京东账号
@@ -93,17 +120,25 @@ const 执行自动下单 = async (订单ID) => {
       await 添加操作日志(订单ID, `第${重试次数}次尝试下单`, 'info');
 
       // 启动浏览器
-      浏览器 = await puppeteer.launch({
+      const ChromePath = 查找Chrome路径();
+      const 启动选项 = {
         headless: 配置.Puppeteer.无头模式,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
           '--disable-gpu',
+          '--no-first-run',
+          '--no-zygote',
+          '--single-process',
           '--window-size=414,896',
         ],
         defaultViewport: { width: 414, height: 896 },
-      });
+      };
+      if (ChromePath) {
+        启动选项.executablePath = ChromePath;
+      }
+      浏览器 = await puppeteer.launch(启动选项);
 
       const 页面 = await 浏览器.newPage();
 
@@ -212,11 +247,23 @@ const 账号自动登录 = async (账号ID) => {
 
   let 浏览器 = null;
   try {
-    浏览器 = await puppeteer.launch({
+    const ChromePath登录 = 查找Chrome路径();
+    const 登录启动选项 = {
       headless: false, // 登录时不使用无头模式，方便手动操作验证码
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--no-first-run',
+        '--no-zygote',
+      ],
       defaultViewport: { width: 414, height: 896 },
-    });
+    };
+    if (ChromePath登录) {
+      登录启动选项.executablePath = ChromePath登录;
+    }
+    浏览器 = await puppeteer.launch(登录启动选项);
 
     const 页面 = await 浏览器.newPage();
     await 页面.setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15');
