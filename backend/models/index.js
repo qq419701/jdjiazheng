@@ -7,6 +7,7 @@ const JdAccount = require('./JdAccount');
 const TimeRule = require('./TimeRule');
 const Admin = require('./Admin');
 const Setting = require('./Setting');
+const Region = require('./Region');
 
 // 建立批次与卡密的关联关系
 CardBatch.hasMany(Card, { foreignKey: 'batch_id', as: '卡密列表' });
@@ -22,4 +23,5 @@ module.exports = {
   TimeRule,
   Admin,
   Setting,
+  Region,
 };

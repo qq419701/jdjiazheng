@@ -71,7 +71,7 @@ const Order = 数据库连接.define('Order', {
   status: {
     type: DataTypes.TINYINT,
     defaultValue: 0,
-    comment: '状态：0待处理 1下单中 2已下单 3失败 4已取消',
+    comment: '状态：0待处理 1下单中 2已下单 3失败 4已取消 5安排中 6预约完成 7预约失败',
   },
   jd_order_id: {
     type: DataTypes.STRING(50),
@@ -112,6 +112,11 @@ const Order = 数据库连接.define('Order', {
     type: DataTypes.TEXT,
     allowNull: true,
     comment: '备注',
+  },
+  street: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: '街道/镇',
   },
   order_log: {
     type: DataTypes.TEXT,

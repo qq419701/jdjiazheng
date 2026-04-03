@@ -82,6 +82,7 @@ const 提交预约 = async () => {
       province: 订单Store.省份,
       city: 订单Store.城市,
       district: 订单Store.区县,
+      street: 订单Store.街道 || '',
       address: 订单Store.详细地址,
       visit_date: 订单Store.预约日期,
       visit_time: 订单Store.预约时间段,

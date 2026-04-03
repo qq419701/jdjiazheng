@@ -17,6 +17,7 @@ export const useOrderStore = defineStore('order', {
     省份: '',
     城市: '',
     区县: '',
+    街道: '',
     详细地址: '',
 
     // 预约时间
@@ -35,8 +36,8 @@ export const useOrderStore = defineStore('order', {
     // 是否已选择时间
     已选择时间: (state) => !!(state.预约日期 && state.预约时间段),
 
-    // 完整地址
-    完整地址: (state) => `${state.省份}${state.城市}${state.区县}${state.详细地址}`,
+    // 完整地址（包含街道）
+    完整地址: (state) => `${state.省份}${state.城市}${state.区县}${state.街道 ? state.街道 : ''}${state.详细地址}`,
 
     // 预约时间显示文字
     预约时间显示: (state) => {
@@ -56,13 +57,14 @@ export const useOrderStore = defineStore('order', {
       this.服务内容列表 = 信息.service_content || []
     },
 
-    // 保存地址信息
+    // 保存地址信息（包含街道字段）
     保存地址(地址信息) {
       this.姓名 = 地址信息.姓名
       this.手机号 = 地址信息.手机号
       this.省份 = 地址信息.省份
       this.城市 = 地址信息.城市
       this.区县 = 地址信息.区县
+      this.街道 = 地址信息.街道 || ''
       this.详细地址 = 地址信息.详细地址
     },
 

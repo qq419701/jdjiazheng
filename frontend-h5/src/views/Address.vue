@@ -5,21 +5,76 @@
       <van-form @submit="保存地址" ref="表单引用">
         <van-field v-model="表单数据.姓名" name="姓名" label="姓名" placeholder="请输入姓名" :rules="[{ required: true, message: '请输入姓名' }]" class="表单项" />
         <van-field v-model="表单数据.手机号" name="手机号" label="手机号" type="tel" placeholder="请输入手机号" :rules="[{ required: true, message: '请输入手机号' }, { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确' }]" class="表单项" />
-        <van-field v-model="省市区显示" name="省市区" label="省市区" placeholder="请选择省市区" readonly is-link :rules="[{ required: true, message: '请选择省市区' }]" @click="显示省市区选择器 = true" class="表单项" />
+        <!-- 省市区街道选择（点击打开步骤弹窗） -->
+        <van-field
+          v-model="地区显示文本"
+          name="省市区"
+          label="省市区"
+          placeholder="请选择省市区"
+          readonly
+          is-link
+          :rules="[{ required: true, message: '请选择省市区' }]"
+          @click="打开地区选择"
+          class="表单项"
+        />
         <van-field v-model="表单数据.详细地址" name="详细地址" label="详细地址" placeholder="请输入详细地址（街道、楼栋、门牌号）" :rules="[{ required: true, message: '请输入详细地址' }]" type="textarea" rows="2" autosize class="表单项" />
       </van-form>
     </div>
     <div class="底部按钮容器">
       <van-button type="primary" block round color="linear-gradient(135deg, #e54635, #ff6b35)" @click="提交表单">保存并使用</van-button>
     </div>
-    <van-popup v-model:show="显示省市区选择器" position="bottom" round :style="{ height: '50%' }">
-      <van-picker
-        title="选择省市区"
-        :columns="级联列数据"
-        :columns-field-names="{ text: 'text', value: 'value', children: 'children' }"
-        @confirm="确认省市区选择"
-        @cancel="显示省市区选择器 = false"
-      />
+
+    <!-- 地区选择弹窗（步骤式四级联动） -->
+    <van-popup v-model:show="显示地区弹窗" position="bottom" round :style="{ height: '60%' }">
+      <div class="地区弹窗">
+        <!-- 标题栏 -->
+        <div class="弹窗标题栏">
+          <span class="取消按钮" @click="显示地区弹窗 = false">取消</span>
+          <span class="弹窗标题">选择省市区</span>
+          <span class="确认按钮" @click="确认地区选择">确认</span>
+        </div>
+
+        <!-- 步骤指示器 -->
+        <div class="步骤指示器">
+          <span
+            v-for="(步骤名, 索引) in 步骤列表"
+            :key="索引"
+            :class="['步骤项', { 活跃步骤: 当前步骤 === 索引, 已完成步骤: 当前步骤 > 索引 }]"
+            @click="跳转步骤(索引)"
+          >
+            {{ 步骤名 }}
+          </span>
+        </div>
+
+        <!-- 已选路径 -->
+        <div class="已选路径" v-if="选中路径.length > 0">
+          {{ 选中路径.join(' > ') }}
+        </div>
+
+        <!-- 地区列表 -->
+        <div class="地区列表容器">
+          <div v-if="列表加载中" class="加载提示">
+            <van-loading type="spinner" color="#e54635" />
+            <span>加载中...</span>
+          </div>
+          <div v-else-if="当前地区列表.length === 0" class="空数据提示">暂无数据</div>
+          <div v-else class="地区网格">
+            <div
+              v-for="地区 in 当前地区列表"
+              :key="地区.id"
+              :class="['地区项', { 选中地区项: 已选地区ID[当前步骤] === 地区.id }]"
+              @click="选择地区(地区)"
+            >
+              {{ 地区.name }}
+            </div>
+          </div>
+        </div>
+
+        <!-- 街道步骤提示（可跳过） -->
+        <div v-if="当前步骤 === 3" class="街道跳过提示">
+          街道为可选，可直接点「确认」跳过
+        </div>
+      </div>
     </van-popup>
   </div>
 </template>
@@ -29,133 +84,133 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { useOrderStore } from '../stores/order'
+import { 查询地区API } from '../api/index'
 
 const router = useRouter()
 const 订单Store = useOrderStore()
 const 表单引用 = ref(null)
-const 显示省市区选择器 = ref(false)
 
+// 表单数据
 const 表单数据 = ref({
   姓名: 订单Store.姓名 || '',
   手机号: 订单Store.手机号 || '',
   详细地址: 订单Store.详细地址 || '',
 })
 
+// 选中的省市区街道
 const 选中省份 = ref(订单Store.省份 || '')
 const 选中城市 = ref(订单Store.城市 || '')
 const 选中区县 = ref(订单Store.区县 || '')
+const 选中街道 = ref(订单Store.街道 || '')
 
-const 省市区显示 = computed(() => {
+// 地区显示文本（含街道）
+const 地区显示文本 = computed(() => {
   if (选中省份.value && 选中城市.value && 选中区县.value) {
-    return `${选中省份.value} ${选中城市.value} ${选中区县.value}`
+    const 部分列表 = [选中省份.value, 选中城市.value, 选中区县.value]
+    if (选中街道.value) 部分列表.push(选中街道.value)
+    return 部分列表.join(' ')
   }
   return ''
 })
 
-const 返回上页 = () => router.back()
+// ===== 步骤式地区选择 =====
+const 显示地区弹窗 = ref(false)
+const 当前步骤 = ref(0) // 0省 1市 2区 3街道
+const 步骤列表 = ['选省', '选市', '选区', '选街道']
+const 列表加载中 = ref(false)
+const 当前地区列表 = ref([])
+// 各步骤选中的地区ID
+const 已选地区ID = ref({})
+// 各步骤选中的地区名称
+const 已选地区名 = ref({})
+// 选中路径（用于显示面包屑）
+const 选中路径 = computed(() => {
+  return Object.values(已选地区名.value)
+})
 
-const 原始数据 = [
-  { n: '北京市', c: [{ n: '北京市', d: ['东城区','西城区','朝阳区','丰台区','石景山区','海淀区','门头沟区','房山区','通州区','顺义区','昌平区','大兴区','怀柔区','平谷区','密云区','延庆区'] }] },
-  { n: '天津市', c: [{ n: '天津市', d: ['和平区','河东区','河西区','南开区','河北区','红桥区','东丽区','西青区','津南区','北辰区','武清区','宝坻区','滨海新区','宁河区','静海区','蓟州区'] }] },
-  { n: '上海市', c: [{ n: '上海市', d: ['黄浦区','徐汇区','长宁区','静安区','普陀区','虹口区','杨浦区','闵行区','宝山区','嘉定区','浦东新区','金山区','松江区','青浦区','奉贤区','崇明区'] }] },
-  { n: '重庆市', c: [{ n: '重庆市', d: ['万州区','涪陵区','渝中区','大渡口区','江北区','沙坪坝区','九龙坡区','南岸区','北碚区','綦江区','大足区','渝北区','巴南区','黔江区','长寿区','江津区','合川区','永川区','南川区'] }] },
-  { n: '广东省', c: [
-    { n: '广州市', d: ['荔湾区','越秀区','海珠区','天河区','白云区','黄埔区','番禺区','花都区','南沙区','从化区','增城区'] },
-    { n: '深圳市', d: ['罗湖区','福田区','南山区','宝安区','龙岗区','盐田区','龙华区','坪山区','光明区'] },
-    { n: '东莞市', d: ['莞城区','南城区','东城区','万江区','石碣镇','长安镇','虎门镇','厚街镇','大岭山镇'] },
-    { n: '佛山市', d: ['禅城区','南海区','顺德区','三水区','高明区'] },
-    { n: '珠海市', d: ['香洲区','斗门区','金湾区'] },
-    { n: '汕头市', d: ['龙湖区','金平区','濠江区','潮阳区','潮南区','澄海区'] },
-    { n: '惠州市', d: ['惠城区','惠阳区','博罗县','惠东县','龙门县'] },
-  ] },
-  { n: '浙江省', c: [
-    { n: '杭州市', d: ['上城区','拱墅区','西湖区','滨江区','萧山区','余杭区','临平区','钱塘区','富阳区','临安区'] },
-    { n: '宁波市', d: ['海曙区','江北区','北仑区','镇海区','鄞州区','奉化区'] },
-    { n: '温州市', d: ['鹿城区','龙湾区','瓯海区','洞头区'] },
-    { n: '嘉兴市', d: ['南湖区','秀洲区','嘉善县','海盐县','海宁市','平湖市','桐乡市'] },
-    { n: '湖州市', d: ['吴兴区','南浔区','德清县','长兴县','安吉县'] },
-    { n: '绍兴市', d: ['越城区','柯桥区','上虞区','新昌县','诸暨市','嵊州市'] },
-    { n: '金华市', d: ['婺城区','金东区','武义县','浦江县','磐安县','兰溪市','义乌市','东阳市','永康市'] },
-  ] },
-  { n: '江苏省', c: [
-    { n: '南京市', d: ['玄武区','秦淮区','建邺区','鼓楼区','浦口区','栖霞区','雨花台区','江宁区','六合区','溧水区','高淳区'] },
-    { n: '苏州市', d: ['虎丘区','吴中区','相城区','姑苏区','吴江区','昆山市','张家港市','常熟市','太仓市'] },
-    { n: '无锡市', d: ['梁溪区','锡山区','惠山区','滨湖区','新吴区','江阴市','宜兴市'] },
-    { n: '常州市', d: ['天宁区','钟楼区','新北区','武进区','金坛区','溧阳市'] },
-    { n: '南通市', d: ['崇川区','海门区','通州区','启东市','如皋市','海安市','如东县'] },
-    { n: '徐州市', d: ['鼓楼区','云龙区','贾汪区','泉山区','铜山区','丰县','沛县','睢宁县','邳州市','新沂市'] },
-  ] },
-  { n: '四川省', c: [
-    { n: '成都市', d: ['锦江区','青羊区','金牛区','武侯区','成华区','龙泉驿区','青白江区','新都区','温江区','双流区','郫都区','新津区','金堂县','大邑县','蒲江县','都江堰市','彭州市','邛崃市','崇州市','简阳市'] },
-    { n: '绵阳市', d: ['涪城区','游仙区','安州区','三台县','盐亭县','梓潼县','北川县','平武县','江油市'] },
-    { n: '德阳市', d: ['旌阳区','罗江区','中江县','广汉市','什邡市','绵竹市'] },
-  ] },
-  { n: '湖北省', c: [
-    { n: '武汉市', d: ['江岸区','江汉区','硚口区','汉阳区','武昌区','青山区','洪山区','东西湖区','汉南区','蔡甸区','江夏区','黄陂区','新洲区'] },
-    { n: '宜昌市', d: ['西陵区','伍家岗区','点军区','猇亭区','夷陵区','远安县','兴山县','秭归县','长阳县','五峰县','宜都市','当阳市','枝江市'] },
-    { n: '襄阳市', d: ['襄城区','樊城区','襄州区','南漳县','谷城县','保康县','老河口市','枣阳市','宜城市'] },
-  ] },
-  { n: '陕西省', c: [
-    { n: '西安市', d: ['新城区','碑林区','莲湖区','灞桥区','未央区','雁塔区','阎良区','临潼区','长安区','高陵区','鄠邑区'] },
-    { n: '宝鸡市', d: ['渭滨区','金台区','陈仓区','凤翔区','岐山县','扶风县','眉县','陇县','千阳县','麟游县','凤县','太白县'] },
-    { n: '咸阳市', d: ['秦都区','渭城区','三原县','泾阳县','乾县','礼泉县','永寿县','彬州市','长武县','旬邑县','淳化县','武功县','兴平市','彩虹街道'] },
-  ]},
-  { n: '湖南省', c: [
-    { n: '长沙市', d: ['芙蓉区','天心区','岳麓区','开福区','雨花区','望城区','长沙县','浏阳市','宁乡市'] },
-    { n: '株洲市', d: ['荷塘区','芦淞区','石峰区','天元区','渌口区','攸县','茶陵县','炎陵县','醴陵市'] },
-    { n: '湘潭市', d: ['雨湖区','岳塘区','湘潭县','湘乡市','韶山市'] },
-    { n: '衡阳市', d: ['珠晖区','雁峰区','石鼓区','蒸湘区','南岳区','衡阳县','衡南县','衡山县','衡东县','祁东县','耒阳市','常宁市'] },
-  ]},
-  { n: '广东省', c: [
-    { n: '广州市', d: ['荔湾区','越秀区','海珠区','天河区','白云区','黄埔区','番禺区','花都区','南沙区','从化区','增城区'] },
-    { n: '深圳市', d: ['罗湖区','福田区','南山区','宝安区','龙岗区','盐田区','龙华区','坪山区','光明区'] },
-    { n: '东莞市', d: ['莞城区','南城区','东城区','万江区','石碣镇','长安镇','虎门镇','厚街镇','大岭山镇'] },
-    { n: '佛山市', d: ['禅城区','南海区','顺德区','三水区','高明区'] },
-    { n: '珠海市', d: ['香洲区','斗门区','金湾区'] },
-    { n: '汕头市', d: ['龙湖区','金平区','濠江区','潮阳区','潮南区','澄海区'] },
-    { n: '惠州市', d: ['惠城区','惠阳区','博罗县','惠东县','龙门县'] },
-  ]},
-  { n: '浙江省', c: [
-    { n: '杭州市', d: ['上城区','拱墅区','西湖区','滨江区','萧山区','余杭区','临平区','钱塘区','富阳区','临安区'] },
-    { n: '宁波市', d: ['海曙区','江北区','北仑区','镇海区','鄞州区','奉化区'] },
-    { n: '温州市', d: ['鹿城区','龙湾区','瓯海区','洞头区'] },
-    { n: '嘉兴市', d: ['南湖区','秀洲区','嘉善县','海盐县','海宁市','平湖市','桐乡市'] },
-    { n: '湖州市', d: ['吴兴区','南浔区','德清县','长兴县','安吉县'] },
-    { n: '绍兴市', d: ['越城区','柯桥区','上虞区','新昌县','诸暨市','嵊州市'] },
-    { n: '金华市', d: ['婺城区','金东区','武义县','浦江县','磐安县','兰溪市','义乌市','东阳市','永康市'] },
-  ]},
-  { n: '江苏省', c: [
-    { n: '南京市', d: ['玄武区','秦淮区','建邺区','鼓楼区','浦口区','栖霞区','雨花台区','江宁区','六合区','溧水区','高淳区'] },
-    { n: '苏州市', d: ['虎丘区','吴中区','相城区','姑苏区','吴江区','昆山市','张家港市','常熟市','太仓市'] },
-    { n: '无锡市', d: ['梁溪区','锡山区','惠山区','滨湖区','新吴区','江阴市','宜兴市'] },
-    { n: '常州市', d: ['天宁区','钟楼区','新北区','武进区','金坛区','溧阳市'] },
-    { n: '南通市', d: ['崇川区','海门区','通州区','启东市','如皋市','海安市','如东县'] },
-    { n: '徐州市', d: ['鼓楼区','云龙区','贾汪区','泉山区','铜山区','丰县','沛县','睢宁县','邳州市','新沂市'] },
-  ]},
-] 
-const 级联列数据 = 原始数据.map(省 => ({
-  text: 省.n,
-  value: 省.n,
-  children: 省.c.map(市 => ({
-    text: 市.n,
-    value: 市.n,
-    children: 市.d.map(区 => ({ text: 区, value: 区 }))
-  }))
-}))
-
-const 确认省市区选择 = ({ selectedOptions }) => {
-  if (selectedOptions && selectedOptions.length >= 3) {
-    选中省份.value = selectedOptions[0]?.text || ''
-    选中城市.value = selectedOptions[1]?.text || ''
-    选中区县.value = selectedOptions[2]?.text || ''
+// 加载某父级下的地区数据
+const 加载地区列表 = async (parent_id) => {
+  列表加载中.value = true
+  当前地区列表.value = []
+  try {
+    const 结果 = await 查询地区API(parent_id)
+    if (结果.code === 1) {
+      当前地区列表.value = 结果.data
+    } else {
+      showToast('加载地区失败')
+    }
+  } catch (错误) {
+    console.error('加载地区出错:', 错误)
+    showToast('网络错误，请重试')
+  } finally {
+    列表加载中.value = false
   }
-  显示省市区选择器.value = false
 }
+
+// 打开地区选择弹窗（重置到省级）
+const 打开地区选择 = async () => {
+  当前步骤.value = 0
+  已选地区ID.value = {}
+  已选地区名.value = {}
+  显示地区弹窗.value = true
+  // 加载省级数据（parent_id=0）
+  await 加载地区列表(0)
+}
+
+// 选择某个地区
+const 选择地区 = async (地区) => {
+  // 记录当前步骤选择
+  已选地区ID.value[当前步骤.value] = 地区.id
+  已选地区名.value[当前步骤.value] = 地区.name
+  // 清除后续步骤的选择
+  for (let i = 当前步骤.value + 1; i <= 3; i++) {
+    delete 已选地区ID.value[i]
+    delete 已选地区名.value[i]
+  }
+
+  // 前三步（省市区）选完后自动进入下一步
+  if (当前步骤.value < 3) {
+    当前步骤.value++
+    await 加载地区列表(地区.id)
+  }
+  // 街道步骤选择后不自动跳转（等用户点确认）
+}
+
+// 跳转到某一步骤（只能回退到已完成的步骤）
+const 跳转步骤 = async (目标步骤) => {
+  if (目标步骤 >= 当前步骤.value) return // 不能跳到未完成的步骤
+  当前步骤.value = 目标步骤
+  // 清除该步骤及之后的选择
+  for (let i = 目标步骤; i <= 3; i++) {
+    delete 已选地区ID.value[i]
+    delete 已选地区名.value[i]
+  }
+  // 加载该步骤的父级数据
+  const 父级ID = 目标步骤 === 0 ? 0 : 已选地区ID.value[目标步骤 - 1] || 0
+  await 加载地区列表(父级ID)
+}
+
+// 确认地区选择
+const 确认地区选择 = () => {
+  // 至少需要选到区（步骤2）
+  if (!已选地区名.value[0] || !已选地区名.value[1] || !已选地区名.value[2]) {
+    showToast('请至少选择到区/县')
+    return
+  }
+  选中省份.value = 已选地区名.value[0]
+  选中城市.value = 已选地区名.value[1]
+  选中区县.value = 已选地区名.value[2]
+  选中街道.value = 已选地区名.value[3] || ''
+  显示地区弹窗.value = false
+}
+
+const 返回上页 = () => router.back()
 
 const 提交表单 = async () => {
   try { await 表单引用.value?.submit() } catch (e) {}
 }
 
+// 保存地址信息到Store
 const 保存地址 = () => {
   if (!选中省份.value || !选中城市.value || !选中区县.value) {
     showToast('请选择省市区')
@@ -167,6 +222,7 @@ const 保存地址 = () => {
     省份: 选中省份.value,
     城市: 选中城市.value,
     区县: 选中区县.value,
+    街道: 选中街道.value,
     详细地址: 表单数据.value.详细地址,
   })
   showToast('保存成功')
@@ -179,4 +235,76 @@ const 保存地址 = () => {
 .表单卡片 { background: white; border-radius: 12px; margin: 12px 16px; overflow: hidden; }
 .表单项 { padding: 14px 16px; }
 .底部按钮容器 { position: fixed; bottom: 0; left: 0; right: 0; padding: 12px 16px; background: white; box-shadow: 0 -2px 10px rgba(0,0,0,0.08); }
+
+/* 地区弹窗样式 */
+.地区弹窗 { display: flex; flex-direction: column; height: 100%; }
+.弹窗标题栏 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
+}
+.弹窗标题 { font-size: 16px; font-weight: 600; color: #333; }
+.取消按钮 { font-size: 14px; color: #999; cursor: pointer; padding: 4px 8px; }
+.确认按钮 { font-size: 14px; color: #e54635; font-weight: 600; cursor: pointer; padding: 4px 8px; }
+
+/* 步骤指示器 */
+.步骤指示器 {
+  display: flex;
+  padding: 10px 12px;
+  gap: 8px;
+  border-bottom: 1px solid #f5f5f5;
+  flex-shrink: 0;
+}
+.步骤项 {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  color: #999;
+  background: #f5f5f5;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.活跃步骤 { background: #e54635; color: white; }
+.已完成步骤 { background: #fff0ee; color: #e54635; }
+
+/* 已选路径 */
+.已选路径 {
+  padding: 8px 16px;
+  font-size: 12px;
+  color: #888;
+  background: #fafafa;
+  border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
+}
+
+/* 地区列表 */
+.地区列表容器 { flex: 1; overflow-y: auto; padding: 8px 12px; }
+.加载提示 { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 40px 0; color: #999; font-size: 14px; }
+.空数据提示 { text-align: center; padding: 40px 0; color: #ccc; font-size: 14px; }
+.地区网格 { display: flex; flex-wrap: wrap; gap: 8px; }
+.地区项 {
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #333;
+  background: #f5f5f5;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1.5px solid transparent;
+}
+.地区项:active { opacity: 0.7; }
+.选中地区项 { background: #fff0ee; color: #e54635; border-color: #e54635; font-weight: 500; }
+
+/* 街道跳过提示 */
+.街道跳过提示 {
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 12px;
+  color: #aaa;
+  border-top: 1px solid #f0f0f0;
+  flex-shrink: 0;
+}
 </style>

@@ -78,6 +78,7 @@ const 提交订单 = async (req, res) => {
       province,
       city,
       district,
+      street,
       address,
       visit_date,
       visit_time,
@@ -106,7 +107,8 @@ const 提交订单 = async (req, res) => {
 
     // 生成订单号
     const 订单号 = 生成订单号();
-    const 完整地址 = `${province}${city}${district}${address}`;
+    // 完整地址包含街道（如有）
+    const 完整地址 = `${province}${city}${district}${street ? street : ''}${address}`;
 
     // 创建订单
     const 新订单 = await Order.create({
@@ -117,6 +119,7 @@ const 提交订单 = async (req, res) => {
       province,
       city,
       district,
+      street: street || null,
       address,
       full_address: 完整地址,
       visit_date,

@@ -12,6 +12,7 @@ export const 获取订单列表API = (参数) => 请求实例.get('/orders', { p
 export const 获取订单详情API = (id) => 请求实例.get(`/orders/${id}`)
 export const 更新订单状态API = (id, 数据) => 请求实例.put(`/orders/${id}/status`, 数据)
 export const 触发自动下单API = (id) => 请求实例.post(`/orders/${id}/place-order`)
+export const 重置订单API = (id) => 请求实例.post(`/orders/${id}/reset`)
 
 // ===== 卡密管理 =====
 export const 获取卡密列表API = (参数) => 请求实例.get('/cards', { params: 参数 })
