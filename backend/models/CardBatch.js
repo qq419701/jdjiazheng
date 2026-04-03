@@ -46,6 +46,11 @@ const CardBatch = 数据库连接.define('CardBatch', {
     defaultValue: DataTypes.NOW,
     comment: '创建时间',
   },
+  business_type: {
+    type: DataTypes.STRING(20),
+    defaultValue: 'jiazheng',
+    comment: '业务类型：jiazheng=京东家政 xiyifu=京东洗衣服',
+  },
 }, {
   tableName: 'card_batches',
   timestamps: false,

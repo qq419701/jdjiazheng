@@ -9,7 +9,7 @@ const { 批量生成卡密 } = require('../services/cardService');
  */
 const 获取卡密列表 = async (req, res) => {
   try {
-    const { page = 1, limit = 20, keyword = '', status, category, batch_id } = req.query;
+    const { page = 1, limit = 20, keyword = '', status, category, batch_id, business_type } = req.query;
     const 条件 = {};
 
     if (keyword) {
@@ -21,6 +21,7 @@ const 获取卡密列表 = async (req, res) => {
     if (status !== undefined && status !== '') 条件.status = parseInt(status);
     if (category) 条件.category = { [Op.like]: `%${category}%` };
     if (batch_id !== undefined && batch_id !== '') 条件.batch_id = parseInt(batch_id);
+    if (business_type) 条件.business_type = business_type;
 
     const { count, rows } = await Card.findAndCountAll({
       where: 条件,
@@ -53,6 +54,7 @@ const 生成卡密 = async (req, res) => {
       service_hours = 2,
       remark = '',
       expired_at = null,
+      business_type = 'jiazheng',
     } = req.body;
 
     if (count < 1 || count > 1000) {
@@ -70,6 +72,7 @@ const 生成卡密 = async (req, res) => {
       remark,
       created_by: req.管理员?.id,
       created_at: new Date(),
+      business_type,
     });
 
     const 结果 = await 批量生成卡密({
@@ -81,6 +84,7 @@ const 生成卡密 = async (req, res) => {
       过期时间: expired_at ? new Date(expired_at) : null,
       创建人ID: req.管理员?.id,
       批次ID: 批次.id,
+      业务类型: business_type,
     });
 
     res.json({

@@ -66,43 +66,58 @@
         <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="查看详情(row.id)">详情</el-button>
-            <el-button
-              v-if="row.status === 0 || row.status === 3 || row.status === 7"
-              size="small"
-              type="primary"
-              @click="触发下单(row.id)"
-            >自动下单</el-button>
-            <el-button
-              v-if="row.status === 0"
-              size="small"
-              type="warning"
-              @click="手动标记状态(row, 5)"
-            >安排中</el-button>
-            <el-button
-              v-if="row.status === 5"
-              size="small"
-              type="success"
-              @click="手动标记状态(row, 6)"
-            >完成</el-button>
-            <el-button
-              v-if="row.status === 0 || row.status === 5"
-              size="small"
-              type="danger"
-              @click="标记预约失败(row)"
-            >预约失败</el-button>
-            <el-button
-              v-if="row.status === 0"
-              size="small"
-              type="info"
-              @click="标记取消(row.id)"
-            >取消</el-button>
-            <!-- 重置按钮：仅失败(3)或预约失败(7)时显示 -->
-            <el-button
-              v-if="row.status === 3 || row.status === 7"
-              size="small"
-              type="warning"
-              @click="执行重置订单(row.id)"
-            >重置</el-button>
+            <!-- 家政服务操作 -->
+            <template v-if="!是洗衣服务">
+              <el-button
+                v-if="row.status === 0 || row.status === 3 || row.status === 7"
+                size="small"
+                type="primary"
+                @click="触发下单(row.id)"
+              >自动下单</el-button>
+              <el-button
+                v-if="row.status === 0"
+                size="small"
+                type="warning"
+                @click="手动标记状态(row, 5)"
+              >安排中</el-button>
+              <el-button
+                v-if="row.status === 5"
+                size="small"
+                type="success"
+                @click="手动标记状态(row, 6)"
+              >完成</el-button>
+              <el-button
+                v-if="row.status === 0 || row.status === 5"
+                size="small"
+                type="danger"
+                @click="标记预约失败(row)"
+              >预约失败</el-button>
+              <el-button
+                v-if="row.status === 0"
+                size="small"
+                type="info"
+                @click="标记取消(row.id)"
+              >取消</el-button>
+              <el-button
+                v-if="row.status === 3 || row.status === 7"
+                size="small"
+                type="warning"
+                @click="执行重置订单(row.id)"
+              >重置</el-button>
+            </template>
+            <!-- 洗衣服务操作（预留） -->
+            <template v-else>
+              <el-tooltip content="接口配置后可用" placement="top">
+                <span>
+                  <el-button size="small" type="primary" disabled>触发洗衣下单</el-button>
+                </span>
+              </el-tooltip>
+              <el-tooltip content="接口配置后可用" placement="top">
+                <span>
+                  <el-button size="small" type="success" disabled>触发取件</el-button>
+                </span>
+              </el-tooltip>
+            </template>
             <!-- 复制按钮 -->
             <el-button size="small" @click="打开复制面板(row)">复制</el-button>
           </template>
@@ -172,13 +187,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { 获取订单列表API, 更新订单状态API, 触发自动下单API, 重置订单API } from '../api/index'
 
 const router = useRouter()
+const route = useRoute()
+
+// 业务类型（从路由参数读取，默认 jiazheng）
+const 业务类型 = computed(() => route.params.businessType || 'jiazheng')
+const 是洗衣服务 = computed(() => 业务类型.value === 'xiyifu')
 
 const 加载中 = ref(false)
 const 订单列表 = ref([])
@@ -232,6 +252,7 @@ const 加载订单 = async () => {
       page: 当前页.value,
       limit: 每页数量.value,
       ...搜索条件.value,
+      business_type: 业务类型.value,
     }
     if (日期范围.value && 日期范围.value.length === 2) {
       查询参数.date_start = 日期范围.value[0]
@@ -261,8 +282,16 @@ const 重置筛选 = () => {
   搜索订单()
 }
 
-// 查看详情
-const 查看详情 = (id) => router.push(`/admin/orders/${id}`)
+// 查看详情（使用带 businessType 参数的路由）
+const 查看详情 = (id) => router.push(`/admin/orders/${业务类型.value}/${id}`)
+
+// 业务类型切换时重新加载
+watch(业务类型, () => {
+  当前页.value = 1
+  搜索条件.value = { keyword: '', city: '', status: '' }
+  日期范围.value = []
+  加载订单()
+})
 
 // 触发自动下单
 const 触发下单 = async (id) => {

@@ -18,6 +18,7 @@ const 获取订单列表 = async (req, res) => {
       city,
       date_start,
       date_end,
+      business_type,
     } = req.query;
 
     const 条件 = {};
@@ -40,6 +41,11 @@ const 获取订单列表 = async (req, res) => {
     // 城市筛选
     if (city) {
       条件.city = { [Op.like]: `%${city}%` };
+    }
+
+    // 业务类型筛选
+    if (business_type) {
+      条件.business_type = business_type;
     }
 
     // 日期范围
@@ -209,4 +215,29 @@ const 重置订单 = async (req, res) => {
   }
 };
 
-module.exports = { 获取订单列表, 获取订单详情, 更新订单状态, 触发自动下单, 重置订单 };
+/**
+ * 获取洗衣订单详情（预留扩展）
+ * GET /admin/api/laundry/orders/:id
+ */
+const 获取洗衣订单详情 = async (req, res) => {
+  try {
+    const 订单 = await Order.findByPk(req.params.id);
+    if (!订单) {
+      return res.json({ code: 0, message: '订单不存在' });
+    }
+
+    // 解析操作日志
+    const 日志 = 安全解析JSON(订单.order_log, []);
+
+    res.json({
+      code: 1,
+      message: '获取成功',
+      data: { ...订单.toJSON(), order_log: 日志 },
+    });
+  } catch (错误) {
+    console.error('获取洗衣订单详情出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+};
+
+module.exports = { 获取订单列表, 获取订单详情, 获取洗衣订单详情, 更新订单状态, 触发自动下单, 重置订单 };

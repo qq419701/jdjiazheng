@@ -22,26 +22,37 @@ const routes = [
         component: () => import('../views/Dashboard.vue'),
         meta: { 标题: '数据看板' },
       },
+      // 旧路径重定向，保持兼容
       {
         path: 'orders',
+        redirect: '/admin/orders/jiazheng',
+      },
+      {
+        path: 'cards',
+        redirect: '/admin/cards/jiazheng',
+      },
+      // 订单管理（带业务类型参数）
+      {
+        path: 'orders/:businessType',
         name: 'Orders',
         component: () => import('../views/Orders.vue'),
         meta: { 标题: '订单管理' },
       },
       {
-        path: 'orders/:id',
+        path: 'orders/:businessType/:id',
         name: 'OrderDetail',
         component: () => import('../views/OrderDetail.vue'),
         meta: { 标题: '订单详情' },
       },
+      // 卡密管理（带业务类型参数）
       {
-        path: 'cards',
+        path: 'cards/:businessType',
         name: 'Cards',
         component: () => import('../views/Cards.vue'),
         meta: { 标题: '卡密管理' },
       },
       {
-        path: 'cards/generate',
+        path: 'cards/:businessType/generate',
         name: 'CardGenerate',
         component: () => import('../views/CardGenerate.vue'),
         meta: { 标题: '批量生成卡密' },
@@ -63,6 +74,12 @@ const routes = [
         name: 'Settings',
         component: () => import('../views/Settings.vue'),
         meta: { 标题: '系统设置' },
+      },
+      {
+        path: 'regions',
+        name: 'Regions',
+        component: () => import('../views/Regions.vue'),
+        meta: { 标题: '地区管理' },
       },
     ],
   },

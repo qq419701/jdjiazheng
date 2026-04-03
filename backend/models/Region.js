@@ -14,6 +14,11 @@ const Region = 数据库连接.define('Region', {
     allowNull: false,
     comment: '名称',
   },
+  code: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    comment: '行政区划代码（可选）',
+  },
   parent_id: {
     type: DataTypes.INTEGER,
     defaultValue: 0,
