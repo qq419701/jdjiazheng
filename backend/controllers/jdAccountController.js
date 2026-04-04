@@ -59,7 +59,13 @@ const 触发自动登录 = async (req, res) => {
   try {
     const 结果 = await 账号自动登录(parseInt(req.params.id));
     if (结果.成功) {
-      res.json({ code: 1, message: 结果.消息 });
+      res.json({
+        code: 1,
+        message: 结果.消息,
+        data: 结果.需要扫码
+          ? { 需要扫码: true, 二维码: 结果.二维码 }
+          : null,
+      });
     } else {
       res.json({ code: 0, message: 结果.原因 });
     }
