@@ -21,7 +21,18 @@
       </div>
       <div class="信息项">
         <span class="信息标签">预约时间</span>
-        <span class="信息值">{{ 订单Store.预约时间显示 }}</span>
+        <!-- 多选模式：分行显示每个备选时间 -->
+        <span class="信息值" v-if="订单Store.多选时间列表.length > 1">
+          <div
+            v-for="(项, 索引) in 订单Store.多选时间列表"
+            :key="索引"
+            :class="索引 === 0 ? '预约时间优先' : '预约时间备选'"
+          >
+            第{{ 索引 + 1 }}备选{{ 索引 === 0 ? '（优先）' : '' }}：{{ 项.date }} {{ 项.time }}
+          </div>
+        </span>
+        <!-- 单选模式：直接显示时间 -->
+        <span class="信息值" v-else>{{ 订单Store.预约时间显示 }}</span>
       </div>
     </div>
 
@@ -86,6 +97,10 @@ const 提交预约 = async () => {
       address: 订单Store.详细地址,
       visit_date: 订单Store.预约日期,
       visit_time: 订单Store.预约时间段,
+      // 多备选时间列表（有则提交，向下兼容）
+      visit_times: 订单Store.多选时间列表.length > 0
+        ? JSON.stringify(订单Store.多选时间列表)
+        : null,
     })
 
     if (结果.code === 1) {
@@ -149,6 +164,20 @@ const 提交预约 = async () => {
   text-align: right;
   flex: 1;
   line-height: 1.5;
+}
+
+/* 多选时间第1优先样式 */
+.预约时间优先 {
+  color: #e54635;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+/* 多选时间备选样式 */
+.预约时间备选 {
+  color: #999;
+  font-size: 13px;
+  margin-bottom: 2px;
 }
 
 .底部按钮容器 {

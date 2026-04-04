@@ -26,6 +26,9 @@
 - ✅ 数据看板
 - ✅ 地区管理（省市区街道四级联动）
 - ✅ 洗衣API配置预留（对接飞书云文档订单API和快递API）
+- ✅ **横向滑动日历时间选择器（仿美团/京东风格）**
+- ✅ **多备选时间预约（可配置1-3个备选时间）**
+- ✅ **订单备注功能（快速编辑+搜索支持）**
 
 ## 修改代码后重新构建
 
@@ -46,7 +49,11 @@ pm2 restart jdjiazheng
 
 ```bash
 cd backend
+# 添加业务类型相关字段
 node scripts/addBusinessTypeColumns.js
+
+# 添加多备选预约时间字段
+node scripts/addVisitTimesColumn.js
 ```
 
 ## 洗衣API配置说明

@@ -37,6 +37,11 @@ const 验证卡密 = async (req, res) => {
         banner_url: 设置对象.banner_url || '',
         notice: 设置对象.notice || '',
         service_content: 安全解析JSON(设置对象.service_content, []),
+        // 多备选时间设置（H5端读取并传给TimeSlot组件）
+        multi_time_enabled: 设置对象.multi_time_enabled || '0',
+        multi_time_max_count: 设置对象.multi_time_max_count || '3',
+        multi_time_tip: 设置对象.multi_time_tip || '',
+        multi_time_min_count: 设置对象.multi_time_min_count || '1',
       },
     });
   } catch (错误) {
@@ -82,6 +87,7 @@ const 提交订单 = async (req, res) => {
       address,
       visit_date,
       visit_time,
+      visit_times, // 多备选时间JSON字符串（可选）
     } = req.body;
 
     // 基础参数验证
@@ -124,6 +130,7 @@ const 提交订单 = async (req, res) => {
       full_address: 完整地址,
       visit_date,
       visit_time,
+      visit_times: visit_times || null, // 保存多备选时间（向下兼容原字段）
       service_type: 卡密.service_type || '日常保洁',
       service_hours: 卡密.service_hours || 2,
       status: 0,

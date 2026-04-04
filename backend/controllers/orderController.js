@@ -23,13 +23,14 @@ const 获取订单列表 = async (req, res) => {
 
     const 条件 = {};
 
-    // 关键词搜索
+    // 关键词搜索（支持订单号/姓名/手机号/卡密/备注）
     if (keyword) {
       条件[Op.or] = [
         { order_no: { [Op.like]: `%${keyword}%` } },
         { name: { [Op.like]: `%${keyword}%` } },
         { phone: { [Op.like]: `%${keyword}%` } },
         { card_code: { [Op.like]: `%${keyword}%` } },
+        { remark: { [Op.like]: `%${keyword}%` } }, // 支持备注关键词搜索
       ];
     }
 
@@ -240,4 +241,37 @@ const 获取洗衣订单详情 = async (req, res) => {
   }
 };
 
-module.exports = { 获取订单列表, 获取订单详情, 获取洗衣订单详情, 更新订单状态, 触发自动下单, 重置订单 };
+/**
+ * 快速更新订单备注（独立接口，无需更新状态）
+ * PUT /admin/api/orders/:id/remark
+ */
+const 更新订单备注 = async (req, res) => {
+  try {
+    const { remark } = req.body;
+    const 订单 = await Order.findByPk(req.params.id);
+
+    if (!订单) {
+      return res.json({ code: 0, message: '订单不存在' });
+    }
+
+    // 记录操作日志
+    const 现有日志 = 安全解析JSON(订单.order_log, []);
+    现有日志.push({
+      时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+      操作: `管理员更新备注：${remark || '（已清空）'}`,
+      状态: 'info',
+    });
+
+    await 订单.update({
+      remark: remark || null,
+      order_log: JSON.stringify(现有日志),
+    });
+
+    res.json({ code: 1, message: '备注更新成功' });
+  } catch (错误) {
+    console.error('更新订单备注出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+};
+
+module.exports = { 获取订单列表, 获取订单详情, 获取洗衣订单详情, 更新订单状态, 触发自动下单, 重置订单, 更新订单备注 };

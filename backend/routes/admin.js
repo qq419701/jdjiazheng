@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const 配置 = require('../config/config');
 const { Admin, Order } = require('../models');
 const { 验证Token } = require('../middleware/auth');
-const { 获取订单列表, 获取订单详情, 更新订单状态, 触发自动下单, 重置订单 } = require('../controllers/orderController');
+const { 获取订单列表, 获取订单详情, 更新订单状态, 触发自动下单, 重置订单, 更新订单备注 } = require('../controllers/orderController');
 const { 获取卡密列表, 生成卡密, 导出卡密, 删除卡密, 获取批次列表, 获取批次卡密 } = require('../controllers/cardController');
 const { 获取账号列表, 新增账号, 更新账号, 删除账号, 触发自动登录 } = require('../controllers/jdAccountController');
 const { 获取规则列表, 新增规则, 更新规则, 删除规则 } = require('../controllers/timeRuleController');
@@ -127,6 +127,7 @@ router.get('/dashboard', 验证Token, async (req, res) => {
 router.get('/orders', 验证Token, 获取订单列表);
 router.get('/orders/:id', 验证Token, 获取订单详情);
 router.put('/orders/:id/status', 验证Token, 更新订单状态);
+router.put('/orders/:id/remark', 验证Token, 更新订单备注); // 快速更新备注接口
 router.post('/orders/:id/place-order', 验证Token, 触发自动下单);
 router.post('/orders/:id/reset', 验证Token, 重置订单);
 

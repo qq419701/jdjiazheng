@@ -5,7 +5,8 @@
     <el-card class="搜索卡片">
       <el-form :inline="true" :model="搜索条件">
         <el-form-item label="关键词">
-          <el-input v-model="搜索条件.keyword" placeholder="订单号/姓名/手机号" clearable style="width: 200px" />
+          <!-- placeholder 更新为包含"备注"的提示 -->
+          <el-input v-model="搜索条件.keyword" placeholder="订单号/姓名/手机号/备注" clearable style="width: 200px" />
         </el-form-item>
         <el-form-item label="城市">
           <el-input v-model="搜索条件.city" placeholder="城市" clearable style="width: 100px" />
@@ -48,10 +49,38 @@
         <el-table-column prop="name" label="姓名" width="80" />
         <el-table-column prop="phone" label="手机号" width="120" />
         <el-table-column prop="city" label="城市" width="80" />
-        <el-table-column label="预约时间" width="150">
-          <template #default="{ row }">{{ row.visit_date }} {{ row.visit_time }}</template>
+        <!-- 预约时间列：有多选时间则分行显示，否则显示单次时间 -->
+        <el-table-column label="预约时间" width="180">
+          <template #default="{ row }">
+            <template v-if="解析多选时间(row.visit_times).length > 0">
+              <div
+                v-for="(项, 索引) in 解析多选时间(row.visit_times)"
+                :key="索引"
+                class="多选时间行"
+                :class="索引 === 0 ? '优先时间' : '备选时间'"
+              >
+                <span class="优先级图标">{{ ['🥇','🥈','🥉'][索引] || `${索引+1}.` }}</span>
+                {{ 项.date }} {{ 项.time }}
+                <span v-if="索引 === 0" class="优先标签">优先</span>
+                <span v-else class="备选标签">备选</span>
+              </div>
+            </template>
+            <template v-else>
+              {{ row.visit_date }} {{ row.visit_time }}
+            </template>
+          </template>
         </el-table-column>
         <el-table-column prop="card_code" label="卡密" width="160" />
+        <!-- 备注列：显示摘要（最多20字），有备注时显示📝图标 -->
+        <el-table-column label="备注" width="140">
+          <template #default="{ row }">
+            <span v-if="row.remark" class="备注摘要">
+              <span class="备注图标">📝</span>
+              {{ row.remark.length > 20 ? row.remark.substring(0, 20) + '…' : row.remark }}
+            </span>
+            <span v-else class="无备注">-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="状态" width="120">
           <template #default="{ row }">
             <el-tag :type="获取状态类型(row.status)" size="small">{{ 获取状态文字(row.status) }}</el-tag>
@@ -63,9 +92,11 @@
             >查看原因</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="300" fixed="right">
+        <el-table-column label="操作" width="320" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="查看详情(row.id)">详情</el-button>
+            <!-- 备注快速编辑按钮 -->
+            <el-button size="small" type="info" plain @click="打开备注弹窗(row)">备注</el-button>
             <!-- 家政服务操作 -->
             <template v-if="!是洗衣服务">
               <el-button
@@ -161,6 +192,38 @@
       </template>
     </el-dialog>
 
+    <!-- 快速编辑备注弹窗 -->
+    <el-dialog v-model="显示备注弹窗" title="编辑备注" width="460px" :close-on-click-modal="false">
+      <div class="备注弹窗内容">
+        <!-- 快捷标签区 -->
+        <p class="快捷标签标题">快捷追加：</p>
+        <div class="快捷标签列表">
+          <el-tag
+            v-for="标签 in 快捷备注标签"
+            :key="标签"
+            class="快捷标签"
+            type="info"
+            effect="plain"
+            style="cursor: pointer; margin: 4px"
+            @click="追加快捷标签(标签)"
+          >{{ 标签 }}</el-tag>
+        </div>
+        <!-- 备注输入框 -->
+        <el-input
+          v-model="备注表单.内容"
+          type="textarea"
+          :rows="4"
+          placeholder="请输入备注内容（点击上方标签可快速追加）"
+          style="margin-top: 12px"
+        />
+      </div>
+      <template #footer>
+        <el-button @click="显示备注弹窗 = false">取消</el-button>
+        <el-button @click="清空备注">清空</el-button>
+        <el-button type="primary" :loading="备注保存中" @click="保存备注">保存备注</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 复制面板弹窗 -->
     <el-dialog v-model="显示复制面板" title="选择复制内容" width="420px" :close-on-click-modal="false">
       <div class="复制面板">
@@ -191,7 +254,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import { 获取订单列表API, 更新订单状态API, 触发自动下单API, 重置订单API } from '../api/index'
+import { 获取订单列表API, 更新订单状态API, 触发自动下单API, 重置订单API, 更新订单备注API } from '../api/index'
 
 const router = useRouter()
 const route = useRoute()
@@ -225,6 +288,15 @@ const 待失败订单 = ref(null)
 const 显示查看原因弹窗 = ref(false)
 const 当前查看原因 = ref('')
 
+// ===== 快速备注弹窗 =====
+const 显示备注弹窗 = ref(false)      // 控制备注弹窗显示
+const 当前备注订单 = ref(null)        // 当前正在编辑备注的订单
+const 备注保存中 = ref(false)         // 备注保存中标志
+const 备注表单 = ref({ 内容: '' })   // 备注输入内容
+
+// 快捷备注标签列表（点击一键追加）
+const 快捷备注标签 = ['已联系客户', '需改期', '客户催单', '特殊要求', '已安排师傅', '客户已确认']
+
 // ===== 复制面板 =====
 const 显示复制面板 = ref(false)
 const 当前复制行 = ref(null)
@@ -241,6 +313,23 @@ const 获取状态类型 = (status) => {
 const 获取状态文字 = (status) => {
   const 映射 = { 0: '待处理', 1: '下单中', 2: '已下单', 3: '失败', 4: '已取消', 5: '安排中', 6: '预约完成', 7: '预约失败' }
   return 映射[status] || '未知'
+}
+
+/**
+ * 解析多选时间JSON字符串为数组
+ * @param {string} visitTimes - JSON字符串
+ * @returns {Array} 时间数组（排序后）
+ */
+const 解析多选时间 = (visitTimes) => {
+  if (!visitTimes) return []
+  try {
+    const 列表 = JSON.parse(visitTimes)
+    if (!Array.isArray(列表) || 列表.length === 0) return []
+    // 按优先级排序
+    return [...列表].sort((a, b) => (a.priority || 0) - (b.priority || 0))
+  } catch {
+    return []
+  }
 }
 
 // 加载订单列表
@@ -368,11 +457,61 @@ const 执行重置订单 = async (id) => {
   } catch {}
 }
 
+/**
+ * 打开快速备注弹窗
+ * @param {Object} 行 - 订单数据行
+ */
+const 打开备注弹窗 = (行) => {
+  当前备注订单.value = 行
+  备注表单.value.内容 = 行.remark || ''
+  显示备注弹窗.value = true
+}
+
+/**
+ * 快捷标签追加到备注内容
+ * @param {string} 标签文字 - 快捷标签文字
+ */
+const 追加快捷标签 = (标签文字) => {
+  const 当前内容 = 备注表单.value.内容
+  // 已有内容时用分号分隔，否则直接填入
+  备注表单.value.内容 = 当前内容 ? `${当前内容}；${标签文字}` : 标签文字
+}
+
+// 清空备注输入
+const 清空备注 = () => {
+  备注表单.value.内容 = ''
+}
+
+// 保存备注（调用API）
+const 保存备注 = async () => {
+  if (!当前备注订单.value) return
+  备注保存中.value = true
+  try {
+    const 结果 = await 更新订单备注API(当前备注订单.value.id, 备注表单.value.内容)
+    if (结果.code === 1) {
+      ElMessage.success('备注保存成功')
+      显示备注弹窗.value = false
+      加载订单() // 刷新列表，更新备注列显示
+    } else {
+      ElMessage.warning(结果.message)
+    }
+  } catch {
+    ElMessage.error('保存失败，请重试')
+  } finally {
+    备注保存中.value = false
+  }
+}
+
 // 打开复制面板
 const 打开复制面板 = (行) => {
   当前复制行.value = 行
   // 构建完整地址（包含街道）
   const 完整地址 = [行.province, 行.city, 行.district, 行.street, 行.address].filter(Boolean).join(' ')
+  // 构建预约时间显示文字（有多选则显示第一优先时间）
+  const 多选列表 = 解析多选时间(行.visit_times)
+  const 预约时间文字 = 多选列表.length > 0
+    ? `${多选列表[0].date} ${多选列表[0].time}（优先）`
+    : `${行.visit_date || ''} ${行.visit_time || ''}`.trim()
   // 构建字段列表（默认勾选：姓名、手机号、地址）
   复制字段列表.value = [
     { key: '姓名', 标签: '姓名', 值: 行.name },
@@ -380,7 +519,7 @@ const 打开复制面板 = (行) => {
     { key: '地址', 标签: '完整地址', 值: 完整地址 },
     { key: '订单号', 标签: '订单号', 值: 行.order_no },
     { key: '卡密', 标签: '卡密', 值: 行.card_code },
-    { key: '预约时间', 标签: '预约时间', 值: `${行.visit_date || ''} ${行.visit_time || ''}`.trim() },
+    { key: '预约时间', 标签: '预约时间', 值: 预约时间文字 },
     { key: '服务类型', 标签: '服务类型', 值: 行.service_type },
     { key: '备注', 标签: '备注', 值: 行.remark },
   ]
@@ -442,6 +581,53 @@ onMounted(() => 加载订单())
   text-decoration: underline;
 }
 .查看原因链接:hover { color: #66b1ff; }
+
+/* 备注摘要列样式 */
+.备注摘要 {
+  font-size: 12px;
+  color: #555;
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  word-break: break-all;
+  line-height: 1.4;
+}
+.备注图标 { flex-shrink: 0; }
+.无备注 { color: #ccc; font-size: 12px; }
+
+/* 多选时间行样式 */
+.多选时间行 {
+  font-size: 12px;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.优先时间 { color: #e54635; font-weight: 500; }
+.备选时间 { color: #999; }
+.优先级图标 { font-size: 14px; }
+.优先标签 {
+  font-size: 10px;
+  background: #fff0ee;
+  color: #e54635;
+  border-radius: 3px;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+.备选标签 {
+  font-size: 10px;
+  background: #f5f5f5;
+  color: #999;
+  border-radius: 3px;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
+/* 备注弹窗内容 */
+.备注弹窗内容 { padding: 0 4px; }
+.快捷标签标题 { color: #666; font-size: 13px; margin-bottom: 6px; }
+.快捷标签列表 { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.快捷标签:hover { background: #ecf5ff; border-color: #409eff; }
 
 /* 复制面板样式 */
 .复制面板 { padding: 0 4px; }
