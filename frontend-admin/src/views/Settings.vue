@@ -48,9 +48,9 @@
 
           <el-form-item label="最多备选次数">
             <el-select v-model="设置表单.multi_time_max_count" style="width: 160px">
-              <el-option label="1次（仅主时间）" value="1" />
-              <el-option label="2次" value="2" />
-              <el-option label="3次" value="3" />
+              <el-option label="1个（单次预约）" value="1" />
+              <el-option label="2个" value="2" />
+              <el-option label="3个" value="3" />
             </el-select>
             <div class="字段说明">客户最多可选择几个备用时间点</div>
           </el-form-item>
