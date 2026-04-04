@@ -41,13 +41,21 @@
         </el-menu-item-group>
 
         <el-menu-item-group title="京东洗衣服">
-          <el-menu-item index="/admin/orders/xiyifu">
+          <el-menu-item index="/admin/laundry-orders">
             <el-icon><List /></el-icon>
             <span>洗衣订单管理</span>
           </el-menu-item>
-          <el-menu-item index="/admin/cards/xiyifu">
+          <el-menu-item index="/admin/laundry-cards">
             <el-icon><Ticket /></el-icon>
             <span>洗衣卡密管理</span>
+          </el-menu-item>
+          <el-menu-item index="/admin/laundry-time-rules">
+            <el-icon><Clock /></el-icon>
+            <span>洗衣时间规则</span>
+          </el-menu-item>
+          <el-menu-item index="/admin/laundry-settings">
+            <el-icon><Setting /></el-icon>
+            <span>洗衣服设置</span>
           </el-menu-item>
         </el-menu-item-group>
 
