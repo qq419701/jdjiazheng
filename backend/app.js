@@ -74,6 +74,8 @@ const 页面限流 = rateLimit({
 // ===== 静态文件托管 =====
 // 后台管理静态文件（/admin 路径）
 app.use('/admin', express.static(path.join(__dirname, 'public/admin')));
+// 洗衣H5静态文件（/xi 路径）
+app.use('/xi', express.static(path.join(__dirname, 'public/xi')));
 // 前端H5静态文件（/ 根路径）
 app.use(express.static(path.join(__dirname, 'public/h5')));
 
@@ -89,6 +91,8 @@ app.use('/admin/api', 管理API限流, adminRouter);
 // H5前端接口（应用卡密验证和订单限流）
 app.use('/api/verify-card', 卡密限流);
 app.use('/api/orders', 订单限流);
+app.use('/api/xi/verify-card', 卡密限流);
+app.use('/api/xi/orders', 订单限流);
 app.use('/api', apiRouter);
 
 // ===== 前端路由处理（SPA支持）=====
@@ -96,6 +100,11 @@ app.use('/api', apiRouter);
 // 后台管理页面路由兜底（/admin/* 返回后台首页）
 app.get('/admin/*', 页面限流, (req, res) => {
   res.sendFile(path.join(__dirname, 'public/admin/index.html'));
+});
+
+// 洗衣H5路由兜底（/xi/* 返回洗衣H5首页）
+app.get('/xi/*', 页面限流, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/xi/index.html'));
 });
 
 // H5前端路由兜底（所有非 /api /admin 路径均返回H5首页）
@@ -121,7 +130,7 @@ app.listen(端口, async () => {
     console.log('✅ 数据库连接成功');
 
     // 自动同步数据库结构（仅创建不存在的表，不修改已有表）
-    await 数据库连接.sync({ alter: false });
+    await 数据库连接.sync({ alter: true });
     console.log('✅ 数据库结构已同步');
   } catch (错误) {
     console.error('❌ 数据库连接失败:', 错误.message);
