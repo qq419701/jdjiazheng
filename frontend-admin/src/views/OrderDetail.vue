@@ -15,10 +15,35 @@
             <el-descriptions-item label="姓名">{{ 订单.name }}</el-descriptions-item>
             <el-descriptions-item label="手机号">{{ 订单.phone }}</el-descriptions-item>
             <el-descriptions-item label="服务地址" :span="2">{{ 订单.full_address }}</el-descriptions-item>
-            <el-descriptions-item label="预约日期">{{ 订单.visit_date }}</el-descriptions-item>
-            <el-descriptions-item label="预约时间">{{ 订单.visit_time }}</el-descriptions-item>
+            <el-descriptions-item label="预约日期">
+              <!-- 有多备选时间时，分行显示完整列表 -->
+              <template v-if="解析多选时间(订单.visit_times).length > 0">
+                <div
+                  v-for="(项, 索引) in 解析多选时间(订单.visit_times)"
+                  :key="索引"
+                  :style="索引 === 0 ? 'color:#e54635;font-weight:500' : 'color:#999'"
+                >
+                  {{ ['🥇','🥈','🥉'][索引] || `${索引+1}.` }}
+                  {{ 项.date }} {{ 项.time }}
+                  <el-tag v-if="索引 === 0" type="danger" size="small" style="margin-left:4px">优先</el-tag>
+                  <el-tag v-else type="info" size="small" style="margin-left:4px">备选</el-tag>
+                </div>
+              </template>
+              <!-- 无多选时显示原有单次日期 -->
+              <template v-else>{{ 订单.visit_date }}</template>
+            </el-descriptions-item>
+            <el-descriptions-item label="预约时间">
+              <template v-if="解析多选时间(订单.visit_times).length > 0">
+                <span style="color:#999;font-size:12px">（见上方多备选时间）</span>
+              </template>
+              <template v-else>{{ 订单.visit_time }}</template>
+            </el-descriptions-item>
             <el-descriptions-item label="服务类型">{{ 订单.service_type }}</el-descriptions-item>
             <el-descriptions-item label="服务时长">{{ 订单.service_hours }}小时</el-descriptions-item>
+            <!-- 备注信息（有备注时显示） -->
+            <el-descriptions-item v-if="订单.remark" label="备注" :span="2">
+              <span style="white-space: pre-wrap; color: #555;">{{ 订单.remark }}</span>
+            </el-descriptions-item>
           </el-descriptions>
         </el-card>
 
@@ -85,6 +110,22 @@ const 下单中 = ref(false)
 const 获取状态类型 = (status) => ({ 0: 'info', 1: 'primary', 2: 'success', 3: 'danger', 4: 'warning' }[status] || 'info')
 const 获取状态文字 = (status) => ({ 0: '待处理', 1: '下单中', 2: '已下单', 3: '失败', 4: '已取消' }[status] || '未知')
 const 获取日志类型 = (状态) => ({ success: 'success', error: 'danger', info: 'primary' }[状态] || 'primary')
+
+/**
+ * 解析多选时间JSON字符串为数组，按优先级排序
+ * @param {string} visitTimes - JSON字符串
+ * @returns {Array} 排序后的时间数组
+ */
+const 解析多选时间 = (visitTimes) => {
+  if (!visitTimes) return []
+  try {
+    const 列表 = JSON.parse(visitTimes)
+    if (!Array.isArray(列表) || 列表.length === 0) return []
+    return [...列表].sort((a, b) => (a.priority || 0) - (b.priority || 0))
+  } catch {
+    return []
+  }
+}
 
 const 加载详情 = async () => {
   const 结果 = await 获取订单详情API(route.params.id)

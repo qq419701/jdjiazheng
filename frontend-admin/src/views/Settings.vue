@@ -31,6 +31,48 @@
           <el-form-item label="服务时长（小时）">
             <el-input-number v-model="设置表单.service_hours" :min="1" :max="24" />
           </el-form-item>
+
+          <!-- 多备选时间设置分组 -->
+          <div class="设置分组标题">── 多备选时间设置 ──</div>
+
+          <el-form-item label="开启多备选时间预约">
+            <el-switch
+              v-model="设置表单.multi_time_enabled"
+              active-value="1"
+              inactive-value="0"
+              active-text="开启"
+              inactive-text="关闭"
+            />
+            <div class="字段说明">开启后客户可选择多个备用时间，提高预约成功率</div>
+          </el-form-item>
+
+          <el-form-item label="最多备选次数">
+            <el-select v-model="设置表单.multi_time_max_count" style="width: 160px">
+              <el-option label="1个（单次预约）" value="1" />
+              <el-option label="2个" value="2" />
+              <el-option label="3个" value="3" />
+            </el-select>
+            <div class="字段说明">客户最多可选择几个备用时间点</div>
+          </el-form-item>
+
+          <el-form-item label="客户端提示说明">
+            <el-input
+              v-model="设置表单.multi_time_tip"
+              type="textarea"
+              :rows="3"
+              placeholder="为提高预约成功率，建议选择多个备用时间，客服将按您的优先顺序为您安排。"
+            />
+            <div class="字段说明">显示在客户时间选择界面顶部的说明文字</div>
+          </el-form-item>
+
+          <el-form-item label="至少选择数量">
+            <el-select v-model="设置表单.multi_time_min_count" style="width: 200px">
+              <el-option label="1个（不强制，推荐）" value="1" />
+              <el-option label="2个" value="2" />
+              <el-option label="3个" value="3" />
+            </el-select>
+            <div class="字段说明">客户至少需要选择几个时间才能提交预约（设为1则不强制）</div>
+          </el-form-item>
           <el-form-item label="下单须知">
             <el-input
               v-model="设置表单.notice"
@@ -141,6 +183,11 @@ const 设置表单 = ref({
   service_hours: 2,
   notice: '',
   auto_order_enabled: '1',
+  // 多备选时间设置
+  multi_time_enabled: '0',      // 是否开启多选时间（默认关闭）
+  multi_time_max_count: '3',    // 最多几个备选时间
+  multi_time_tip: '',           // 客户端提示文字
+  multi_time_min_count: '1',    // 至少选几个
   laundry_api_url: '',
   laundry_app_id: '',
   laundry_app_secret: '',
@@ -165,6 +212,11 @@ const 加载设置 = async () => {
         service_hours: parseInt(数据.service_hours) || 2,
         notice: 数据.notice || '',
         auto_order_enabled: 数据.auto_order_enabled || '1',
+        // 多备选时间设置（默认关闭）
+        multi_time_enabled: 数据.multi_time_enabled || '0',
+        multi_time_max_count: 数据.multi_time_max_count || '3',
+        multi_time_tip: 数据.multi_time_tip || '',
+        multi_time_min_count: 数据.multi_time_min_count || '1',
         laundry_api_url: 数据.laundry_api_url || '',
         laundry_app_id: 数据.laundry_app_id || '',
         laundry_app_secret: 数据.laundry_app_secret || '',
@@ -199,5 +251,15 @@ onMounted(() => 加载设置())
   font-size: 12px;
   color: #999;
   margin-top: 4px;
+}
+
+/* 设置分组标题样式 */
+.设置分组标题 {
+  color: #409eff;
+  font-size: 13px;
+  font-weight: 500;
+  margin: 16px 0 12px;
+  padding-left: 8px;
+  border-left: 3px solid #409eff;
 }
 </style>

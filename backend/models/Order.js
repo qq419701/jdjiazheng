@@ -148,6 +148,11 @@ const Order = 数据库连接.define('Order', {
     allowNull: true,
     comment: '洗衣订单状态（洗衣服务专用）',
   },
+  visit_times: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: '多备选预约时间（JSON数组格式：[{date:"2024-01-19",time:"09:00",priority:1},...]）',
+  },
 }, {
   tableName: 'orders',
   timestamps: false,
