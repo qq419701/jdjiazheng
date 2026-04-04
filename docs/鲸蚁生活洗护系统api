@@ -1,0 +1,710 @@
+订单API
+第三方对接具体1个签名和5个接口对接，如对接方有特殊要求，可以具体适配。
+https://my.feishu.cn/wiki/AcmMwK8mOiOHFvkb7sbcXMmanhh
+
+1. 签名认证
+概述
+    签名采用oauth2签名，在鲸蚁生活系统里，可以获取应用的app_id和app_secret，并用这2个接口请求获取access_token, 该token有效期为2小时，后续所有请求鲸蚁生活的接口都要把access_token参数放在header里面。
+接口：
+  地址：/api/oauth/token
+  方式：POST
+  参数：
+    {
+        "app_id": "cmclr71fw00016pzb1qwqgdqh", 
+        "app_secret": "72zd6eJKKkbK5jo2GkwvGqXOL8pO7Y1u"
+    }
+    字段说明：
+名称
+类型
+是否必填
+实例
+描述
+app_id
+string
+是
+
+appId
+app_secret
+string
+是
+
+appSecret
+    返回：
+    {
+        "data": {
+            "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzZWxmQXBwSWQiOiJjbWNscjcxZncwMDAxNnB6YjFxd3FnZHFoIiwiaWF0IjoxNzUyMDY4NjUxLCJleHAiOjE3NTIwNzU4NTF9.GRHDkuy95VT_2lQL1i7iIDdyA36TYH1Px0PpQ9LazkI",
+            "tenantId": "cm5njh4dx0006o37os2cxs9b2"
+        },
+        "code": 0,
+        "message": "success",
+        "success":     true
+    }
+2. 业务接口说明
+  请求头里放入
+1. out-token
+  2. tenant-id
+3. 预约单推送到鲸蚁生活
+概述
+    第三方把订单信息同步到鲸蚁生活、鲸蚁生活承接接下单的流程。
+接口：
+    地址：/api/out/booking
+    方式：POST
+    参数：
+ {
+    "app_id": "cmclr71fw00016pzb1qwqgdqh",
+    "order_info": {
+        "out_order_no": "250702054711259504607", // 订单号
+        "out_booking_no": "B2507020547112", // 预约号(唯一)
+        "day": "2025-09-12",
+        "start_time": "12:00:00",
+        "end_time": "13:00:00",
+        "product_name": "任洗一件",
+        "desc": "洗干净一点",
+        "type": 10,
+        "create_time": "2025-09-12 12:10:11",
+        "pay_time": "2025-09-12 12:10:11",
+        "order_price": 1000,
+        "pay_price": 1000,
+        "item_order": [{
+            "good_name": "任洗一件",
+            "price": 1000,
+            "quantity": 1
+        }]
+
+    },
+    "address_info": {
+        "contact": "张三",
+        "phone": "18268100546",
+        "province": "浙江省",
+        "city": "杭州市",
+        "district": "拱墅区",
+        "address": "莫干山路1001号"
+    },
+    "back_address_info": {
+        "contact": "张三",
+        "phone": "18268100546",
+        "province": "浙江省",
+        "city": "杭州市",
+        "district": "拱墅区",
+        "address": "莫干山路1001号"
+    }
+}
+      字段说明：
+名称
+类型
+是否必填
+实例
+描述
+app_id
+string
+是
+
+appId
+access_token
+string
+是
+
+
+access_token
+order_info
+object
+是
+
+
+out_order_no
+string
+是
+
+外部订单ID
+out_booking_no
+string
+是
+
+预约单号
+day
+string
+是
+2025-09-12
+预约天
+start_time
+string
+是
+12:00:00
+开始预约时间
+end_time
+string
+是
+13:00:00
+结束预约时间
+product_name
+string
+是
+
+产品名称
+desc
+string
+否
+
+客户备注
+type
+int
+是
+
+微信小程序：50；抖音小程序：60；快手小程序：70；
+create_time
+string
+是
+
+订单创建时间
+pay_time
+string
+是
+
+支付时间
+order_price
+int
+是
+
+订单金额（分）
+pay_price
+int
+是
+
+支付金额（分）
+item_order
+array
+否
+
+
+good_name
+string
+否
+
+商品名
+price
+int
+否
+
+价格(分)
+quantity
+int
+否
+
+数量
+address_info
+object
+是
+
+取件地址
+contact
+string
+是
+
+联系人
+phone
+string
+是
+
+电话
+province
+string
+是
+
+省
+city
+string
+是
+
+市
+district
+string
+是
+
+区
+address
+string
+是
+
+地址
+back_address_info
+object
+是
+
+收件地址
+contact
+string
+是
+
+联系人
+phone
+string
+是
+
+电话
+province
+string
+是
+
+省
+city
+string
+是
+
+市
+district
+string
+是
+
+区
+address
+string
+是
+
+地址
+      返回：
+    {
+        "data": {
+           "id": "123123" // 返回鲸蚁生活订单号
+        },
+        "code": 0,
+        "message": "success",
+        "success":     true
+    }
+
+4. 订单状态推送-第三方推送到鲸蚁生活
+概述
+    第三方把预约单状态同步。比如已退款、取消预约、已完成等。
+接口：
+  地址：/api/out/sync-status
+  方式：POST
+  参数：
+    {
+       "app_id": "cmclr71fw00016pzb1qwqgdqh", 
+       "out_order_no": "250702054711259504607",
+        "out_booking_no": "B2507020547112",
+        "status": -1,
+    }
+    字段说明：
+名称
+类型
+是否必填
+实例
+描述
+app_id
+string
+是
+
+appId
+app_secret
+string
+是
+
+appSecret
+status
+int
+是
+
+预约单状态：-2 已退款, -1已取消，10已完成
+out_order_no
+string
+是
+
+订单号
+out_booking_no
+string
+是
+
+预约号
+    返回：
+    {
+        "code": 0,
+        "message": "success",
+        "success":  true
+    }
+
+5. 订单状态推送-鲸蚁推送到第三方
+概述
+    鲸蚁生活把订单状态推送到第三方。比如：订单已分配、订单已揽收、订单已入场、订单已拆包、订单已预检、订单已质检、订单已经出厂、订单已送达。
+接口：
+地址：第三方提供
+方式：POST
+参数：
+    {
+        "app_id": "cmclr71fw00016pzb1qwqgdqh", 
+        "out_order_no": "250702054711259504607",
+        "out_booking_no": "B2507020547112",
+        "status": 1,
+        "waybillCode": "SF3194056617460",
+        "factory_name": "测试工厂",
+        "factory_code": "0123",
+         "images": [{ // images和images_v2 二选一； images： 以衣服图片为维度，一个图片一个数组
+             "image": "https://image.com/1",
+             "lable": "衣物名称",
+             "des": "脱皮、破洞",
+             "type": 1,
+             "clothingCode": "07019982"
+        },
+        {
+             "image": "https://image.com/2",
+             "lable": "衣物名称",
+             "des": "脱皮、破洞",
+             "type": 1,
+             "clothingCode": "07019982"
+        }],
+        "images_v2": [{ // images_v2：以衣服为维度，一件衣服一个数组
+             "image": ["https://image.com/1", "https://image.com/2"],
+             "lable": "衣物名称",
+             "des": "脱皮、破洞",
+             "type": 1,
+             "clothingCode": "07019982"
+        }]
+    }
+  字段说明：
+名称
+类型
+是否必填
+实例
+描述
+app_id
+string
+是
+
+appId
+app_secret
+string
+是
+
+appSecret
+status
+int
+是
+
+
+预约单状态：1.已分配（推送快递单号,工厂名称和工厂code），2.已取件，3.已入厂，4.预检（清洗中），5.已回寄（推送快递单号），6.已送达，11. 质检  -1取消
+out_order_no
+string
+是
+
+订单号
+out_booking_no
+string
+是
+
+预约号
+waybillCode
+string
+否
+
+状态1和5必填
+images
+array
+否
+
+状态4必填
+image
+string
+是
+
+图片
+label
+string
+是
+
+衣物名称
+des
+string
+是
+
+洗涤风险
+type
+Int
+是
+
+类型：1 洗前； 2质检
+clothingCode
+string
+是
+
+衣物条码
+  返回（必须返回code字段）
+{
+        "code": 0, // 必须返回code字段， 0为成功，非0为失败
+        "message": "success",
+        "success":     true
+    }
+6. 修改订单推送-第三方推送到鲸蚁生活
+概述
+    第三方用户端系统修改了预约信息，需要修改后的信息同步到鲸蚁生活。
+接口：
+    地址：/api/out/update-booking
+    方式：POST
+    参数：
+ {
+    // "app_id": "cmclr71fw00016pzb1qwqgdqh", 弃用
+    "order_info": {
+        "out_order_no": "250702054711259504607",
+        "out_booking_no": "B2507020547112",
+        "day":  "2025-09-12",
+        "start_time": "12:00:00",
+        "end_time": "13:00:00"
+    },
+    "address_info": {
+        "contact": "张三",
+        "phone": "18268100546",
+        "province": "浙江省",
+        "city": "杭州市",
+        "district": "拱墅区",
+        "address": "莫干山路1001号"
+    },
+    "back_address_info": {
+        "contact": "张三",
+        "phone": "18268100546",
+        "province": "浙江省",
+        "city": "杭州市",
+        "district": "拱墅区",
+        "address": "莫干山路1001号"
+    }
+}
+      字段说明：
+名称
+类型
+是否必填
+实例
+描述
+app_id
+string
+是
+
+appId
+access_token
+string
+是
+
+
+access_token
+order_info
+object
+是
+
+
+out_order_no
+string
+是
+
+外部订单ID
+out_booking_no
+string
+是
+
+预约单号
+day
+string
+是
+2025-09-12
+预约天
+start_time
+string
+是
+12:00:00
+开始预约时间
+end_time
+string
+是
+13:00:00
+结束预约时间
+address_info
+object
+是
+
+取件地址
+contact
+string
+是
+
+联系人
+phone
+string
+是
+
+电话
+province
+string
+是
+
+省
+city
+string
+是
+
+市
+district
+string
+是
+
+区
+address
+string
+是
+
+地址
+back_address_info
+object
+是
+
+收件地址
+contact
+string
+是
+
+联系人
+phone
+string
+是
+
+电话
+province
+string
+是
+
+省
+city
+string
+是
+
+市
+district
+string
+是
+
+区
+address
+string
+是
+
+地址
+      返回：
+    {
+        "data": {
+           "id": "123123" // 返回鲸蚁生活订单号
+        },
+        "code": 0,
+        "message": "success",
+        "success":     true
+    }
+
+7. 物流查询
+概述
+    第三方客户端需要查询物流信息，对接该接口。
+接口
+  地址：api/out-express/get-route-by-waybill-code/:waybillCode
+  方式：GET
+  参数：
+"waybillCode": "SF3194056617460"
+
+    字段说明：
+名称
+类型
+是否必填
+实例
+描述
+waybillCode
+
+string
+是
+SF3194056617460
+物流单号
+    返回：
+{
+    "data": {
+        "collectorName": "谭勇",  // 小哥电话
+        "collectorPhone": "15182268867", // 小哥手机号
+        "logisticsType": 20,
+        "logisticsNumber": "JDX041252238735",
+        "routes": [
+            {
+                "remark": "揽收任务已分配给快递员谭勇，联系电话：15182268867 电话：15182268867",
+                "state": "200034",
+                "operationTime": "2025-07-09 22:16:44",
+                "title": "揽收任务分配"
+            }
+        ]
+    },
+    "code": 0,
+    "message": "success",
+    "success": true
+}
+
+8. 物流结算费用查询
+
+概述
+    第三方客户端需要查询物流结算信息，对接该接口。
+接口
+  地址：api/out/get-express-balance/:waybillCode
+  方式：GET
+  参数：
+"waybillCode": "SF3194056617460"
+
+
+快递API
+1. 认证
+说明：token有效时间为2小时，调用方自己维护token有效期
+POST PATH: /api/oauth/token
+请求：
+{
+"app_id": "xxx",
+"app_secret": "xxx",
+}
+返回：
+{
+    "data": {
+        "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzZWxmQXBwSWQiOiJjbTY4cml5dnYwMDEwaGRtNWg2eWxnN3U1IiwiaWF0IjoxNzU2MjE0NTkyLCJleHAiOjE3NTYyMjE3OTJ9.aMJD2dad2sGM7wq1_6aYds7sh8L0GTneBJG_BVtpD20",
+        "tenantId": "cm5njh4dx0006o37os2cxs9b2"
+    },
+    "code": 0,
+    "message": "success",
+    "success": true
+}
+2. 通用接口说明
+请求头里放入
+1. out-token
+2. tenant-id
+3. 创建快递
+POST PATH: /api/out-express
+请求
+{
+    "pickupName": "取件人名称",
+    "pickupPhone": "取件人手机号",
+    "pickupAddress": "取件人详细地址",
+    "deliveryName": "寄件人名称",
+    "deliveryPhone": "寄件人手机号",
+    "deliveryAddress": "寄件人详细地址",
+    "pickupStartTime": "2025-08-29 08:00:00", // 预约开始时间
+    "expressType": 20, // 快递类型 10.顺丰 20.京东
+    "type": 10, // 10 取件 20寄件
+    "goodsTypeText": "衣物", // 商品类型
+    "cargoes": [{
+        "name": "套餐名",
+        "quantity": 1 // 数量
+    }],
+    "remark": "asdfasdf"  // 备注
+    
+}
+4. 取消快递
+GET Path: /api/out-express/cancel/:waybillCode
+请求waybillCode 快递单号
+5. 根据运单号获取快递路由
+GET Path: /api/get-route-by-waybill-code/:waybillCode
+请求waybillCode 快递单号
+6. 打印面单
+POST Path: /api/out-express/print-waybill/
+{
+  waybillCodeList: ["xxx"], // 快递编号
+  jdTemplateCode: 'xxx', //jdky76x130_custom || jdky100x113_jingyee 
+  sfTemplateCode: string, //76 * 130 || 120 * 210 || 100 * 150
+}
+7. 京东快递推送
+说明： 调用方提供回调地址错误会重复调用3次和官方回调参数保持一致
+接受方需返回为成功，否则当做失败，会在请求2次
+{
+  code: 0
+}
