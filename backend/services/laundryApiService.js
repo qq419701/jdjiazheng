@@ -202,7 +202,9 @@ const 推送预约单 = async (订单数据, 已重试 = false) => {
       throw new Error(`推送预约单失败：${JSON.stringify(响应.data)}`);
     }
 
-    console.log('✅ 鲸蚁预约单推送成功，鲸蚁订单号:', 响应.data.data?.id);
+    // 鲸蚁官方文档说明：返回 data.id 为鲸蚁订单号，但当前版本暂时不返回
+    // 打印完整响应便于调试
+    console.log('✅ 鲸蚁预约单推送成功，响应:', JSON.stringify(响应.data.data));
     return 响应.data.data;
   } catch (错误) {
     if (!已重试 && 是Token过期错误(错误)) {
@@ -323,4 +325,72 @@ const 测试API连接 = async () => {
   return await 获取AccessToken(true);
 };
 
-module.exports = { 获取AccessToken, 恢复Token缓存, 获取Token状态, 推送预约单, 同步订单状态, 修改预约单, 测试API连接 };
+/**
+ * 查询物流轨迹
+ * GET /api/out-express/get-route-by-waybill-code/:waybillCode
+ * @param {string} waybillCode - 快递单号（取件或回寄）
+ * @param {boolean} 已重试 - 内部重试标记，避免无限循环
+ */
+const 查询物流轨迹 = async (waybillCode, 已重试 = false) => {
+  const { api地址 } = await 读取API配置();
+  const 请求头 = await 获取请求头();
+  try {
+    const 响应 = await axios.get(
+      `${api地址}/api/out-express/get-route-by-waybill-code/${waybillCode}`,
+      { headers: 请求头, timeout: 10000 }
+    );
+    if (响应.data.code !== 0) {
+      if (!已重试 && 是响应Token过期(响应.data)) {
+        清空Token缓存();
+        await 获取AccessToken(true);
+        return await 查询物流轨迹(waybillCode, true);
+      }
+      throw new Error(`查询物流失败：${JSON.stringify(响应.data)}`);
+    }
+    return 响应.data.data;
+  } catch (错误) {
+    if (!已重试 && 是Token过期错误(错误)) {
+      清空Token缓存();
+      await 获取AccessToken(true);
+      return await 查询物流轨迹(waybillCode, true);
+    }
+    console.error('查询物流轨迹出错:', 错误.message);
+    throw 错误;
+  }
+};
+
+/**
+ * 查询物流结算费用
+ * GET /api/out/get-express-balance/:waybillCode
+ * @param {string} waybillCode - 快递单号
+ * @param {boolean} 已重试 - 内部重试标记，避免无限循环
+ */
+const 查询物流费用 = async (waybillCode, 已重试 = false) => {
+  const { api地址 } = await 读取API配置();
+  const 请求头 = await 获取请求头();
+  try {
+    const 响应 = await axios.get(
+      `${api地址}/api/out/get-express-balance/${waybillCode}`,
+      { headers: 请求头, timeout: 10000 }
+    );
+    if (响应.data.code !== 0) {
+      if (!已重试 && 是响应Token过期(响应.data)) {
+        清空Token缓存();
+        await 获取AccessToken(true);
+        return await 查询物流费用(waybillCode, true);
+      }
+      throw new Error(`查询费用失败：${JSON.stringify(响应.data)}`);
+    }
+    return 响应.data.data;
+  } catch (错误) {
+    if (!已重试 && 是Token过期错误(错误)) {
+      清空Token缓存();
+      await 获取AccessToken(true);
+      return await 查询物流费用(waybillCode, true);
+    }
+    console.error('查询物流费用出错:', 错误.message);
+    throw 错误;
+  }
+};
+
+module.exports = { 获取AccessToken, 恢复Token缓存, 获取Token状态, 推送预约单, 同步订单状态, 修改预约单, 测试API连接, 查询物流轨迹, 查询物流费用 };
