@@ -3,7 +3,7 @@
 const { Op } = require('sequelize');
 const { Order, Setting } = require('../models');
 const { 推送预约单, 同步订单状态, 修改预约单 } = require('../services/laundryApiService');
-const { 查询物流路由, 测试快递API连接 } = require('../services/expressApiService');
+const { 查询物流路由, 查询物流结算费用, 测试快递API连接 } = require('../services/expressApiService');
 const { 安全解析JSON } = require('../utils/helpers');
 const { 执行洗衣下单内部 } = require('./laundryApiController');
 
@@ -480,8 +480,7 @@ const 查询快递结算费用 = async (req, res) => {
       return res.json({ code: 0, message: '无效的type参数，请传入 pickup 或 return' });
     }
 
-    // 调用快递API查询结算费用
-    const { 查询物流结算费用 } = require('../services/expressApiService');
+    // 调用快递API查询结算费用（使用顶部导入的 查询物流结算费用）
     const 结算数据 = await 查询物流结算费用(查询单号);
 
     res.json({ code: 1, message: '查询成功', data: 结算数据 });
