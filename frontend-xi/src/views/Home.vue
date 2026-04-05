@@ -10,7 +10,7 @@
       </div>
       <div class="Banner文字区">
         <div class="Banner主标题">优米拉洗衣服务</div>
-        <div class="Banner副标题">鲸蚁快递免费取送 专业洗护</div>
+        <div class="Banner副标题">京东快递免费取送 专业洗护</div>
       </div>
       <img v-if="banner图URL" :src="banner图URL" class="Banner图片" alt="优米拉洗衣" />
     </div>
@@ -226,6 +226,12 @@ onMounted(async () => {
       卡密有效.value = true
       洗衣Store.设置卡密信息(结果.data)
       banner图URL.value = 结果.data.banner_url || ''
+    } else if (结果.code === 2) {
+      router.replace({ name: 'Invalid', query: { used: '1', code: 卡密码 } })
+      return
+    } else {
+      router.replace({ name: 'Invalid' })
+      return
     }
   } catch {
     showToast('网络错误，请刷新重试')
