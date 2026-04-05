@@ -6,13 +6,13 @@
     <div class="顶部Banner">
       <div class="Banner图标区">
         <span class="洗衣图标">👕</span>
-        <span class="京东图标">京</span>
+        <span class="品牌图标">优</span>
       </div>
       <div class="Banner文字区">
-        <div class="Banner主标题">京东洗衣服务</div>
-        <div class="Banner副标题">专业洗护 上门取件 无忧体验</div>
+        <div class="Banner主标题">优米拉洗衣服务</div>
+        <div class="Banner副标题">鲸蚁快递免费取送 专业洗护</div>
       </div>
-      <img v-if="banner图URL" :src="banner图URL" class="Banner图片" alt="京东洗衣" />
+      <img v-if="banner图URL" :src="banner图URL" class="Banner图片" alt="优米拉洗衣" />
     </div>
 
     <!-- 取/收地址卡片 -->
@@ -328,7 +328,7 @@ const 点击立即预约 = () => {
 
 .洗衣图标 { font-size: 36px; display: block; }
 
-.京东图标 {
+.品牌图标 {
   display: block;
   width: 28px;
   height: 28px;

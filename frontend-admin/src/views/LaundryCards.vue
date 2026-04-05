@@ -1,6 +1,17 @@
 <template>
   <!-- 洗衣卡密管理页面 -->
   <div class="洗衣卡密管理">
+    <el-row :gutter="12" style="margin-bottom: 16px">
+      <el-col :span="8">
+        <el-statistic title="总卡密" :value="统计.total" />
+      </el-col>
+      <el-col :span="8">
+        <el-statistic title="未使用" :value="统计.unused" />
+      </el-col>
+      <el-col :span="8">
+        <el-statistic title="已使用" :value="统计.used" />
+      </el-col>
+    </el-row>
     <el-tabs v-model="当前标签" type="border-card">
 
       <!-- ===== 批次管理 ===== -->
@@ -157,6 +168,23 @@ const copyToClipboard = (text) => {
   })
 }
 
+const 统计 = ref({ total: 0, unused: 0, used: 0 })
+
+const 加载统计 = async () => {
+  try {
+    const [全部, 未用, 已用] = await Promise.all([
+      获取洗衣卡密列表API({ page: 1, limit: 1 }),
+      获取洗衣卡密列表API({ page: 1, limit: 1, status: '0' }),
+      获取洗衣卡密列表API({ page: 1, limit: 1, status: '1' }),
+    ])
+    统计.value = {
+      total: 全部.code === 1 ? 全部.data.total : 0,
+      unused: 未用.code === 1 ? 未用.data.total : 0,
+      used: 已用.code === 1 ? 已用.data.total : 0,
+    }
+  } catch {}
+}
+
 const 当前标签 = ref('batches')
 const 站点域名 = ref('')
 const 批次加载中 = ref(false)
@@ -264,7 +292,7 @@ const 删除卡密 = async (id) => {
   } catch {}
 }
 
-onMounted(() => { 加载站点域名(); 加载批次列表(); 加载卡密() })
+onMounted(() => { 加载站点域名(); 加载批次列表(); 加载卡密(); 加载统计() })
 </script>
 
 <style scoped>

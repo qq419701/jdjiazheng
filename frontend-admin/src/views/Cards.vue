@@ -1,6 +1,17 @@
 <template>
   <!-- 卡密管理页面（含批次管理和全部卡密两个标签页） -->
   <div class="卡密管理">
+    <el-row :gutter="12" style="margin-bottom: 16px">
+      <el-col :span="8">
+        <el-statistic title="总卡密" :value="统计.total" />
+      </el-col>
+      <el-col :span="8">
+        <el-statistic title="未使用" :value="统计.unused" />
+      </el-col>
+      <el-col :span="8">
+        <el-statistic title="已使用" :value="统计.used" />
+      </el-col>
+    </el-row>
     <el-tabs v-model="当前标签" type="border-card">
 
       <!-- ===== 标签页一：批次管理 ===== -->
@@ -229,11 +240,29 @@ const 加载站点域名 = async () => {
   } catch {}
 }
 
+// 统计数据
+const 统计 = ref({ total: 0, unused: 0, used: 0 })
+
+const 加载统计 = async () => {
+  try {
+    const [全部, 未用, 已用] = await Promise.all([
+      获取卡密列表API({ page: 1, limit: 1, business_type: 业务类型.value }),
+      获取卡密列表API({ page: 1, limit: 1, business_type: 业务类型.value, status: '0' }),
+      获取卡密列表API({ page: 1, limit: 1, business_type: 业务类型.value, status: '1' }),
+    ])
+    统计.value = {
+      total: 全部.code === 1 ? 全部.data.total : 0,
+      unused: 未用.code === 1 ? 未用.data.total : 0,
+      used: 已用.code === 1 ? 已用.data.total : 0,
+    }
+  } catch {}
+}
+
 // 加载批次列表
 const 加载批次列表 = async () => {
   批次加载中.value = true
   try {
-    const 结果 = await 获取批次列表API()
+    const 结果 = await 获取批次列表API({ business_type: 业务类型.value })
     if (结果.code === 1) {
       批次列表.value = 结果.data
     }
@@ -347,13 +376,15 @@ const 删除卡密 = async (id) => {
 onMounted(async () => {
   await Promise.all([加载站点域名(), 加载批次列表()])
   加载卡密()
+  加载统计()
 })
 
 // 业务类型变化时重新加载
 watch(业务类型, () => {
   当前页.value = 1
   搜索.value = { keyword: '', status: '', batch_id: '' }
-  加载卡密()
+  Promise.all([加载批次列表(), 加载卡密()])
+  加载统计()
 })
 </script>
 

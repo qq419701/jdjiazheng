@@ -23,7 +23,7 @@ export const 导出卡密API = (参数) => `/admin/api/cards/export?${new URLSea
 export const 删除卡密API = (id) => 请求实例.delete(`/cards/${id}`)
 
 // ===== 卡密批次管理 =====
-export const 获取批次列表API = () => 请求实例.get('/card-batches')
+export const 获取批次列表API = (params = {}) => 请求实例.get('/card-batches', { params })
 export const 获取批次卡密API = (id) => 请求实例.get(`/card-batches/${id}/cards`)
 
 // ===== 京东账号 =====
