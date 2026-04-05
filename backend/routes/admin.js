@@ -7,7 +7,7 @@ const 配置 = require('../config/config');
 const { Admin, Order } = require('../models');
 const { 验证Token } = require('../middleware/auth');
 const { 获取订单列表, 获取订单详情, 更新订单状态, 触发自动下单, 重置订单, 更新订单备注 } = require('../controllers/orderController');
-const { 获取卡密列表, 生成卡密, 导出卡密, 删除卡密, 获取批次列表, 获取批次卡密 } = require('../controllers/cardController');
+const { 获取卡密列表, 生成卡密, 导出卡密, 删除卡密, 获取批次列表, 获取批次卡密, 删除批次 } = require('../controllers/cardController');
 const { 获取账号列表, 新增账号, 更新账号, 删除账号, 触发自动登录 } = require('../controllers/jdAccountController');
 const { 获取规则列表, 新增规则, 更新规则, 删除规则 } = require('../controllers/timeRuleController');
 const { 获取所有设置, 批量更新设置 } = require('../controllers/settingController');
@@ -154,6 +154,7 @@ router.delete('/cards/:id', 验证Token, 删除卡密);
 // 卡密批次管理
 router.get('/card-batches', 验证Token, 获取批次列表);
 router.get('/card-batches/:id/cards', 验证Token, 获取批次卡密);
+router.delete('/card-batches/:id', 验证Token, 删除批次);
 
 // 京东账号管理
 router.get('/jd-accounts', 验证Token, 获取账号列表);
@@ -244,13 +245,18 @@ router.get('/laundry-card-batches', 验证Token, async (req, res) => {
       order: [['created_at', 'DESC']],
     });
     const 批次数据 = await Promise.all(批次列表.map(async (批次) => {
-      const 实际数量 = await Card.count({ where: { batch_id: 批次.id } });
-      return { ...批次.toJSON(), actual_count: 实际数量 };
+      const [实际数量, 已用数量, 未用数量] = await Promise.all([
+        Card.count({ where: { batch_id: 批次.id } }),
+        Card.count({ where: { batch_id: 批次.id, status: 1 } }),
+        Card.count({ where: { batch_id: 批次.id, status: 0 } }),
+      ]);
+      return { ...批次.toJSON(), actual_count: 实际数量, used_count: 已用数量, unused_count: 未用数量 };
     }));
     res.json({ code: 1, message: '获取成功', data: 批次数据 });
   } catch (e) { res.status(500).json({ code: -1, message: '服务器错误' }); }
 });
 router.get('/laundry-card-batches/:id/cards', 验证Token, 获取批次卡密);
+router.delete('/laundry-card-batches/:id', 验证Token, 删除批次);
 
 // ===== 洗衣时间规则（独立路由，强制 business_type='xiyifu'）=====
 router.get('/laundry-time-rules', 验证Token, async (req, res) => {
