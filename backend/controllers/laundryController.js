@@ -455,6 +455,43 @@ const 接收鲸蚁回调 = async (req, res) => {
 };
 
 /**
+ * 查询快递结算费用
+ * GET /admin/api/laundry-orders/:id/express-balance
+ * 参数：type=pickup（取件快递）或 type=return（回寄快递）
+ */
+const 查询快递结算费用 = async (req, res) => {
+  try {
+    const 订单 = await Order.findOne({
+      where: { id: req.params.id, business_type: 'xiyifu' },
+    });
+    if (!订单) return res.json({ code: 0, message: '洗衣订单不存在' });
+
+    const { type = 'pickup' } = req.query;
+
+    // 根据 type 确定查询单号
+    let 查询单号 = null;
+    if (type === 'pickup') {
+      查询单号 = 订单.express_order_id;
+      if (!查询单号) return res.json({ code: 0, message: '暂无取件快递单号' });
+    } else if (type === 'return') {
+      查询单号 = 订单.return_waybill_code;
+      if (!查询单号) return res.json({ code: 0, message: '暂无回寄快递单号' });
+    } else {
+      return res.json({ code: 0, message: '无效的type参数，请传入 pickup 或 return' });
+    }
+
+    // 调用快递API查询结算费用
+    const { 查询物流结算费用 } = require('../services/expressApiService');
+    const 结算数据 = await 查询物流结算费用(查询单号);
+
+    res.json({ code: 1, message: '查询成功', data: 结算数据 });
+  } catch (错误) {
+    console.error('查询快递结算费用出错:', 错误);
+    res.json({ code: 0, message: `查询失败：${错误.message}` });
+  }
+};
+
+/**
  * 测试洗衣API连接
  * POST /admin/api/laundry/test-connection
  */
@@ -481,6 +518,7 @@ module.exports = {
   修改洗衣订单并同步鲸蚁,
   取消洗衣订单,
   查询快递物流路由,
+  查询快递结算费用,
   测试快递连接,
   接收鲸蚁回调,
   测试洗衣API连接,

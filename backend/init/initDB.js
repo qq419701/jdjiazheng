@@ -143,6 +143,34 @@ const 初始化数据库 = async () => {
       console.log('ℹ️ 系统设置已存在，跳过创建');
     }
 
+    // 逐条插入洗衣和快递API默认配置（findOrCreate保证全新部署时也能初始化）
+    const 洗衣快递默认配置 = [
+      { key_name: 'laundry_banner_url',       key_value: '',                          description: '洗衣服Banner图片URL' },
+      { key_name: 'laundry_notice',           key_value: '1. 请在取件时间段内保持手机畅通\n2. 快递员上门取衣后将送往工厂洗护\n3. 洗护完成后将寄回您填写的收件地址', description: '洗衣下单须知' },
+      { key_name: 'laundry_product_name',     key_value: '任洗一件',                  description: '洗衣商品名称' },
+      { key_name: 'laundry_product_price',    key_value: '0',                         description: '洗衣商品价格（分）' },
+      { key_name: 'laundry_service_content',  key_value: JSON.stringify([{ icon: '👕', title: '专业洗护', desc: '标准清洗流程，精心护理每件衣物' }]), description: '洗衣服务内容JSON' },
+      // 修复：laundry_auto_order_enabled 默认关闭，防止全新部署未配置API时误触发
+      { key_name: 'laundry_auto_order_enabled', key_value: '0',                       description: '洗衣自动下单开关（0=关闭，1=开启）' },
+      // 修复：laundry_order_type 对应鲸蚁API平台来源值（50=微信，60=抖音，70=快手）
+      { key_name: 'laundry_order_type',       key_value: '50',                        description: '推送到鲸蚁API的订单来源平台（50=微信，60=抖音，70=快手）' },
+      { key_name: 'laundry_api_url',          key_value: '',                          description: '鲸蚁洗衣API基础地址' },
+      { key_name: 'laundry_app_id',           key_value: '',                          description: '鲸蚁洗衣AppID' },
+      { key_name: 'laundry_app_secret',       key_value: '',                          description: '鲸蚁洗衣AppSecret' },
+      { key_name: 'express_api_url',          key_value: '',                          description: '鲸蚁快递API基础地址' },
+      { key_name: 'express_app_id',           key_value: '',                          description: '鲸蚁快递AppID（独立于洗衣凭证）' },
+      { key_name: 'express_app_secret',       key_value: '',                          description: '鲸蚁快递AppSecret' },
+      // express_type：20=京东快递，10=顺丰
+      { key_name: 'express_type',             key_value: '20',                        description: '快递类型（20=京东，10=顺丰）' },
+    ];
+    for (const 配置项 of 洗衣快递默认配置) {
+      await Setting.findOrCreate({
+        where: { key_name: 配置项.key_name },
+        defaults: { ...配置项, updated_at: new Date() },
+      });
+    }
+    console.log('✅ 洗衣和快递API默认配置初始化完成（共', 洗衣快递默认配置.length, '项）');
+
     console.log('\n🎉 数据库初始化完成！');
     console.log('管理员账号：admin');
     console.log('管理员密码：admin123');

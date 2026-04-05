@@ -17,6 +17,11 @@ export default defineConfig({
         target: 'http://localhost:5500',
         changeOrigin: true,
       },
+      // 代理公开API（用于获取洗衣时间段等不需要鉴权的接口）
+      '/api': {
+        target: 'http://localhost:5500',
+        changeOrigin: true,
+      },
     },
   },
   build: {

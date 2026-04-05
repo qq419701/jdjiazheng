@@ -330,7 +330,13 @@
           />
         </el-form-item>
         <el-form-item label="取件时间段">
-          <el-select v-model="修改预约表单.visit_time_label" placeholder="选择时间段" style="width:100%">
+          <!-- 修复：时间段动态从API加载，不再硬编码 -->
+          <el-select
+            v-model="修改预约表单.visit_time_label"
+            placeholder="选择时间段"
+            style="width:100%"
+            :loading="时间段加载中"
+          >
             <el-option v-for="段 in 时间段选项" :key="段.label" :label="段.label" :value="段.label" />
           </el-select>
         </el-form-item>
@@ -369,7 +375,7 @@ import {
   获取洗衣订单列表API, 获取洗衣订单详情API,
   更新洗衣订单备注API, 触发洗衣API下单, 取消洗衣订单API,
   重置洗衣订单API, 获取设置API, 获取洗衣预览卡密API,
-  修改洗衣订单API, 查询洗衣物流路由API,
+  修改洗衣订单API, 查询洗衣物流路由API, 获取洗衣时间段API,
 } from '../api/index'
 
 // 站点域名
@@ -417,15 +423,32 @@ const 显示修改预约弹窗 = ref(false)
 const 修改预约表单 = ref({})
 const 修改保存中 = ref(false)
 
-// 时间段选项（常用时间段）
-const 时间段选项 = [
-  { label: '09:00-10:00', start: '09:00:00', end: '10:00:00' },
-  { label: '10:00-11:00', start: '10:00:00', end: '11:00:00' },
-  { label: '11:00-12:00', start: '11:00:00', end: '12:00:00' },
-  { label: '14:00-15:00', start: '14:00:00', end: '15:00:00' },
-  { label: '15:00-16:00', start: '15:00:00', end: '16:00:00' },
-  { label: '16:00-17:00', start: '16:00:00', end: '17:00:00' },
-]
+// 时间段选项（动态从API加载，初始为空，打开弹窗时加载）
+const 时间段选项 = ref([])
+const 时间段加载中 = ref(false)
+
+// 加载时间段列表（调用公开API动态获取）
+const 加载时间段选项 = async (城市 = '') => {
+  时间段加载中.value = true
+  try {
+    const 结果 = await 获取洗衣时间段API({ city: 城市 })
+    if (结果.code === 1 && Array.isArray(结果.data)) {
+      时间段选项.value = 结果.data
+    }
+  } catch {
+    // 加载失败时保留默认兜底时间段
+    时间段选项.value = [
+      { label: '09:00-10:00', start: '09:00:00', end: '10:00:00' },
+      { label: '10:00-11:00', start: '10:00:00', end: '11:00:00' },
+      { label: '11:00-12:00', start: '11:00:00', end: '12:00:00' },
+      { label: '14:00-15:00', start: '14:00:00', end: '15:00:00' },
+      { label: '15:00-16:00', start: '15:00:00', end: '16:00:00' },
+      { label: '16:00-17:00', start: '16:00:00', end: '17:00:00' },
+    ]
+  } finally {
+    时间段加载中.value = false
+  }
+}
 
 // 加载设置
 const 加载站点域名 = async () => {
@@ -603,14 +626,16 @@ const 打开修改预约弹窗 = (订单) => {
     return_district: 订单.return_district || '',
     return_address: 订单.return_address || '',
   }
+  // 修复：动态加载时间段（根据订单城市查询）
+  加载时间段选项(订单.city || '')
   显示修改预约弹窗.value = true
 }
 
 const 保存修改预约 = async () => {
   修改保存中.value = true
   try {
-    // 解析时间段
-    const 选中时间段 = 时间段选项.find(段 => 段.label === 修改预约表单.value.visit_time_label)
+    // 解析时间段（时间段选项现在是动态加载的 ref）
+    const 选中时间段 = 时间段选项.value.find(段 => 段.label === 修改预约表单.value.visit_time_label)
     const 请求数据 = {
       visit_date: 修改预约表单.value.visit_date,
       visit_time: 修改预约表单.value.visit_time_label,
