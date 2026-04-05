@@ -159,10 +159,16 @@ const 获取批次列表 = async (req, res) => {
 
     // 统计每个批次的实际卡密数量
     const 批次数据 = await Promise.all(批次列表.map(async (批次) => {
-      const 实际数量 = await Card.count({ where: { batch_id: 批次.id } });
+      const [实际数量, 已用数量, 未用数量] = await Promise.all([
+        Card.count({ where: { batch_id: 批次.id } }),
+        Card.count({ where: { batch_id: 批次.id, status: 1 } }),
+        Card.count({ where: { batch_id: 批次.id, status: 0 } }),
+      ]);
       return {
         ...批次.toJSON(),
         actual_count: 实际数量,
+        used_count: 已用数量,
+        unused_count: 未用数量,
       };
     }));
 
@@ -198,4 +204,29 @@ const 获取批次卡密 = async (req, res) => {
   }
 };
 
-module.exports = { 获取卡密列表, 生成卡密, 导出卡密, 删除卡密, 获取批次列表, 获取批次卡密 };
+/**
+ * 删除批次
+ * DELETE /admin/api/card-batches/:id
+ */
+const 删除批次 = async (req, res) => {
+  try {
+    const 批次 = await CardBatch.findByPk(req.params.id);
+    if (!批次) return res.json({ code: 0, message: '批次不存在' });
+
+    // 1. 已使用的卡密(status=1)：保留卡密记录，但 batch_id 置为 null（脱离批次）
+    await Card.update({ batch_id: null }, { where: { batch_id: 批次.id, status: 1 } });
+
+    // 2. 未使用的卡密(status=0)和已失效的卡密(status=2)：直接删除
+    await Card.destroy({ where: { batch_id: 批次.id, status: { [Op.ne]: 1 } } });
+
+    // 3. 删除批次记录
+    await 批次.destroy();
+
+    res.json({ code: 1, message: '批次已删除，已使用的卡密已保留至系统' });
+  } catch (错误) {
+    console.error('删除批次出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+};
+
+module.exports = { 获取卡密列表, 生成卡密, 导出卡密, 删除卡密, 获取批次列表, 获取批次卡密, 删除批次 };

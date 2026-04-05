@@ -27,12 +27,20 @@
           <el-table-column label="数量" width="70">
             <template #default="{ row }">{{ row.actual_count || row.count }}</template>
           </el-table-column>
+          <el-table-column label="使用情况" width="120">
+            <template #default="{ row }">
+              <span style="color: #67c23a">已用 {{ row.used_count || 0 }}</span>
+              <span style="color: #999; margin: 0 4px">/</span>
+              <span style="color: #409eff">未用 {{ row.unused_count || 0 }}</span>
+            </template>
+          </el-table-column>
           <el-table-column prop="created_at" label="生成时间" width="160" />
-          <el-table-column label="操作" width="260" fixed="right">
+          <el-table-column label="操作" width="380" fixed="right">
             <template #default="{ row }">
               <el-button size="small" @click="打开批次卡密详情(row)">查看卡密</el-button>
               <el-button size="small" type="primary" @click="复制批次完整链接(row)">复制完整链接</el-button>
               <el-button size="small" type="info" @click="复制批次仅卡密(row)">复制仅卡密</el-button>
+              <el-button size="small" type="danger" @click="删除批次(row.id, row.used_count)">删除批次</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -148,7 +156,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { 获取洗衣卡密列表API, 删除洗衣卡密API, 获取洗衣批次列表API, 获取洗衣批次卡密API, 获取设置API } from '../api/index'
+import { 获取洗衣卡密列表API, 删除洗衣卡密API, 获取洗衣批次列表API, 获取洗衣批次卡密API, 获取设置API, 删除洗衣批次API } from '../api/index'
 
 const copyToClipboard = (text) => {
   return new Promise((resolve, reject) => {
@@ -289,6 +297,24 @@ const 删除卡密 = async (id) => {
     const 结果 = await 删除洗衣卡密API(id)
     if (结果.code === 1) { ElMessage.success('删除成功'); 加载卡密() }
     else ElMessage.error(结果.message || '删除失败')
+  } catch {}
+}
+
+const 删除批次 = async (批次id, 已用数量) => {
+  const 提示 = 已用数量 > 0
+    ? `删除此批次将同时删除未使用的卡密，${已用数量}个已使用卡密将保留在系统中，确认删除？`
+    : '删除此批次将同时删除所有未使用的卡密，确认删除？'
+  try {
+    await ElMessageBox.confirm(提示, '删除批次', { type: 'warning', confirmButtonText: '确认删除', cancelButtonText: '取消' })
+    const 结果 = await 删除洗衣批次API(批次id)
+    if (结果.code === 1) {
+      ElMessage.success(结果.message || '删除成功')
+      加载批次列表()
+      加载卡密()
+      加载统计()
+    } else {
+      ElMessage.error(结果.message || '删除失败')
+    }
   } catch {}
 }
 

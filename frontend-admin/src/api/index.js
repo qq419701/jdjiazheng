@@ -74,6 +74,8 @@ export const 生成洗衣卡密API = (数据) => 请求实例.post('/laundry-car
 export const 删除洗衣卡密API = (id) => 请求实例.delete(`/laundry-cards/${id}`)
 export const 获取洗衣批次列表API = () => 请求实例.get('/laundry-card-batches')
 export const 获取洗衣批次卡密API = (id) => 请求实例.get(`/laundry-card-batches/${id}/cards`)
+export const 删除批次API = (id) => 请求实例.delete(`/card-batches/${id}`)
+export const 删除洗衣批次API = (id) => 请求实例.delete(`/laundry-card-batches/${id}`)
 
 // ===== 洗衣时间段（调用公开接口，不需要鉴权）=====
 // 修复：使用 axios 直接请求 /api/xi/time-slots，不走 /admin/api 前缀
