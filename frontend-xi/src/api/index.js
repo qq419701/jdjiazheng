@@ -43,4 +43,10 @@ export const 提交洗衣订单API = (订单数据) => 请求实例.post('/xi/or
  */
 export const 查询地区API = (parent_id) => 请求实例.get('/regions', { params: { parent_id } })
 
+/**
+ * 查询洗衣订单物流（取件+回寄轨迹）
+ * @param {string} 订单号 - 订单编号
+ */
+export const 查询洗衣物流API = (订单号) => 请求实例.get(`/xi/orders/${订单号}/express-routes`)
+
 export default 请求实例

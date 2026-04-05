@@ -38,6 +38,12 @@ const routes = [
     name: 'Invalid',
     component: () => import('../views/Invalid.vue'),
   },
+  {
+    // 物流查询
+    path: '/:code/tracking',
+    name: 'Tracking',
+    component: () => import('../views/Tracking.vue'),
+  },
 ]
 
 const router = createRouter({

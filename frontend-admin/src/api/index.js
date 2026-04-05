@@ -65,6 +65,8 @@ export const 更新洗衣订单备注API = (id, 数据) => 请求实例.put(`/la
 export const 重置洗衣订单API = (id) => 请求实例.post(`/laundry-orders/${id}/reset`)
 export const 触发洗衣API下单 = (id) => 请求实例.post(`/laundry-orders/${id}/place-order`)
 export const 取消洗衣订单API = (id) => 请求实例.post(`/laundry-orders/${id}/cancel`)
+export const 修改洗衣订单API = (id, 数据) => 请求实例.put(`/laundry-orders/${id}`, 数据)
+export const 查询洗衣物流路由API = (id, type) => 请求实例.post(`/laundry-orders/${id}/express-routes`, { type })
 
 // ===== 洗衣卡密管理 =====
 export const 获取洗衣卡密列表API = (参数) => 请求实例.get('/laundry-cards', { params: 参数 })
@@ -81,6 +83,7 @@ export const 删除洗衣时间规则API = (id) => 请求实例.delete(`/laundry
 
 // ===== 洗衣连接测试 =====
 export const 测试洗衣API连接 = () => 请求实例.post('/laundry/test-connection')
+export const 测试快递API连接API = () => 请求实例.post('/laundry/test-express-connection')
 
 // ===== 预览卡密 =====
 export const 获取家政预览卡密API = () => 请求实例.get('/cards/jiazheng/preview-card')

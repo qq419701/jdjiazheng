@@ -135,10 +135,55 @@ const 同步订单状态 = async (out_order_no, out_booking_no, status) => {
 };
 
 /**
+ * 修改预约单（管理员修改订单后同步到鲸蚁）
+ * POST /api/out/update-booking
+ * @param {string} out_order_no - 我方订单号
+ * @param {string} out_booking_no - 我方预约号（B+订单号）
+ * @param {string} visit_date - 新预约日期 YYYY-MM-DD
+ * @param {string} visit_start - 新取件开始时间 HH:mm:ss
+ * @param {string} visit_end - 新取件结束时间 HH:mm:ss
+ * @param {Object} 取件地址 - 取件地址信息
+ * @param {Object} 收件地址 - 收件地址信息
+ */
+const 修改预约单 = async (out_order_no, out_booking_no, visit_date, visit_start, visit_end, 取件地址, 收件地址) => {
+  const { api地址, appId } = await 读取API配置();
+  const 请求头 = await 获取请求头();
+
+  try {
+    const 请求体 = {
+      app_id: appId,
+      out_order_no,
+      out_booking_no,
+      day: visit_date,
+      start_time: visit_start,
+      end_time: visit_end,
+    };
+    if (取件地址) 请求体.address_info = 取件地址;
+    if (收件地址) 请求体.back_address_info = 收件地址;
+
+    const 响应 = await axios.post(
+      `${api地址}/api/out/update-booking`,
+      请求体,
+      { headers: 请求头, timeout: 15000 }
+    );
+
+    if (响应.data.code !== 0) {
+      throw new Error(`修改预约单失败：${JSON.stringify(响应.data)}`);
+    }
+
+    console.log('✅ 修改预约单成功:', out_order_no);
+    return 响应.data.data;
+  } catch (错误) {
+    console.error('修改预约单到鲸蚁出错:', 错误.message);
+    throw 错误;
+  }
+};
+
+/**
  * 测试API连接（强制刷新Token验证配置是否正确）
  */
 const 测试API连接 = async () => {
   return await 获取AccessToken(true);
 };
 
-module.exports = { 获取AccessToken, 推送预约单, 同步订单状态, 测试API连接 };
+module.exports = { 获取AccessToken, 推送预约单, 同步订单状态, 修改预约单, 测试API连接 };

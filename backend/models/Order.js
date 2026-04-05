@@ -188,6 +188,39 @@ const Order = 数据库连接.define('Order', {
     allowNull: true,
     comment: '预检图片JSON（洗衣专用）',
   },
+  // 取件时间段（结构化，方便传给鲸蚁API）
+  visit_time_start: {
+    type: DataTypes.STRING(10),
+    allowNull: true,
+    comment: '取件开始时间 如09:00:00',
+  },
+  visit_time_end: {
+    type: DataTypes.STRING(10),
+    allowNull: true,
+    comment: '取件结束时间 如10:00:00',
+  },
+  // 鲸蚁工厂信息（鲸蚁回调状态1时写入）
+  factory_name: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: '洗衣工厂名称',
+  },
+  factory_code: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: '洗衣工厂代码',
+  },
+  // 快递信息
+  return_waybill_code: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: '回寄快递单号（状态5回寄时写入）',
+  },
+  express_routes: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: '物流路由JSON（查询后缓存，含pickup/return两段）',
+  },
 }, {
   tableName: 'orders',
   timestamps: false,
