@@ -127,16 +127,6 @@
             />
             <div class="字段说明">新订单提交后自动推送到鲸蚁API下单</div>
           </el-form-item>
-          <el-form-item label="自动取件">
-            <el-switch
-              v-model="设置表单.laundry_auto_express_enabled"
-              active-value="1"
-              inactive-value="0"
-              active-text="开启"
-              inactive-text="关闭"
-            />
-            <div class="字段说明">鲸蚁API下单成功后自动触发快递取件（鲸蚁内部处理）</div>
-          </el-form-item>
 
           <!-- 订单同步说明 -->
           <div class="设置分组标题">── 订单同步 ──</div>
@@ -186,7 +176,6 @@ const 设置表单 = ref({
   laundry_product_price: 0,
   laundry_service_content: '',
   laundry_auto_order_enabled: '0',
-  laundry_auto_express_enabled: '0',
   // 修复：新增 laundry_order_type，对应鲸蚁API平台来源值（50=微信，60=抖音，70=快手）
   laundry_order_type: '50',
   laundry_api_url: '',
@@ -238,7 +227,6 @@ const 加载设置 = async () => {
         laundry_product_price: parseInt(数据.laundry_product_price) || 0,
         laundry_service_content: 数据.laundry_service_content || '',
         laundry_auto_order_enabled: 数据.laundry_auto_order_enabled || '0',
-        laundry_auto_express_enabled: 数据.laundry_auto_express_enabled || '0',
         // 修复：加载 laundry_order_type，默认50（微信小程序）
         laundry_order_type: 数据.laundry_order_type || '50',
         laundry_api_url: 数据.laundry_api_url || '',
