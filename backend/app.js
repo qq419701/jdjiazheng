@@ -132,6 +132,15 @@ app.listen(端口, async () => {
     // 自动同步数据库结构（仅创建不存在的表，不修改已有表）
     await 数据库连接.sync({ alter: true });
     console.log('✅ 数据库结构已同步');
+
+    // 从数据库恢复洗衣API Token缓存到内存
+    try {
+      const { 恢复Token缓存 } = require('./services/laundryApiService');
+      await 恢复Token缓存();
+      console.log('✅ 洗衣API Token缓存已从数据库恢复');
+    } catch (e) {
+      console.log('ℹ️  洗衣API Token缓存恢复跳过（首次运行或未配置）');
+    }
   } catch (错误) {
     console.error('❌ 数据库连接失败:', 错误.message);
     console.log('💡 请检查数据库配置（.env文件）并运行：node init/initDB.js');
