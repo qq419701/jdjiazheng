@@ -160,6 +160,12 @@ onMounted(async () => {
       卡密有效.value = true
       订单Store.设置卡密信息(结果.data)
       banner图URL.value = 结果.data.banner_url || ''
+    } else if (结果.code === 2) {
+      router.replace({ name: 'Invalid', query: { used: '1' } })
+      return
+    } else {
+      router.replace({ name: 'Invalid' })
+      return
     }
   } catch {
     showToast('网络错误，请刷新重试')

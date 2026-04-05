@@ -15,6 +15,9 @@ const 验证洗衣卡密 = async (req, res) => {
     const 结果 = await 验证卡密有效性(code);
 
     if (!结果.有效) {
+      if (结果.原因 === '卡密已被使用') {
+        return res.json({ code: 2, message: '卡密已被使用', data: { used: true, card_code: 结果.卡密?.code || '' } });
+      }
       return res.json({ code: 0, message: 结果.原因, data: null });
     }
 
