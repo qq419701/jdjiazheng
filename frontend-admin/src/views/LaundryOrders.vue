@@ -221,34 +221,39 @@
       </template>
     </el-dialog>
 
-    <!-- 物流查询弹窗 -->
-    <el-dialog v-model="显示物流弹窗" title="📋 物流信息" width="500px" :close-on-click-modal="false">
-      <template v-if="当前物流订单">
-        <div style="margin-bottom:16px">
-          <el-descriptions :column="2" border size="small">
-            <el-descriptions-item label="订单号">{{ 当前物流订单.order_no }}</el-descriptions-item>
-            <el-descriptions-item label="洗衣状态">
-              <el-tag :type="获取洗衣状态类型(当前物流订单.laundry_status)" size="small">
-                {{ 当前物流订单.laundry_status || '-' }}
-              </el-tag>
-            </el-descriptions-item>
-          </el-descriptions>
-        </div>
-
-        <!-- 取件快递单号 -->
-        <div style="margin-bottom:12px">
-          <span style="font-weight:600">🚚 取件快递单号：</span>
-          <span v-if="当前物流订单.express_order_id" class="快递单号">{{ 当前物流订单.express_order_id }}</span>
-          <span v-else class="无值">暂无</span>
-        </div>
-
-        <!-- 回寄快递单号 -->
-        <div>
-          <span style="font-weight:600">📦 回寄快递单号：</span>
-          <span v-if="当前物流订单.return_waybill_code" class="快递单号">{{ 当前物流订单.return_waybill_code }}</span>
-          <span v-else class="无值">暂无</span>
-        </div>
-      </template>
+    <!-- 物流查询弹窗：展示鲸蚁实时物流轨迹（快递员信息 + el-timeline 节点） -->
+    <el-dialog v-model="显示物流弹窗" title="📋 物流追踪" width="600px" :close-on-click-modal="false">
+      <div v-if="物流加载中" style="text-align:center; padding:40px 0">
+        <el-icon class="is-loading" style="font-size:32px"><Loading /></el-icon>
+        <div style="margin-top:8px; color:#999">正在查询物流信息…</div>
+      </div>
+      <div v-else-if="物流数据">
+        <!-- 快递员信息 -->
+        <el-descriptions
+          v-if="物流数据.collectorName"
+          :column="2" border style="margin-bottom:16px"
+        >
+          <el-descriptions-item label="快递员">{{ 物流数据.collectorName }}</el-descriptions-item>
+          <el-descriptions-item label="快递员电话">{{ 物流数据.collectorPhone }}</el-descriptions-item>
+          <el-descriptions-item label="物流单号" :span="2">{{ 物流数据.logisticsNumber }}</el-descriptions-item>
+        </el-descriptions>
+        <!-- 物流轨迹时间线 -->
+        <el-timeline v-if="物流数据.routes && 物流数据.routes.length > 0">
+          <el-timeline-item
+            v-for="(路由, 索引) in 物流数据.routes"
+            :key="索引"
+            :timestamp="路由.operationTime"
+            placement="top"
+          >
+            <el-card shadow="never">
+              <div style="font-weight:bold">{{ 路由.title }}</div>
+              <div style="color:#666; margin-top:4px; font-size:13px">{{ 路由.remark }}</div>
+            </el-card>
+          </el-timeline-item>
+        </el-timeline>
+        <el-empty v-else description="暂无物流轨迹" />
+      </div>
+      <el-empty v-else description="暂无物流信息，请等待鲸蚁分配快递" />
       <template #footer>
         <el-button @click="显示物流弹窗 = false">关闭</el-button>
       </template>
@@ -338,7 +343,7 @@ import {
   获取洗衣订单列表API, 获取洗衣订单详情API,
   更新洗衣订单备注API, 触发洗衣API下单, 取消洗衣订单API,
   重置洗衣订单API, 获取设置API, 获取洗衣预览卡密API,
-  修改洗衣订单API, 获取洗衣时间段API,
+  修改洗衣订单API, 获取洗衣时间段API, 查询洗衣物流API,
 } from '../api/index'
 
 // 站点域名
@@ -376,6 +381,8 @@ const 当前详情预检图片 = computed(() => {
 // 物流查询弹窗
 const 显示物流弹窗 = ref(false)
 const 当前物流订单 = ref(null)
+const 物流数据 = ref(null)
+const 物流加载中 = ref(false)
 
 // 修改预约弹窗
 const 显示修改预约弹窗 = ref(false)
@@ -540,10 +547,26 @@ const 执行重置 = async (id) => {
   }
 }
 
-// 物流查询
-const 打开物流弹窗 = (订单) => {
+// 物流查询：调用鲸蚁API获取实时物流轨迹并弹窗展示
+const 打开物流弹窗 = async (订单) => {
   当前物流订单.value = 订单
+  物流数据.value = null
+  物流加载中.value = true
   显示物流弹窗.value = true
+  try {
+    const res = await 查询洗衣物流API(订单.id)
+    if (res.data.code === 1) {
+      物流数据.value = res.data.data
+    } else {
+      ElMessage.warning(res.data.message || '暂无物流信息')
+      显示物流弹窗.value = false
+    }
+  } catch (e) {
+    ElMessage.error('查询失败')
+    显示物流弹窗.value = false
+  } finally {
+    物流加载中.value = false
+  }
 }
 
 // 修改预约

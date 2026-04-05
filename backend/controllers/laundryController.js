@@ -292,9 +292,43 @@ const 取消洗衣订单 = async (req, res) => {
 
 
 /**
- * 测试洗衣API连接
- * POST /admin/api/laundry/test-connection
+ * 查询洗衣订单物流轨迹
+ * GET /admin/api/laundry-orders/:id/express-routes
+ * 优先用回寄单号（已回寄阶段），否则用取件单号（express_waybill_code 或兼容的 express_order_id）
  */
+const 查询洗衣物流 = async (req, res) => {
+  try {
+    const 订单 = await Order.findOne({
+      where: { id: req.params.id, business_type: 'xiyifu' },
+    });
+    if (!订单) return res.json({ code: 0, message: '订单不存在' });
+
+    // 优先用回寄单号（已回寄阶段），否则用取件单号
+    const 单号 = 订单.return_waybill_code || 订单.express_waybill_code || 订单.express_order_id;
+    if (!单号) return res.json({ code: 0, message: '暂无物流单号，请等待鲸蚁分配' });
+
+    const { 查询物流轨迹 } = require('../services/laundryApiService');
+    const 物流数据 = await 查询物流轨迹(单号);
+
+    res.json({
+      code: 1,
+      message: '查询成功',
+      data: {
+        waybillCode: 单号,
+        collectorName: 物流数据?.collectorName || '',
+        collectorPhone: 物流数据?.collectorPhone || '',
+        logisticsNumber: 物流数据?.logisticsNumber || 单号,
+        routes: 物流数据?.routes || [],
+      },
+    });
+  } catch (错误) {
+    console.error('查询物流轨迹出错:', 错误.message);
+    res.json({ code: 0, message: `查询失败：${错误.message}` });
+  }
+};
+
+
+
 const 测试洗衣API连接 = async (req, res) => {
   try {
     const { 测试API连接, 获取Token状态 } = require('../services/laundryApiService');
@@ -400,15 +434,16 @@ const 接收鲸蚁回调 = async (req, res) => {
 
     // 根据 status 更新对应字段
     if (状态数值 === 1) {
-      // 已分配：写入取件快递单号、工厂信息
+      // 已分配：写入取件快递单号（同时写 express_waybill_code 和 express_order_id 兼容旧逻辑）、工厂信息
       // 主status改为2（已下单），表示鲸蚁已受理并分配工厂和快递员
       if (waybillCode) {
-        更新数据.express_order_id = waybillCode;
+        更新数据.express_waybill_code = waybillCode; // 正确字段名，供物流查询使用
+        更新数据.express_order_id = waybillCode;     // 兼容旧逻辑
         // [修复] 根据运单号前缀自动识别快递公司，不再硬编码为'JD'
         // 顺丰运单号以 SF 开头，京东以 JD 或 JDX 开头
         if (waybillCode.startsWith('SF')) {
           更新数据.express_company = '顺丰';
-        } else if (waybillCode.startsWith('JD') || waybillCode.startsWith('JDX')) {
+        } else if (waybillCode.toUpperCase().startsWith('JD')) {
           更新数据.express_company = '京东';
         } else {
           更新数据.express_company = '快递';
@@ -473,4 +508,5 @@ module.exports = {
   接收鲸蚁回调,
   测试洗衣API连接,
   获取洗衣Token状态,
+  查询洗衣物流,
 };

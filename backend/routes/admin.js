@@ -14,7 +14,7 @@ const { 获取所有设置, 批量更新设置 } = require('../controllers/setti
 const { 获取地区列表, 后台查询地区, 新增地区, 更新地区, 删除地区, 切换地区状态, 获取地区统计, 导入地区CSV } = require('../controllers/regionController');
 const multer = require('multer');
 const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
-const { 触发洗衣下单, 查询洗衣订单状态, 取消洗衣订单, 获取洗衣订单列表, 获取洗衣订单详情, 修改洗衣订单并同步鲸蚁, 测试洗衣API连接, 获取洗衣Token状态 } = require('../controllers/laundryController');
+const { 触发洗衣下单, 查询洗衣订单状态, 取消洗衣订单, 获取洗衣订单列表, 获取洗衣订单详情, 修改洗衣订单并同步鲸蚁, 测试洗衣API连接, 获取洗衣Token状态, 查询洗衣物流 } = require('../controllers/laundryController');
 
 // ===== 登录接口（无需鉴权）=====
 router.post('/login', async (req, res) => {
@@ -186,6 +186,9 @@ router.put('/regions/:id/toggle', 验证Token, 切换地区状态);
 
 // 获取洗衣订单列表（带筛选分页）
 router.get('/laundry-orders', 验证Token, 获取洗衣订单列表);
+
+// 查询洗衣订单物流轨迹（注意：必须在 /:id 路由之前注册，防止被拦截）
+router.get('/laundry-orders/:id/express-routes', 验证Token, 查询洗衣物流);
 
 // 获取洗衣订单详情（含所有洗衣专用字段）
 router.get('/laundry-orders/:id', 验证Token, 获取洗衣订单详情);
