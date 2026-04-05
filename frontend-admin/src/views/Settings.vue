@@ -144,7 +144,6 @@ const 设置表单 = ref({
   express_api_key: '',
   express_api_secret: '',
   laundry_auto_order_enabled: '0',
-  laundry_auto_express_enabled: '0',
 })
 
 const 加载设置 = async () => {
@@ -173,7 +172,6 @@ const 加载设置 = async () => {
         express_api_key: 数据.express_api_key || '',
         express_api_secret: 数据.express_api_secret || '',
         laundry_auto_order_enabled: 数据.laundry_auto_order_enabled || '0',
-        laundry_auto_express_enabled: 数据.laundry_auto_express_enabled || '0',
       }
     }
   } finally {
