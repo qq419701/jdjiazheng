@@ -396,7 +396,8 @@ const 接收鲸蚁回调 = async (req, res) => {
 
     // 根据 status 更新对应字段
     if (状态数值 === 1) {
-      // 已分配：写入取件快递单号、工厂信息，主状态改为2
+      // 已分配：写入取件快递单号、工厂信息
+      // 主status改为2（已下单），表示鲸蚁已受理并分配工厂和快递员
       if (waybillCode) {
         更新数据.express_order_id = waybillCode;
         更新数据.express_company = 'JD';
