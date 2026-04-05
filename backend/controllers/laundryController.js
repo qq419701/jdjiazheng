@@ -209,20 +209,20 @@ const 修改洗衣订单并同步鲸蚁 = async (req, res) => {
 
         // 取件地址：优先用请求体中新值，否则用数据库已有值（update后已刷新）
         const 取件地址 = {
-          contact: name || 订单.name,
-          phone: phone || 订单.phone,
-          province: province || 订单.province,
-          city: city || 订单.city,
-          district: district || 订单.district,
-          address: address || 订单.address,
+          contact: name ?? 订单.name,
+          phone: phone ?? 订单.phone,
+          province: province ?? 订单.province,
+          city: city ?? 订单.city,
+          district: district ?? 订单.district,
+          address: address ?? 订单.address,
         };
         const 收件地址 = {
-          contact: return_name || 订单.return_name || 订单.name,
-          phone: return_phone || 订单.return_phone || 订单.phone,
-          province: return_province || 订单.return_province || 订单.province,
-          city: return_city || 订单.return_city || 订单.city,
-          district: return_district || 订单.return_district || 订单.district,
-          address: return_address || 订单.return_address || 订单.address,
+          contact: return_name ?? 订单.return_name ?? 订单.name,
+          phone: return_phone ?? 订单.return_phone ?? 订单.phone,
+          province: return_province ?? 订单.return_province ?? 订单.province,
+          city: return_city ?? 订单.return_city ?? 订单.city,
+          district: return_district ?? 订单.return_district ?? 订单.district,
+          address: return_address ?? 订单.return_address ?? 订单.address,
         };
 
         await 修改预约单(订单.order_no, `B${订单.order_no}`, 新日期, 新开始时间, 新结束时间, 取件地址, 收件地址);
@@ -555,12 +555,12 @@ const 创建洗衣快递 = async (req, res) => {
       senderCity: 订单.city,
       senderDistrict: 订单.district,
       senderAddress: 订单.address,
-      receiverName: 订单.return_name || 订单.name,
-      receiverPhone: 订单.return_phone || 订单.phone,
-      receiverProvince: 订单.return_province || 订单.province,
-      receiverCity: 订单.return_city || 订单.city,
-      receiverDistrict: 订单.return_district || 订单.district,
-      receiverAddress: 订单.return_address || 订单.address,
+      receiverName: 订单.return_name ?? 订单.name,
+      receiverPhone: 订单.return_phone ?? 订单.phone,
+      receiverProvince: 订单.return_province ?? 订单.province,
+      receiverCity: 订单.return_city ?? 订单.city,
+      receiverDistrict: 订单.return_district ?? 订单.district,
+      receiverAddress: 订单.return_address ?? 订单.address,
       outOrderNo: 订单.order_no,
     };
 
@@ -634,7 +634,6 @@ const 接收快递回调 = async (req, res) => {
 
     if (waybillCode) {
       // 尝试通过快递单号找到对应订单（可能存在于 express_order_id 或 return_waybill_code 或 express_waybill_code）
-      const { Op } = require('sequelize');
       const 订单 = await Order.findOne({
         where: {
           business_type: 'xiyifu',

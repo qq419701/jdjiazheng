@@ -225,7 +225,7 @@ const 预检图片列表 = computed(() => {
   const 原始 = 物流数据.value?.laundry_images
   if (!原始 || !Array.isArray(原始) || 原始.length === 0) return []
   // 判断是否为 images_v2 格式（数组元素是对象且含 image 字段）
-  if (typeof 原始[0] === 'object' && 原始[0] !== null && Array.isArray(原始[0].image)) {
+  if (原始[0] !== null && typeof 原始[0] === 'object' && Array.isArray(原始[0].image)) {
     // 将所有 image 数组内的 URL 合并为一个平铺列表
     return 原始.flatMap(项 => 项.image || [])
   }
