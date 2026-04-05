@@ -157,11 +157,7 @@ const 初始化数据库 = async () => {
       { key_name: 'laundry_api_url',          key_value: '',                          description: '鲸蚁洗衣API基础地址' },
       { key_name: 'laundry_app_id',           key_value: '',                          description: '鲸蚁洗衣AppID' },
       { key_name: 'laundry_app_secret',       key_value: '',                          description: '鲸蚁洗衣AppSecret' },
-      { key_name: 'express_api_url',          key_value: '',                          description: '鲸蚁快递API基础地址' },
-      { key_name: 'express_app_id',           key_value: '',                          description: '鲸蚁快递AppID（独立于洗衣凭证）' },
-      { key_name: 'express_app_secret',       key_value: '',                          description: '鲸蚁快递AppSecret' },
-      // express_type：20=京东快递，10=顺丰
-      { key_name: 'express_type',             key_value: '20',                        description: '快递类型（20=京东，10=顺丰）' },
+      { key_name: 'laundry_out_token',        key_value: '',                          description: '鲸蚁固定out-token（可选，优先于动态access_token）' },
     ];
     for (const 配置项 of 洗衣快递默认配置) {
       await Setting.findOrCreate({
@@ -169,7 +165,7 @@ const 初始化数据库 = async () => {
         defaults: { ...配置项, updated_at: new Date() },
       });
     }
-    console.log('✅ 洗衣和快递API默认配置初始化完成（共', 洗衣快递默认配置.length, '项）');
+    console.log('✅ 洗衣API默认配置初始化完成（共', 洗衣快递默认配置.length, '项）');
 
     console.log('\n🎉 数据库初始化完成！');
     console.log('管理员账号：admin');

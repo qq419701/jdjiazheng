@@ -107,9 +107,12 @@ const 获取AccessToken = async (强制刷新 = false) => {
 
     // 保存 tenantId、token、过期时间 到 Setting 表（持久化）
     try {
+      const 过期时间字符串 = new Date(Token过期时间).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
       await Setting.upsert({ key_name: 'laundry_tenant_id', key_value: String(缓存TenantId) });
       await Setting.upsert({ key_name: 'laundry_access_token', key_value: String(缓存Token) });
       await Setting.upsert({ key_name: 'laundry_token_expire_at', key_value: String(Token过期时间) });
+      await Setting.upsert({ key_name: 'laundry_token_valid', key_value: '1' });
+      await Setting.upsert({ key_name: 'laundry_token_expires', key_value: 过期时间字符串 });
     } catch (保存错误) {
       console.error('保存Token到设置表出错:', 保存错误.message);
     }
@@ -304,44 +307,4 @@ const 测试API连接 = async () => {
   return await 获取AccessToken(true);
 };
 
-/**
- * 查询物流结算费用（鲸蚁订单API）
- * GET /api/out/get-express-balance/:waybillCode
- * 注意：此接口属于鲸蚁订单API，使用鲸蚁AppID/AppSecret凭证
- * @param {string} waybillCode - 快递单号
- * @param {boolean} 已重试 - 内部重试标记
- */
-const 查询物流结算费用 = async (waybillCode, 已重试 = false) => {
-  if (!waybillCode) throw new Error('快递单号不能为空');
-  const { api地址 } = await 读取API配置();
-  if (!api地址) throw new Error('洗衣API地址未配置');
-
-  const 请求头 = await 获取请求头();
-  try {
-    const 响应 = await axios.get(
-      `${api地址}/api/out/get-express-balance/${encodeURIComponent(waybillCode)}`,
-      { headers: 请求头, timeout: 15000 }
-    );
-
-    if (响应.data.code !== 0) {
-      if (!已重试 && 是响应Token过期(响应.data)) {
-        清空Token缓存();
-        await 获取AccessToken(true);
-        return await 查询物流结算费用(waybillCode, true);
-      }
-      throw new Error(`查询物流结算费用失败：${JSON.stringify(响应.data)}`);
-    }
-
-    return 响应.data.data;
-  } catch (错误) {
-    if (!已重试 && 是Token过期错误(错误)) {
-      清空Token缓存();
-      await 获取AccessToken(true);
-      return await 查询物流结算费用(waybillCode, true);
-    }
-    console.error('查询物流结算费用出错:', 错误.message);
-    throw 错误;
-  }
-};
-
-module.exports = { 获取AccessToken, 恢复Token缓存, 获取Token状态, 推送预约单, 同步订单状态, 修改预约单, 测试API连接, 查询物流结算费用 };
+module.exports = { 获取AccessToken, 恢复Token缓存, 获取Token状态, 推送预约单, 同步订单状态, 修改预约单, 测试API连接 };

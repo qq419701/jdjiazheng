@@ -112,7 +112,6 @@
               @click="触发下单(row.id)"
             >触发下单</el-button>
             <el-button size="small" type="success" plain @click="打开物流弹窗(row)">📋 物流查询</el-button>
-            <el-button size="small" type="primary" plain @click="执行创建快递(row.id)">🚚 创建快递</el-button>
             <el-button size="small" type="warning" plain @click="打开修改预约弹窗(row)">✏️ 修改预约</el-button>
             <el-button
               v-if="row.status !== 4"
@@ -223,7 +222,7 @@
     </el-dialog>
 
     <!-- 物流查询弹窗 -->
-    <el-dialog v-model="显示物流弹窗" title="📋 物流查询" width="680px" :close-on-click-modal="false">
+    <el-dialog v-model="显示物流弹窗" title="📋 物流信息" width="500px" :close-on-click-modal="false">
       <template v-if="当前物流订单">
         <div style="margin-bottom:16px">
           <el-descriptions :column="2" border size="small">
@@ -236,74 +235,18 @@
           </el-descriptions>
         </div>
 
-        <!-- 取件物流 -->
-        <div style="margin-bottom:16px">
-          <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px">
-            <span style="font-weight:600">🚚 取件物流</span>
-            <span v-if="当前物流订单.express_order_id" class="快递单号">{{ 当前物流订单.express_order_id }}</span>
-            <span v-else class="无值">暂无快递单号</span>
-            <el-button
-              v-if="当前物流订单.express_order_id"
-              size="small" type="primary" :loading="取件物流加载中"
-              @click="查询物流('pickup')"
-            >查询</el-button>
-          </div>
-          <template v-if="取件物流数据">
-            <div v-if="取件物流数据.courierName || 取件物流数据.courierPhone" style="font-size:13px; color:#666; margin-bottom:8px">
-              快递员：{{ 取件物流数据.courierName || '-' }}
-              <template v-if="取件物流数据.courierPhone">
-                &nbsp;|&nbsp;
-                <a :href="`tel:${取件物流数据.courierPhone}`" style="color:#409eff">{{ 取件物流数据.courierPhone }}</a>
-              </template>
-            </div>
-            <el-timeline v-if="取件物流数据.routes?.length > 0" style="padding-left:0">
-              <el-timeline-item
-                v-for="(路由, 索引) in 取件物流数据.routes"
-                :key="索引"
-                :timestamp="路由.time || 路由.timestamp"
-                placement="top"
-                :type="索引 === 0 ? 'primary' : ''"
-              >
-                {{ 路由.desc || 路由.remark || 路由.content }}
-              </el-timeline-item>
-            </el-timeline>
-            <el-empty v-else description="暂无物流轨迹" :image-size="60" />
-          </template>
+        <!-- 取件快递单号 -->
+        <div style="margin-bottom:12px">
+          <span style="font-weight:600">🚚 取件快递单号：</span>
+          <span v-if="当前物流订单.express_order_id" class="快递单号">{{ 当前物流订单.express_order_id }}</span>
+          <span v-else class="无值">暂无</span>
         </div>
 
-        <!-- 回寄物流 -->
+        <!-- 回寄快递单号 -->
         <div>
-          <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px">
-            <span style="font-weight:600">📦 回寄物流</span>
-            <span v-if="当前物流订单.return_waybill_code" class="快递单号">{{ 当前物流订单.return_waybill_code }}</span>
-            <span v-else class="无值">暂无回寄单号</span>
-            <el-button
-              v-if="当前物流订单.return_waybill_code"
-              size="small" type="primary" :loading="回寄物流加载中"
-              @click="查询物流('return')"
-            >查询</el-button>
-          </div>
-          <template v-if="回寄物流数据">
-            <div v-if="回寄物流数据.courierName || 回寄物流数据.courierPhone" style="font-size:13px; color:#666; margin-bottom:8px">
-              快递员：{{ 回寄物流数据.courierName || '-' }}
-              <template v-if="回寄物流数据.courierPhone">
-                &nbsp;|&nbsp;
-                <a :href="`tel:${回寄物流数据.courierPhone}`" style="color:#409eff">{{ 回寄物流数据.courierPhone }}</a>
-              </template>
-            </div>
-            <el-timeline v-if="回寄物流数据.routes?.length > 0" style="padding-left:0">
-              <el-timeline-item
-                v-for="(路由, 索引) in 回寄物流数据.routes"
-                :key="索引"
-                :timestamp="路由.time || 路由.timestamp"
-                placement="top"
-                :type="索引 === 0 ? 'primary' : ''"
-              >
-                {{ 路由.desc || 路由.remark || 路由.content }}
-              </el-timeline-item>
-            </el-timeline>
-            <el-empty v-else description="暂无物流轨迹" :image-size="60" />
-          </template>
+          <span style="font-weight:600">📦 回寄快递单号：</span>
+          <span v-if="当前物流订单.return_waybill_code" class="快递单号">{{ 当前物流订单.return_waybill_code }}</span>
+          <span v-else class="无值">暂无</span>
         </div>
       </template>
       <template #footer>
@@ -395,8 +338,7 @@ import {
   获取洗衣订单列表API, 获取洗衣订单详情API,
   更新洗衣订单备注API, 触发洗衣API下单, 取消洗衣订单API,
   重置洗衣订单API, 获取设置API, 获取洗衣预览卡密API,
-  修改洗衣订单API, 查询洗衣物流路由API, 获取洗衣时间段API,
-  创建洗衣快递API, 取消洗衣快递API,
+  修改洗衣订单API, 获取洗衣时间段API,
 } from '../api/index'
 
 // 站点域名
@@ -434,10 +376,6 @@ const 当前详情预检图片 = computed(() => {
 // 物流查询弹窗
 const 显示物流弹窗 = ref(false)
 const 当前物流订单 = ref(null)
-const 取件物流加载中 = ref(false)
-const 回寄物流加载中 = ref(false)
-const 取件物流数据 = ref(null)
-const 回寄物流数据 = ref(null)
 
 // 修改预约弹窗
 const 显示修改预约弹窗 = ref(false)
@@ -605,31 +543,7 @@ const 执行重置 = async (id) => {
 // 物流查询
 const 打开物流弹窗 = (订单) => {
   当前物流订单.value = 订单
-  取件物流数据.value = null
-  回寄物流数据.value = null
   显示物流弹窗.value = true
-}
-
-const 查询物流 = async (类型) => {
-  if (!当前物流订单.value) return
-  const 加载标志 = 类型 === 'pickup' ? 取件物流加载中 : 回寄物流加载中
-  加载标志.value = true
-  try {
-    const 结果 = await 查询洗衣物流路由API(当前物流订单.value.id, 类型)
-    if (结果.code === 1) {
-      if (类型 === 'pickup') {
-        取件物流数据.value = 结果.data
-      } else {
-        回寄物流数据.value = 结果.data
-      }
-    } else {
-      ElMessage.warning(结果.message || '查询失败')
-    }
-  } catch {
-    ElMessage.error('查询物流失败，请重试')
-  } finally {
-    加载标志.value = false
-  }
 }
 
 // 修改预约
@@ -695,20 +609,6 @@ const 保存修改预约 = async () => {
   } finally {
     修改保存中.value = false
   }
-}
-
-// 创建取件快递
-const 执行创建快递 = async (id) => {
-  try {
-    await ElMessageBox.confirm('确认为此订单创建取件快递？', '提示', { type: 'info' })
-    const 结果 = await 创建洗衣快递API(id)
-    if (结果.code === 1) {
-      ElMessage.success(结果.message || '创建快递成功')
-      加载订单()
-    } else {
-      ElMessage.warning(结果.message || '创建失败')
-    }
-  } catch {}
 }
 
 // 复制订单信息
