@@ -99,59 +99,7 @@
         </el-form>
       </el-tab-pane>
 
-      <!-- ===== Tab 3：京东洗衣API设置 ===== -->
-      <el-tab-pane label="👕 洗衣API设置" name="laundry">
-        <el-form :model="设置表单" label-width="160px" style="max-width: 680px">
-          <el-form-item label="洗衣订单API地址">
-            <el-input v-model="设置表单.laundry_api_url" placeholder="https://api.example.com/orders" />
-          </el-form-item>
-          <el-form-item label="洗衣API AppID">
-            <el-input v-model="设置表单.laundry_app_id" placeholder="AppID" />
-          </el-form-item>
-          <el-form-item label="洗衣API AppSecret">
-            <el-input v-model="设置表单.laundry_app_secret" type="password" placeholder="AppSecret" show-password />
-          </el-form-item>
-          <el-form-item label="洗衣API Token">
-            <el-input v-model="设置表单.laundry_api_token" type="password" placeholder="API Token" show-password />
-          </el-form-item>
-          <el-form-item label="快递API地址">
-            <el-input v-model="设置表单.express_api_url" placeholder="https://api.express.com" />
-          </el-form-item>
-          <el-form-item label="快递API Key">
-            <el-input v-model="设置表单.express_api_key" type="password" placeholder="API Key" show-password />
-          </el-form-item>
-          <el-form-item label="快递API Secret">
-            <el-input v-model="设置表单.express_api_secret" type="password" placeholder="API Secret" show-password />
-          </el-form-item>
-          <el-form-item label="洗衣自动下单">
-            <el-switch
-              v-model="设置表单.laundry_auto_order_enabled"
-              active-value="1"
-              inactive-value="0"
-              active-text="开启"
-              inactive-text="关闭"
-            />
-            <div class="字段说明">开启后新洗衣订单自动调用洗衣订单API</div>
-          </el-form-item>
-          <el-form-item label="洗衣自动取件">
-            <el-switch
-              v-model="设置表单.laundry_auto_express_enabled"
-              active-value="1"
-              inactive-value="0"
-              active-text="开启"
-              inactive-text="关闭"
-            />
-            <div class="字段说明">开启后下单成功自动调用快递API安排取件</div>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" :loading="保存中" @click="保存设置('laundry')">
-              💾 保存洗衣API设置
-            </el-button>
-          </el-form-item>
-        </el-form>
-      </el-tab-pane>
-
-      <!-- ===== Tab 4：地区管理 ===== -->
+      <!-- ===== Tab 3：地区管理 ===== -->
       <el-tab-pane label="🗺️ 地区管理" name="regions">
         <el-alert
           title="地区数据已内置全国数据，如需自定义可前往地区管理页面手动添加或编辑。"

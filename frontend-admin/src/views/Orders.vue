@@ -3,10 +3,16 @@
   <div class="订单管理">
     <!-- 一键打开家政前端 -->
     <el-card class="顶部操作栏" style="margin-bottom: 12px">
-      <el-button type="primary" @click="打开家政前端">
-        🔗 打开家政前端页面
-      </el-button>
-      <span style="margin-left: 12px; font-size: 12px; color: #999;">点击在新标签页打开家政H5前端</span>
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+        <el-button type="primary" size="large" @click="打开家政前端">
+          🌐 预览家政前端页面
+        </el-button>
+        <span v-if="预览链接" style="font-size:13px; color:#409eff">
+          {{ 预览链接 }}
+          <el-button link @click="复制预览链接">复制</el-button>
+        </span>
+        <span style="font-size:12px; color:#999">自动使用一个未使用的演示卡密打开前端</span>
+      </div>
     </el-card>
 
     <!-- 搜索筛选 -->
@@ -262,16 +268,40 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import { 获取订单列表API, 更新订单状态API, 触发自动下单API, 重置订单API, 更新订单备注API, 获取设置API } from '../api/index'
+import { 获取订单列表API, 更新订单状态API, 触发自动下单API, 重置订单API, 更新订单备注API, 获取设置API, 获取家政预览卡密API } from '../api/index'
 
 const router = useRouter()
 const route = useRoute()
 
 // 站点域名
 const 站点域名 = ref('')
-const 打开家政前端 = () => {
-  const 链接 = 站点域名.value || '/'
-  window.open(链接, '_blank')
+const 预览链接 = ref('')
+
+// 打开家政前端（获取一个未使用的家政卡密）
+const 打开家政前端 = async () => {
+  try {
+    const 结果 = await 获取家政预览卡密API()
+    if (结果.code === 1 && 结果.data?.code) {
+      const 链接 = `${站点域名.value || ''}/${结果.data.code}`
+      预览链接.value = 链接
+      window.open(链接, '_blank')
+    } else {
+      ElMessage.warning(结果.message || '请先生成家政卡密')
+    }
+  } catch {
+    ElMessage.error('获取预览卡密失败，请重试')
+  }
+}
+
+// 复制预览链接
+const 复制预览链接 = async () => {
+  if (!预览链接.value) return
+  try {
+    await navigator.clipboard.writeText(预览链接.value)
+    ElMessage.success('链接已复制')
+  } catch {
+    ElMessage.warning('复制失败，请手动复制')
+  }
 }
 
 // 业务类型（从路由参数读取，默认 jiazheng）

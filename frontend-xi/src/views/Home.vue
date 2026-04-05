@@ -15,46 +15,57 @@
       <img v-if="banner图URL" :src="banner图URL" class="Banner图片" alt="京东洗衣" />
     </div>
 
+    <!-- 取/收地址卡片 -->
+    <div class="地址卡片" :class="{ '地址未填边框': !洗衣Store.已填写地址 }">
+      <!-- 取件行 -->
+      <div class="地址行" @click="跳转填写地址">
+        <span class="地址徽章 取件徽章">取</span>
+        <div class="地址文字区">
+          <div v-if="洗衣Store.已填写地址" class="地址主文字">{{ 洗衣Store.完整取件地址 }}</div>
+          <div v-else class="地址占位文字">点击填写取件地址（必填）</div>
+          <div v-if="洗衣Store.已填写地址" class="地址联系人">
+            <span class="联系姓名">{{ 洗衣Store.取件姓名 }}</span>
+            <span class="联系手机">{{ 洗衣Store.取件手机 }}</span>
+          </div>
+        </div>
+        <span class="行编辑图标">✏️</span>
+      </div>
+
+      <!-- 虚线分隔 -->
+      <div class="虚线分隔"></div>
+
+      <!-- 收件行 -->
+      <div class="地址行" @click="跳转填写地址">
+        <span class="地址徽章 收件徽章">收</span>
+        <div class="地址文字区">
+          <div class="地址主文字地址行">
+            <span v-if="洗衣Store.已填写地址" class="地址主文字">{{ 洗衣Store.完整收件地址 }}</span>
+            <span v-else class="地址占位文字">与取件地址相同</span>
+            <span v-if="洗衣Store.收件与取件相同 && 洗衣Store.已填写地址" class="同上标签">同上</span>
+          </div>
+          <div v-if="洗衣Store.已填写地址" class="地址联系人">
+            <span class="联系姓名">{{ 洗衣Store.实际收件姓名 }}</span>
+            <span class="联系手机">{{ 洗衣Store.实际收件手机 }}</span>
+          </div>
+        </div>
+        <span class="行编辑图标">✏️</span>
+      </div>
+    </div>
+
     <!-- 服务信息卡片 -->
-    <div
-      class="服务信息卡片"
-      :class="{ '地址未填边框': !洗衣Store.已填写地址 }"
-    >
-      <!-- 取件地址区域 -->
-      <div class="地址区域" @click="跳转填写地址">
-        <div class="地址标题行">
-          <span class="定位图标">📦</span>
-          <span class="服务信息标题">取件信息</span>
-          <span class="编辑图标" :class="{ '编辑图标蓝色': !洗衣Store.已填写地址 }">✏️</span>
-        </div>
-        <div class="地址内容">
-          <template v-if="洗衣Store.已填写地址">
-            <div class="已填写地址">
-              <span class="客户姓名">{{ 洗衣Store.取件姓名 }}</span>
-              <span class="客户手机">{{ 洗衣Store.取件手机 }}</span>
-            </div>
-            <div class="完整地址文字">{{ 洗衣Store.完整取件地址 }}</div>
-          </template>
-          <template v-else>
-            <div class="未填写引导文字">👆 点击此处填写取件地址（必填）</div>
-          </template>
-        </div>
-      </div>
-
-      <div class="分割线"></div>
-
-      <!-- 商品信息 -->
-      <div class="信息行">
-        <span class="信息标签">洗护商品</span>
-        <span class="信息值">{{ 洗衣Store.商品名称 }}</span>
-      </div>
-
+    <div class="服务信息卡片">
       <!-- 取件时间 -->
       <div class="信息行" @click="点击选择时间">
         <span class="信息标签">取件时间</span>
         <span class="信息值红色" v-if="!洗衣Store.已填写地址">请先填写取件地址</span>
         <span class="信息值蓝色" v-else-if="!洗衣Store.已选择时间">点击选择取件时间 &gt;</span>
         <span class="信息值" v-else>{{ 洗衣Store.取件时间显示 }}</span>
+      </div>
+
+      <!-- 商品信息 -->
+      <div class="信息行">
+        <span class="信息标签">洗护商品</span>
+        <span class="信息值">{{ 洗衣Store.商品名称 }}</span>
       </div>
 
       <!-- 兑换码 -->
@@ -71,14 +82,13 @@
 
     <!-- 服务内容 -->
     <div v-if="洗衣Store.服务内容列表.length > 0" class="服务内容卡片">
-      <div class="卡片标题">服务内容</div>
-      <div class="服务内容列表">
-        <div v-for="(项, 索引) in 洗衣Store.服务内容列表" :key="索引" class="服务内容项">
-          <span class="服务内容图标">{{ 项.icon || '✅' }}</span>
-          <div class="服务内容文字">
-            <div class="服务内容标题">{{ 项.title }}</div>
-            <div class="服务内容描述">{{ 项.desc }}</div>
+      <div class="宫格卡片标题">◆ 服务内容 ◆</div>
+      <div class="服务宫格">
+        <div v-for="(项, 索引) in 洗衣Store.服务内容列表" :key="索引" class="宫格项">
+          <div class="宫格图标容器">
+            <span class="宫格图标">{{ 项.icon || '✅' }}</span>
           </div>
+          <div class="宫格标题">{{ 项.title }}</div>
         </div>
       </div>
     </div>
@@ -340,18 +350,101 @@ const 点击立即预约 = () => {
 
 .Banner图片 { position: absolute; right: 0; top: 0; height: 100%; opacity: 0.3; }
 
-/* 服务信息卡片 */
-.服务信息卡片 {
+/* 取/收地址卡片 */
+.地址卡片 {
   background: white;
   border-radius: 12px;
   margin: -12px 16px 12px;
-  padding: 16px;
+  padding: 0 16px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   position: relative;
   z-index: 1;
 }
 
 .地址未填边框 { border: 2px dashed #1989fa; }
+
+.地址行 {
+  display: flex;
+  align-items: flex-start;
+  padding: 14px 0;
+  cursor: pointer;
+}
+
+.地址徽章 {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: white;
+  flex-shrink: 0;
+  margin-right: 10px;
+  margin-top: 1px;
+}
+
+.取件徽章 { background: #FF4D4F; }
+.收件徽章 { background: #13C2C2; }
+
+.地址文字区 { flex: 1; min-width: 0; }
+
+.地址主文字地址行 { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+.地址主文字 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+.地址占位文字 {
+  font-size: 14px;
+  color: #1989fa;
+  font-weight: 500;
+}
+
+.地址联系人 {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.联系姓名 { font-size: 13px; color: #666; }
+.联系手机 { font-size: 13px; color: #666; }
+
+.同上标签 {
+  background: #FF4D4F;
+  color: white;
+  font-size: 12px;
+  border-radius: 4px;
+  padding: 1px 6px;
+  flex-shrink: 0;
+}
+
+.行编辑图标 {
+  font-size: 14px;
+  color: #999;
+  flex-shrink: 0;
+  margin-left: 8px;
+  margin-top: 2px;
+}
+
+.虚线分隔 {
+  border-top: 1px dashed #eee;
+  margin: 0;
+}
+
+/* 服务信息卡片 */
+.服务信息卡片 {
+  background: white;
+  border-radius: 12px;
+  margin: 0 16px 12px;
+  padding: 0 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
 
 /* 步骤引导卡片 */
 .步骤引导卡片 {
@@ -364,30 +457,6 @@ const 点击立即预约 = () => {
   color: #1989fa;
   line-height: 1.6;
 }
-
-/* 地址区域 */
-.地址区域 { cursor: pointer; padding-bottom: 12px; }
-
-.地址标题行 { display: flex; align-items: center; margin-bottom: 8px; }
-
-.定位图标 { font-size: 16px; margin-right: 6px; }
-
-.服务信息标题 { font-size: 15px; font-weight: 600; color: #333; flex: 1; }
-
-.编辑图标 { font-size: 14px; color: #999; }
-.编辑图标蓝色 { color: #1989fa; }
-
-.地址内容 { padding-left: 22px; }
-
-.已填写地址 { display: flex; gap: 12px; margin-bottom: 4px; }
-
-.客户姓名 { font-size: 14px; font-weight: 600; color: #333; }
-.客户手机 { font-size: 14px; color: #666; }
-.完整地址文字 { font-size: 13px; color: #666; line-height: 1.5; }
-
-.未填写引导文字 { font-size: 14px; color: #1989fa; font-weight: 500; }
-
-.分割线 { height: 1px; background: #f0f0f0; margin: 4px 0 8px; }
 
 /* 信息行 */
 .信息行 {
@@ -413,6 +482,14 @@ const 点击立即预约 = () => {
   margin: 0 16px 12px;
   padding: 16px;
 }
+.宫格卡片标题 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #FF4D4F;
+  text-align: center;
+  margin-bottom: 14px;
+  letter-spacing: 2px;
+}
 .卡片标题 {
   font-size: 15px;
   font-weight: 600;
@@ -421,11 +498,32 @@ const 点击立即预约 = () => {
   padding-bottom: 8px;
   border-bottom: 1px solid #f0f0f0;
 }
-.服务内容列表 { display: flex; flex-direction: column; gap: 10px; }
-.服务内容项 { display: flex; align-items: flex-start; gap: 10px; }
-.服务内容图标 { font-size: 20px; flex-shrink: 0; }
-.服务内容标题 { font-size: 14px; font-weight: 500; color: #333; }
-.服务内容描述 { font-size: 12px; color: #999; margin-top: 2px; }
+/* 宫格布局 */
+.服务宫格 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.宫格项 {
+  background: white;
+  border-radius: 10px;
+  padding: 16px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+.宫格图标容器 {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(255, 77, 79, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.宫格图标 { font-size: 28px; }
+.宫格标题 { font-size: 13px; font-weight: 600; color: #333; margin-top: 8px; text-align: center; }
 
 /* 须知 */
 .须知内容 { font-size: 13px; color: #666; }
