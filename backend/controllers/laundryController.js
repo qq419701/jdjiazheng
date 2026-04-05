@@ -511,16 +511,36 @@ const 查询快递结算费用 = async (req, res) => {
  */
 const 测试洗衣API连接 = async (req, res) => {
   try {
-    const { 测试API连接 } = require('../services/laundryApiService');
+    const { 测试API连接, 获取Token状态 } = require('../services/laundryApiService');
     const 结果 = await 测试API连接();
+    const Token状态 = await 获取Token状态();
     res.json({
       code: 1,
       message: '连接成功',
-      data: { tenantId: 结果.tenantId },
+      data: {
+        tenantId: 结果.tenantId,
+        tokenStatus: Token状态.status,
+        expireAt: Token状态.expireAt,
+        remainMs: Token状态.remainMs,
+      },
     });
   } catch (错误) {
     console.error('测试洗衣API连接失败:', 错误.message);
     res.json({ code: 0, message: `连接失败：${错误.message}` });
+  }
+};
+
+/**
+ * 获取洗衣Token状态
+ * GET /admin/api/laundry/token-status
+ */
+const 获取洗衣Token状态 = async (req, res) => {
+  try {
+    const { 获取Token状态 } = require('../services/laundryApiService');
+    const 状态 = await 获取Token状态();
+    res.json({ code: 1, message: '获取成功', data: 状态 });
+  } catch (错误) {
+    res.json({ code: 0, message: 错误.message });
   }
 };
 
@@ -679,6 +699,7 @@ module.exports = {
   测试快递连接,
   接收鲸蚁回调,
   测试洗衣API连接,
+  获取洗衣Token状态,
   创建洗衣快递,
   取消洗衣快递,
   接收快递回调,
