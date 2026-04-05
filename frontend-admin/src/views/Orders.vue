@@ -1,6 +1,14 @@
 <template>
   <!-- 订单管理页面 -->
   <div class="订单管理">
+    <!-- 一键打开家政前端 -->
+    <el-card class="顶部操作栏" style="margin-bottom: 12px">
+      <el-button type="primary" @click="打开家政前端">
+        🔗 打开家政前端页面
+      </el-button>
+      <span style="margin-left: 12px; font-size: 12px; color: #999;">点击在新标签页打开家政H5前端</span>
+    </el-card>
+
     <!-- 搜索筛选 -->
     <el-card class="搜索卡片">
       <el-form :inline="true" :model="搜索条件">
@@ -254,10 +262,17 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import { 获取订单列表API, 更新订单状态API, 触发自动下单API, 重置订单API, 更新订单备注API } from '../api/index'
+import { 获取订单列表API, 更新订单状态API, 触发自动下单API, 重置订单API, 更新订单备注API, 获取设置API } from '../api/index'
 
 const router = useRouter()
 const route = useRoute()
+
+// 站点域名
+const 站点域名 = ref('')
+const 打开家政前端 = () => {
+  const 链接 = 站点域名.value || '/'
+  window.open(链接, '_blank')
+}
 
 // 业务类型（从路由参数读取，默认 jiazheng）
 const 业务类型 = computed(() => route.params.businessType || 'jiazheng')
@@ -566,7 +581,12 @@ const 确认复制 = async () => {
   }
 }
 
-onMounted(() => 加载订单())
+onMounted(() => {
+  获取设置API().then(结果 => {
+    if (结果.code === 1) 站点域名.value = (结果.data.site_url || '').replace(/\/$/, '')
+  }).catch(() => {})
+  加载订单()
+})
 </script>
 
 <style scoped>

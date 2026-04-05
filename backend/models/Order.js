@@ -153,6 +153,41 @@ const Order = 数据库连接.define('Order', {
     allowNull: true,
     comment: '多备选预约时间（JSON数组格式：[{date:"2024-01-19",time:"09:00",priority:1},...]）',
   },
+  return_name: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: '收件人姓名（洗衣专用）',
+  },
+  return_phone: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    comment: '收件人手机（洗衣专用）',
+  },
+  return_province: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: '收件省（洗衣专用）',
+  },
+  return_city: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: '收件市（洗衣专用）',
+  },
+  return_district: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: '收件区（洗衣专用）',
+  },
+  return_address: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: '收件详细地址（洗衣专用）',
+  },
+  laundry_images: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: '预检图片JSON（洗衣专用）',
+  },
 }, {
   tableName: 'orders',
   timestamps: false,

@@ -1,0 +1,70 @@
+<template>
+  <div class="成功页面">
+    <div class="成功图标">✅</div>
+    <div class="成功标题">预约成功！</div>
+    <div class="成功描述">我们将安排快递上门取件，请保持手机畅通</div>
+
+    <div class="订单卡片">
+      <div class="订单信息项">
+        <span class="订单标签">订单号</span>
+        <span class="订单值">{{ 订单号 }}</span>
+      </div>
+      <div class="订单信息项" v-if="商品名称">
+        <span class="订单标签">洗护商品</span>
+        <span class="订单值">{{ 商品名称 }}</span>
+      </div>
+      <div class="订单信息项" v-if="联系人">
+        <span class="订单标签">取件人</span>
+        <span class="订单值">{{ 联系人 }}</span>
+      </div>
+      <div class="订单信息项" v-if="取件时间">
+        <span class="订单标签">取件时间</span>
+        <span class="订单值蓝色">{{ 取件时间 }}</span>
+      </div>
+    </div>
+
+    <div class="温馨提示">
+      <div class="提示标题">温馨提示</div>
+      <div class="提示内容">请在取件时间段内确保有人在家，快递员将上门收取您的衣物。洗护完成后将快递送回您填写的收件地址。</div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
+
+const 订单号 = computed(() => route.query.order_no || '')
+const 商品名称 = computed(() => route.query.product_name || '')
+const 联系人 = computed(() => route.query.name || '')
+const 取件时间 = computed(() => {
+  const 日期 = route.query.visit_date || ''
+  const 时间 = route.query.visit_time || ''
+  return 日期 && 时间 ? `${日期} ${时间}` : ''
+})
+</script>
+
+<style scoped>
+.成功页面 {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #e8f4fd 0%, #f5f5f5 40%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 20px 40px;
+}
+.成功图标 { font-size: 72px; margin-bottom: 16px; }
+.成功标题 { font-size: 24px; font-weight: 700; color: #1989fa; margin-bottom: 8px; }
+.成功描述 { font-size: 14px; color: #666; margin-bottom: 32px; text-align: center; }
+.订单卡片 { background: white; border-radius: 16px; padding: 20px; width: 100%; max-width: 400px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(25,137,250,0.1); }
+.订单信息项 { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f5f5f5; }
+.订单信息项:last-child { border-bottom: none; }
+.订单标签 { font-size: 14px; color: #999; }
+.订单值 { font-size: 14px; color: #333; font-weight: 500; }
+.订单值蓝色 { font-size: 14px; color: #1989fa; font-weight: 500; }
+.温馨提示 { background: #e8f4fd; border-radius: 12px; padding: 16px; width: 100%; max-width: 400px; }
+.提示标题 { font-size: 14px; font-weight: 600; color: #1989fa; margin-bottom: 8px; }
+.提示内容 { font-size: 13px; color: #666; line-height: 1.6; }
+</style>

@@ -59,6 +59,11 @@ const TimeRule = 数据库连接.define('TimeRule', {
     defaultValue: DataTypes.NOW,
     comment: '创建时间',
   },
+  business_type: {
+    type: DataTypes.STRING(20),
+    defaultValue: 'jiazheng',
+    comment: '业务类型：jiazheng=家政 xiyifu=洗衣服',
+  },
 }, {
   tableName: 'time_rules',
   timestamps: false,

@@ -14,7 +14,7 @@ const { 获取所有设置, 批量更新设置 } = require('../controllers/setti
 const { 获取地区列表, 后台查询地区, 新增地区, 更新地区, 删除地区, 切换地区状态, 获取地区统计, 导入地区CSV } = require('../controllers/regionController');
 const multer = require('multer');
 const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
-const { 触发洗衣下单, 查询洗衣订单状态, 触发快递取件, 查询快递状态 } = require('../controllers/laundryController');
+const { 触发洗衣下单, 查询洗衣订单状态, 取消洗衣订单, 测试洗衣API连接 } = require('../controllers/laundryController');
 
 // ===== 登录接口（无需鉴权）=====
 router.post('/login', async (req, res) => {
@@ -168,10 +168,77 @@ router.put('/regions/:id', 验证Token, 更新地区);
 router.delete('/regions/:id', 验证Token, 删除地区);
 router.put('/regions/:id/toggle', 验证Token, 切换地区状态);
 
-// 洗衣服务管理（预留接口）
+// ===== 洗衣订单管理（独立路由，强制 business_type='xiyifu'）=====
+
+// 获取洗衣订单列表（强制 business_type='xiyifu'）
+router.get('/laundry-orders', 验证Token, async (req, res) => {
+  req.query.business_type = 'xiyifu';
+  return 获取订单列表(req, res);
+});
+
+// 获取洗衣订单详情
+router.get('/laundry-orders/:id', 验证Token, async (req, res) => {
+  const { Order } = require('../models');
+  const { 安全解析JSON } = require('../utils/helpers');
+  try {
+    const 订单 = await Order.findOne({ where: { id: req.params.id, business_type: 'xiyifu' } });
+    if (!订单) return res.json({ code: 0, message: '订单不存在' });
+    const 日志 = 安全解析JSON(订单.order_log, []);
+    res.json({ code: 1, message: '获取成功', data: { ...订单.toJSON(), order_log: 日志 } });
+  } catch (e) { res.status(500).json({ code: -1, message: '服务器错误' }); }
+});
+
+router.put('/laundry-orders/:id/status', 验证Token, 更新订单状态);
+router.put('/laundry-orders/:id/remark', 验证Token, 更新订单备注);
+router.post('/laundry-orders/:id/reset', 验证Token, 重置订单);
+router.post('/laundry-orders/:id/place-order', 验证Token, 触发洗衣下单);
+router.post('/laundry-orders/:id/cancel', 验证Token, 取消洗衣订单);
+
+// ===== 洗衣卡密管理（独立路由，强制 business_type='xiyifu'）=====
+router.get('/laundry-cards', 验证Token, async (req, res) => {
+  req.query.business_type = 'xiyifu';
+  return 获取卡密列表(req, res);
+});
+router.post('/laundry-cards/generate', 验证Token, async (req, res) => {
+  req.body.business_type = 'xiyifu';
+  return 生成卡密(req, res);
+});
+router.delete('/laundry-cards/:id', 验证Token, 删除卡密);
+
+router.get('/laundry-card-batches', 验证Token, async (req, res) => {
+  // 只返回洗衣卡密批次
+  const { CardBatch, Card } = require('../models');
+  try {
+    const 批次列表 = await CardBatch.findAll({
+      where: { business_type: 'xiyifu' },
+      order: [['created_at', 'DESC']],
+    });
+    const 批次数据 = await Promise.all(批次列表.map(async (批次) => {
+      const 实际数量 = await Card.count({ where: { batch_id: 批次.id } });
+      return { ...批次.toJSON(), actual_count: 实际数量 };
+    }));
+    res.json({ code: 1, message: '获取成功', data: 批次数据 });
+  } catch (e) { res.status(500).json({ code: -1, message: '服务器错误' }); }
+});
+router.get('/laundry-card-batches/:id/cards', 验证Token, 获取批次卡密);
+
+// ===== 洗衣时间规则（独立路由，强制 business_type='xiyifu'）=====
+router.get('/laundry-time-rules', 验证Token, async (req, res) => {
+  req.query.business_type = 'xiyifu';
+  return 获取规则列表(req, res);
+});
+router.post('/laundry-time-rules', 验证Token, async (req, res) => {
+  req.body.business_type = 'xiyifu';
+  return 新增规则(req, res);
+});
+router.put('/laundry-time-rules/:id', 验证Token, 更新规则);
+router.delete('/laundry-time-rules/:id', 验证Token, 删除规则);
+
+// 测试洗衣API连接
+router.post('/laundry/test-connection', 验证Token, 测试洗衣API连接);
+
+// 旧预留接口（向下兼容）
 router.post('/laundry/orders/:id/place-order', 验证Token, 触发洗衣下单);
 router.get('/laundry/orders/:id/status', 验证Token, 查询洗衣订单状态);
-router.post('/laundry/orders/:id/express-pickup', 验证Token, 触发快递取件);
-router.get('/laundry/orders/:id/express-status', 验证Token, 查询快递状态);
 
 module.exports = router;

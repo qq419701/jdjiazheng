@@ -81,6 +81,36 @@ const routes = [
         component: () => import('../views/Regions.vue'),
         meta: { 标题: '地区管理' },
       },
+      {
+        path: 'laundry-orders',
+        name: 'LaundryOrders',
+        component: () => import('../views/LaundryOrders.vue'),
+        meta: { 标题: '洗衣订单管理' },
+      },
+      {
+        path: 'laundry-cards',
+        name: 'LaundryCards',
+        component: () => import('../views/LaundryCards.vue'),
+        meta: { 标题: '洗衣卡密管理' },
+      },
+      {
+        path: 'laundry-cards/generate',
+        name: 'LaundryCardGenerate',
+        component: () => import('../views/LaundryCardGenerate.vue'),
+        meta: { 标题: '批量生成洗衣卡密' },
+      },
+      {
+        path: 'laundry-time-rules',
+        name: 'LaundryTimeRules',
+        component: () => import('../views/LaundryTimeRules.vue'),
+        meta: { 标题: '洗衣时间规则' },
+      },
+      {
+        path: 'laundry-settings',
+        name: 'LaundrySettings',
+        component: () => import('../views/LaundrySettings.vue'),
+        meta: { 标题: '洗衣设置' },
+      },
     ],
   },
   {

@@ -3,7 +3,11 @@ const { TimeRule } = require('../models');
 
 const 获取规则列表 = async (req, res) => {
   try {
-    const 列表 = await TimeRule.findAll({ order: [['sort_order', 'ASC']] });
+    const 条件 = {};
+    if (req.query.business_type) {
+      条件.business_type = req.query.business_type;
+    }
+    const 列表 = await TimeRule.findAll({ where: 条件, order: [['sort_order', 'ASC']] });
     res.json({ code: 1, message: '获取成功', data: 列表 });
   } catch (错误) {
     res.status(500).json({ code: -1, message: '服务器错误' });

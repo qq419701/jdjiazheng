@@ -56,3 +56,28 @@ export const 触发洗衣下单API = (id) => 请求实例.post(`/laundry/orders/
 export const 查询洗衣订单状态API = (id) => 请求实例.get(`/laundry/orders/${id}/status`)
 export const 触发快递取件API = (id) => 请求实例.post(`/laundry/orders/${id}/express-pickup`)
 export const 查询快递状态API = (id) => 请求实例.get(`/laundry/orders/${id}/express-status`)
+
+// ===== 洗衣订单管理 =====
+export const 获取洗衣订单列表API = (参数) => 请求实例.get('/laundry-orders', { params: 参数 })
+export const 获取洗衣订单详情API = (id) => 请求实例.get(`/laundry-orders/${id}`)
+export const 更新洗衣订单状态API = (id, 数据) => 请求实例.put(`/laundry-orders/${id}/status`, 数据)
+export const 更新洗衣订单备注API = (id, 数据) => 请求实例.put(`/laundry-orders/${id}/remark`, 数据)
+export const 重置洗衣订单API = (id) => 请求实例.post(`/laundry-orders/${id}/reset`)
+export const 触发洗衣API下单 = (id) => 请求实例.post(`/laundry-orders/${id}/place-order`)
+export const 取消洗衣订单API = (id) => 请求实例.post(`/laundry-orders/${id}/cancel`)
+
+// ===== 洗衣卡密管理 =====
+export const 获取洗衣卡密列表API = (参数) => 请求实例.get('/laundry-cards', { params: 参数 })
+export const 生成洗衣卡密API = (数据) => 请求实例.post('/laundry-cards/generate', 数据)
+export const 删除洗衣卡密API = (id) => 请求实例.delete(`/laundry-cards/${id}`)
+export const 获取洗衣批次列表API = () => 请求实例.get('/laundry-card-batches')
+export const 获取洗衣批次卡密API = (id) => 请求实例.get(`/laundry-card-batches/${id}/cards`)
+
+// ===== 洗衣时间规则 =====
+export const 获取洗衣时间规则API = () => 请求实例.get('/laundry-time-rules')
+export const 新增洗衣时间规则API = (数据) => 请求实例.post('/laundry-time-rules', 数据)
+export const 更新洗衣时间规则API = (id, 数据) => 请求实例.put(`/laundry-time-rules/${id}`, 数据)
+export const 删除洗衣时间规则API = (id) => 请求实例.delete(`/laundry-time-rules/${id}`)
+
+// ===== 洗衣连接测试 =====
+export const 测试洗衣API连接 = () => 请求实例.post('/laundry/test-connection')
