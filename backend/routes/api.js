@@ -20,7 +20,7 @@ router.get('/settings/public', 获取公开设置);
 router.get('/regions', 查询地区);
 
 const { 验证洗衣卡密, 获取洗衣时间表, 提交洗衣订单, 查询洗衣订单物流 } = require('../controllers/laundryApiController');
-const { 接收鲸蚁回调 } = require('../controllers/laundryController');
+const { 接收鲸蚁回调, 接收快递回调 } = require('../controllers/laundryController');
 
 // 洗衣H5接口
 router.get('/xi/verify-card/:code', 验证洗衣卡密);
@@ -32,5 +32,8 @@ router.get('/xi/orders/:orderNo/express-routes', 查询洗衣订单物流);
 
 // 鲸蚁回调（无需鉴权）
 router.post('/laundry/callback', 接收鲸蚁回调);
+
+// 京东快递推送回调（无需鉴权，始终返回 { code: 0 }）
+router.post('/express/callback', 接收快递回调);
 
 module.exports = router;

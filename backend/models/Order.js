@@ -221,6 +221,11 @@ const Order = 数据库连接.define('Order', {
     allowNull: true,
     comment: '物流路由JSON（查询后缓存，含pickup/return两段）',
   },
+  express_waybill_code: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: '快递API主动创建的快递单号（区别于鲸蚁回调写入的 express_order_id）',
+  },
 }, {
   tableName: 'orders',
   timestamps: false,

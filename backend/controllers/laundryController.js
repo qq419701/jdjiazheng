@@ -2,8 +2,8 @@
 // 对接鲸蚁生活洗护API + 独立快递API
 const { Op } = require('sequelize');
 const { Order, Setting } = require('../models');
-const { 推送预约单, 同步订单状态, 修改预约单 } = require('../services/laundryApiService');
-const { 查询物流路由, 查询物流结算费用, 测试快递API连接 } = require('../services/expressApiService');
+const { 推送预约单, 同步订单状态, 修改预约单, 查询物流结算费用 } = require('../services/laundryApiService');
+const { 查询物流路由, 创建快递, 取消快递, 测试快递API连接, 读取快递API配置 } = require('../services/expressApiService');
 const { 安全解析JSON } = require('../utils/helpers');
 const { 执行洗衣下单内部 } = require('./laundryApiController');
 
@@ -135,6 +135,7 @@ const 查询洗衣订单状态 = async (req, res) => {
         laundry_status: 订单.laundry_status,
         express_order_id: 订单.express_order_id,
         express_company: 订单.express_company,
+        express_waybill_code: 订单.express_waybill_code,
         return_waybill_code: 订单.return_waybill_code,
         factory_name: 订单.factory_name,
         factory_code: 订单.factory_code,
@@ -160,6 +161,9 @@ const 修改洗衣订单并同步鲸蚁 = async (req, res) => {
 
     const {
       visit_date, visit_time, visit_time_start, visit_time_end,
+      // 取件地址
+      name, phone, province, city, district, address,
+      // 收件地址
       return_name, return_phone, return_province, return_city, return_district, return_address,
       remark,
     } = req.body;
@@ -169,6 +173,14 @@ const 修改洗衣订单并同步鲸蚁 = async (req, res) => {
     if (visit_time !== undefined) 更新数据.visit_time = visit_time;
     if (visit_time_start !== undefined) 更新数据.visit_time_start = visit_time_start;
     if (visit_time_end !== undefined) 更新数据.visit_time_end = visit_time_end;
+    // 取件地址字段
+    if (name !== undefined) 更新数据.name = name;
+    if (phone !== undefined) 更新数据.phone = phone;
+    if (province !== undefined) 更新数据.province = province;
+    if (city !== undefined) 更新数据.city = city;
+    if (district !== undefined) 更新数据.district = district;
+    if (address !== undefined) 更新数据.address = address;
+    // 收件地址字段
     if (return_name !== undefined) 更新数据.return_name = return_name;
     if (return_phone !== undefined) 更新数据.return_phone = return_phone;
     if (return_province !== undefined) 更新数据.return_province = return_province;
@@ -188,27 +200,29 @@ const 修改洗衣订单并同步鲸蚁 = async (req, res) => {
     await 订单.update(更新数据);
 
     // 如果订单已下单到鲸蚁，同步修改
-    if (订单.status === 2 && (visit_date || visit_time_start || visit_time_end || return_name || return_address)) {
+    const 有变更 = visit_date || visit_time_start || visit_time_end || name || address || return_name || return_address;
+    if (订单.status === 2 && 有变更) {
       try {
         const 新开始时间 = visit_time_start || 订单.visit_time_start || '09:00:00';
         const 新结束时间 = visit_time_end || 订单.visit_time_end || '10:00:00';
         const 新日期 = visit_date || 订单.visit_date;
 
+        // 取件地址：优先用请求体中新值，否则用数据库已有值（update后已刷新）
         const 取件地址 = {
-          contact: 订单.name,
-          phone: 订单.phone,
-          province: 订单.province,
-          city: 订单.city,
-          district: 订单.district,
-          address: 订单.address,
+          contact: name ?? 订单.name,
+          phone: phone ?? 订单.phone,
+          province: province ?? 订单.province,
+          city: city ?? 订单.city,
+          district: district ?? 订单.district,
+          address: address ?? 订单.address,
         };
         const 收件地址 = {
-          contact: return_name || 订单.return_name || 订单.name,
-          phone: return_phone || 订单.return_phone || 订单.phone,
-          province: return_province || 订单.return_province || 订单.province,
-          city: return_city || 订单.return_city || 订单.city,
-          district: return_district || 订单.return_district || 订单.district,
-          address: return_address || 订单.return_address || 订单.address,
+          contact: return_name ?? 订单.return_name ?? 订单.name,
+          phone: return_phone ?? 订单.return_phone ?? 订单.phone,
+          province: return_province ?? 订单.return_province ?? 订单.province,
+          city: return_city ?? 订单.return_city ?? 订单.city,
+          district: return_district ?? 订单.return_district ?? 订单.district,
+          address: return_address ?? 订单.return_address ?? 订单.address,
         };
 
         await 修改预约单(订单.order_no, `B${订单.order_no}`, 新日期, 新开始时间, 新结束时间, 取件地址, 收件地址);
@@ -458,6 +472,7 @@ const 接收鲸蚁回调 = async (req, res) => {
  * 查询快递结算费用
  * GET /admin/api/laundry-orders/:id/express-balance
  * 参数：type=pickup（取件快递）或 type=return（回寄快递）
+ * 注意：结算费用接口属于鲸蚁订单API，使用鲸蚁凭证查询
  */
 const 查询快递结算费用 = async (req, res) => {
   try {
@@ -509,6 +524,149 @@ const 测试洗衣API连接 = async (req, res) => {
   }
 };
 
+/**
+ * 创建洗衣快递单（通过快递API主动创建取件快递）
+ * POST /admin/api/laundry-orders/:id/create-express
+ * 快递单号存入 express_waybill_code（独立于鲸蚁回调写入的 express_order_id）
+ */
+const 创建洗衣快递 = async (req, res) => {
+  try {
+    const 订单 = await Order.findOne({
+      where: { id: req.params.id, business_type: 'xiyifu' },
+    });
+    if (!订单) return res.json({ code: 0, message: '洗衣订单不存在' });
+
+    // 构建快递参数
+    const { 快递类型 } = await 读取快递API配置();
+    const 取件开始时间 = 订单.visit_date && 订单.visit_time_start
+      ? `${订单.visit_date} ${订单.visit_time_start}`
+      : null;
+
+    const 快递数据 = {
+      pickupStartTime: 取件开始时间,
+      expressType: parseInt(快递类型) || 20,
+      type: 10, // 10=取件
+      goodsTypeText: 订单.service_type || '衣物',
+      cargoes: [{ name: 订单.service_type || '衣物', quantity: 1 }],
+      remark: 订单.remark || '',
+      senderName: 订单.name,
+      senderPhone: 订单.phone,
+      senderProvince: 订单.province,
+      senderCity: 订单.city,
+      senderDistrict: 订单.district,
+      senderAddress: 订单.address,
+      receiverName: 订单.return_name ?? 订单.name,
+      receiverPhone: 订单.return_phone ?? 订单.phone,
+      receiverProvince: 订单.return_province ?? 订单.province,
+      receiverCity: 订单.return_city ?? 订单.city,
+      receiverDistrict: 订单.return_district ?? 订单.district,
+      receiverAddress: 订单.return_address ?? 订单.address,
+      outOrderNo: 订单.order_no,
+    };
+
+    const 结果 = await 创建快递(快递数据);
+
+    // 将快递API创建的单号写入 express_waybill_code（区别于鲸蚁回调写入的 express_order_id）
+    const 现有日志 = 安全解析JSON(订单.order_log, []);
+    现有日志.push({
+      时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+      操作: `创建快递成功，快递单号：${结果?.waybillCode}`,
+      状态: 'success',
+    });
+
+    await 订单.update({
+      express_waybill_code: 结果?.waybillCode || '',
+      order_log: JSON.stringify(现有日志),
+    });
+
+    res.json({ code: 1, message: '创建快递成功', data: 结果 });
+  } catch (错误) {
+    console.error('创建洗衣快递出错:', 错误);
+    res.json({ code: 0, message: `创建快递失败：${错误.message}` });
+  }
+};
+
+/**
+ * 取消洗衣快递单
+ * POST /admin/api/laundry-orders/:id/cancel-express
+ * 参数：waybillCode（指定取消哪个单号）或默认取 express_waybill_code
+ */
+const 取消洗衣快递 = async (req, res) => {
+  try {
+    const 订单 = await Order.findOne({
+      where: { id: req.params.id, business_type: 'xiyifu' },
+    });
+    if (!订单) return res.json({ code: 0, message: '洗衣订单不存在' });
+
+    // 优先用请求体中指定的单号，否则用 express_waybill_code
+    const 单号 = req.body.waybillCode || 订单.express_waybill_code;
+    if (!单号) return res.json({ code: 0, message: '暂无可取消的快递单号' });
+
+    await 取消快递(单号);
+
+    const 现有日志 = 安全解析JSON(订单.order_log, []);
+    现有日志.push({
+      时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+      操作: `取消快递成功，快递单号：${单号}`,
+      状态: 'info',
+    });
+
+    await 订单.update({ order_log: JSON.stringify(现有日志) });
+
+    res.json({ code: 1, message: '取消快递成功' });
+  } catch (错误) {
+    console.error('取消洗衣快递出错:', 错误);
+    res.json({ code: 0, message: `取消快递失败：${错误.message}` });
+  }
+};
+
+/**
+ * 接收京东快递推送回调
+ * POST /api/express/callback
+ * 无需JWT鉴权，始终返回 { code: 0 }
+ */
+const 接收快递回调 = async (req, res) => {
+  try {
+    const 回调数据 = req.body;
+    console.log('收到快递推送回调:', JSON.stringify(回调数据));
+
+    const { waybillCode, status, statusDesc } = 回调数据;
+
+    if (waybillCode) {
+      // 尝试通过快递单号找到对应订单（可能存在于 express_order_id 或 return_waybill_code 或 express_waybill_code）
+      const 订单 = await Order.findOne({
+        where: {
+          business_type: 'xiyifu',
+          [Op.or]: [
+            { express_order_id: waybillCode },
+            { return_waybill_code: waybillCode },
+            { express_waybill_code: waybillCode },
+          ],
+        },
+      });
+
+      if (订单) {
+        const 现有日志 = 安全解析JSON(订单.order_log, []);
+        现有日志.push({
+          时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+          操作: `快递状态回调：${statusDesc || status}，单号：${waybillCode}`,
+          状态: 'info',
+        });
+        await 订单.update({ order_log: JSON.stringify(现有日志) });
+        console.log('✅ 快递回调已记录到订单:', 订单.order_no);
+      } else {
+        console.warn('快递回调未匹配到订单，waybillCode:', waybillCode);
+      }
+    }
+
+    // 始终返回 { code: 0 }，告知快递系统已收到
+    res.json({ code: 0 });
+  } catch (错误) {
+    console.error('处理快递推送回调出错:', 错误);
+    res.json({ code: 0 }); // 始终返回0，避免快递系统重复推送
+  }
+};
+
 module.exports = {
   获取洗衣订单列表,
   获取洗衣订单详情,
@@ -521,4 +679,7 @@ module.exports = {
   测试快递连接,
   接收鲸蚁回调,
   测试洗衣API连接,
+  创建洗衣快递,
+  取消洗衣快递,
+  接收快递回调,
 };
