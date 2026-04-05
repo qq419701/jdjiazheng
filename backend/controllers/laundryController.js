@@ -331,17 +331,21 @@ const 获取洗衣Token状态 = async (req, res) => {
 };
 
 /**
- * 接收鲸蚁回调（完整版）
- * POST /api/laundry/callback
- * 无需JWT鉴权
+ * 接收鲸蚁系统状态回调（完整版）
+ * POST /api/laundry/callback（无需JWT鉴权，鲸蚁直接回调）
  *
- * 回调参数：app_id, out_order_no, status, waybillCode, images, images_v2, factory_name, factory_code
- * images_v2 为新版预检图片字段（优先使用），images 为旧版兼容字段
+ * 各状态码处理逻辑：
+ * - status=1（已分配）：记录取件快递单号（按前缀识别快递公司）、工厂名称/代码，order.status→2
+ * - status=2（已取件）：更新 laundry_status，无其他字段变更
+ * - status=3（已入厂）：更新 laundry_status，无其他字段变更
+ * - status=4（预检中）：保存衣物图片（优先用 images_v2，兼容旧版 images）
+ * - status=5（已回寄）：记录回寄快递单号到 return_waybill_code
+ * - status=6（已送达）：order.status→6
+ * - status=10（完成）：order.status→6
+ * - status=11（质检中）：更新 laundry_status，无其他字段变更
+ * - status=-1（已取消）：order.status→4，laundry_status→已取消
  *
- * 状态码含义：
- * 1=已分配（含快递单号+工厂信息），2=已取件，3=已入厂，
- * 4=预检中（含衣物图片 images_v2/images），5=已回寄，6=已送达，
- * 10=完成，11=质检中，-1=已取消
+ * 鲸蚁要求始终返回 { code: 0 }，无论成功或异常
  */
 const 接收鲸蚁回调 = async (req, res) => {
   try {
@@ -400,7 +404,15 @@ const 接收鲸蚁回调 = async (req, res) => {
       // 主status改为2（已下单），表示鲸蚁已受理并分配工厂和快递员
       if (waybillCode) {
         更新数据.express_order_id = waybillCode;
-        更新数据.express_company = 'JD';
+        // [修复] 根据运单号前缀自动识别快递公司，不再硬编码为'JD'
+        // 顺丰运单号以 SF 开头，京东以 JD 或 JDX 开头
+        if (waybillCode.startsWith('SF')) {
+          更新数据.express_company = '顺丰';
+        } else if (waybillCode.startsWith('JD') || waybillCode.startsWith('JDX')) {
+          更新数据.express_company = '京东';
+        } else {
+          更新数据.express_company = '快递';
+        }
       }
       if (factory_name) 更新数据.factory_name = factory_name;
       if (factory_code) 更新数据.factory_code = factory_code;

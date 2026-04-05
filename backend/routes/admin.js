@@ -267,8 +267,8 @@ router.post('/laundry/test-connection', 验证Token, 测试洗衣API连接);
 // 获取洗衣Token状态
 router.get('/laundry/token-status', 验证Token, 获取洗衣Token状态);
 
-// 旧预留接口（向下兼容）
-router.post('/laundry/orders/:id/place-order', 验证Token, 触发洗衣下单);
+// [已删除] 旧版路由，功能已迁移至 /laundry-orders/:id/place-order
+// router.post('/laundry/orders/:id/place-order', 验证Token, 触发洗衣下单);
 router.get('/laundry/orders/:id/status', 验证Token, 查询洗衣订单状态);
 
 module.exports = router;

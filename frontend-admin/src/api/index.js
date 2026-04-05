@@ -53,9 +53,8 @@ export const 删除地区API = (id) => 请求实例.delete(`/regions/${id}`)
 export const 获取地区统计API = () => 请求实例.get('/regions/stats')
 
 // ===== 洗衣服务（预留）=====
-export const 触发洗衣下单API = (id) => 请求实例.post(`/laundry/orders/${id}/place-order`)
+// [已删除] 触发洗衣下单API - 指向旧路径 /laundry/orders/:id/place-order，功能已迁移至 触发洗衣API下单
 export const 查询洗衣订单状态API = (id) => 请求实例.get(`/laundry/orders/${id}/status`)
-// 修复：删除 触发快递取件API 和 查询快递状态API（指向不存在的路由，已废弃）
 
 // ===== 洗衣订单管理 =====
 export const 获取洗衣订单列表API = (参数) => 请求实例.get('/laundry-orders', { params: 参数 })
