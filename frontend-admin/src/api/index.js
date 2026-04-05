@@ -1,5 +1,6 @@
 // 后台管理API接口
 import 请求实例 from '../utils/request'
+import axios from 'axios'
 
 // ===== 认证 =====
 export const 登录API = (数据) => 请求实例.post('/login', 数据)
@@ -54,8 +55,7 @@ export const 获取地区统计API = () => 请求实例.get('/regions/stats')
 // ===== 洗衣服务（预留）=====
 export const 触发洗衣下单API = (id) => 请求实例.post(`/laundry/orders/${id}/place-order`)
 export const 查询洗衣订单状态API = (id) => 请求实例.get(`/laundry/orders/${id}/status`)
-export const 触发快递取件API = (id) => 请求实例.post(`/laundry/orders/${id}/express-pickup`)
-export const 查询快递状态API = (id) => 请求实例.get(`/laundry/orders/${id}/express-status`)
+// 修复：删除 触发快递取件API 和 查询快递状态API（指向不存在的路由，已废弃）
 
 // ===== 洗衣订单管理 =====
 export const 获取洗衣订单列表API = (参数) => 请求实例.get('/laundry-orders', { params: 参数 })
@@ -74,6 +74,10 @@ export const 生成洗衣卡密API = (数据) => 请求实例.post('/laundry-car
 export const 删除洗衣卡密API = (id) => 请求实例.delete(`/laundry-cards/${id}`)
 export const 获取洗衣批次列表API = () => 请求实例.get('/laundry-card-batches')
 export const 获取洗衣批次卡密API = (id) => 请求实例.get(`/laundry-card-batches/${id}/cards`)
+
+// ===== 洗衣时间段（调用公开接口，不需要鉴权）=====
+// 修复：使用 axios 直接请求 /api/xi/time-slots，不走 /admin/api 前缀
+export const 获取洗衣时间段API = (params) => axios.get('/api/xi/time-slots', { params }).then(r => r.data)
 
 // ===== 洗衣时间规则 =====
 export const 获取洗衣时间规则API = () => 请求实例.get('/laundry-time-rules')

@@ -25,7 +25,8 @@
         <span class="订单标签">取件时间</span>
         <span class="订单值蓝色">{{ 取件时间 }}</span>
       </div>
-      <template v-if="收件人">
+      <!-- 修复：使用 洗衣Store.收件与取件相同 判断，避免路由参数为空时判断失效 -->
+      <template v-if="!洗衣Store.收件与取件相同">
         <div class="分隔线"></div>
         <div class="订单信息项">
           <span class="订单标签">收件人</span>
@@ -66,9 +67,12 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useLaundryOrderStore } from '../stores/laundryOrder'
 
 const route = useRoute()
 const router = useRouter()
+// 修复：引入洗衣Store，用 收件与取件相同 布尔值判断，避免依赖路由参数为空的判断方式
+const 洗衣Store = useLaundryOrderStore()
 
 const 订单号 = computed(() => route.query.order_no || '')
 const 商品名称 = computed(() => route.query.product_name || '')

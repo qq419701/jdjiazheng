@@ -108,6 +108,15 @@
 
           <!-- 自动化开关 -->
           <div class="设置分组标题">── 自动化开关 ──</div>
+          <!-- 修复：新增订单来源类型配置（laundry_order_type），鲸蚁API要求必须传有效平台值 -->
+          <el-form-item label="订单来源类型">
+            <el-select v-model="设置表单.laundry_order_type" style="width: 200px">
+              <el-option label="微信小程序 (50)" value="50" />
+              <el-option label="抖音小程序 (60)" value="60" />
+              <el-option label="快手小程序 (70)" value="70" />
+            </el-select>
+            <div class="字段说明">推送到鲸蚁API的订单来源平台标识，微信小程序填50</div>
+          </el-form-item>
           <el-form-item label="自动下单">
             <el-switch
               v-model="设置表单.laundry_auto_order_enabled"
@@ -228,6 +237,8 @@ const 设置表单 = ref({
   laundry_service_content: '',
   laundry_auto_order_enabled: '0',
   laundry_auto_express_enabled: '0',
+  // 修复：新增 laundry_order_type，对应鲸蚁API平台来源值（50=微信，60=抖音，70=快手）
+  laundry_order_type: '50',
   laundry_api_url: '',
   laundry_app_id: '',
   laundry_app_secret: '',
@@ -277,6 +288,8 @@ const 加载设置 = async () => {
         laundry_service_content: 数据.laundry_service_content || '',
         laundry_auto_order_enabled: 数据.laundry_auto_order_enabled || '0',
         laundry_auto_express_enabled: 数据.laundry_auto_express_enabled || '0',
+        // 修复：加载 laundry_order_type，默认50（微信小程序）
+        laundry_order_type: 数据.laundry_order_type || '50',
         laundry_api_url: 数据.laundry_api_url || '',
         laundry_app_id: 数据.laundry_app_id || '',
         laundry_app_secret: 数据.laundry_app_secret || '',

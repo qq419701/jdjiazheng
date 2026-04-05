@@ -146,17 +146,20 @@ const 同步订单状态 = async (out_order_no, out_booking_no, status) => {
  * @param {Object} 收件地址 - 收件地址信息
  */
 const 修改预约单 = async (out_order_no, out_booking_no, visit_date, visit_start, visit_end, 取件地址, 收件地址) => {
-  const { api地址, appId } = await 读取API配置();
+  const { api地址 } = await 读取API配置();
   const 请求头 = await 获取请求头();
 
   try {
+    // 修复：根据鲸蚁API文档，/api/out/update-booking 的 app_id 字段已弃用，不传
+    // 订单字段放在 order_info 对象内，取件/收件地址分别用 address_info/back_address_info
     const 请求体 = {
-      app_id: appId,
-      out_order_no,
-      out_booking_no,
-      day: visit_date,
-      start_time: visit_start,
-      end_time: visit_end,
+      order_info: {
+        out_order_no,
+        out_booking_no,
+        day: visit_date,
+        start_time: visit_start,
+        end_time: visit_end,
+      },
     };
     if (取件地址) 请求体.address_info = 取件地址;
     if (收件地址) 请求体.back_address_info = 收件地址;
