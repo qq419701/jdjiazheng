@@ -154,6 +154,51 @@
         </el-form>
       </el-tab-pane>
 
+      <!-- ===== Tab 3：快递API配置 ===== -->
+      <el-tab-pane label="🚚 快递API配置" name="express">
+        <el-form :model="设置表单" label-width="160px" style="max-width: 700px">
+
+          <!-- 快递API认证配置 -->
+          <div class="设置分组标题">── 快递API认证配置 ──</div>
+          <el-form-item label="快递API地址">
+            <el-input v-model="设置表单.express_api_url" placeholder="如：https://express-api.jingyishenghua.com" />
+            <div class="字段说明">快递API的基础地址（独立于洗衣订单API）</div>
+          </el-form-item>
+          <el-form-item label="快递 AppID">
+            <el-input v-model="设置表单.express_app_id" placeholder="在鲸蚁系统获取快递AppID" />
+          </el-form-item>
+          <el-form-item label="快递 AppSecret">
+            <el-input v-model="设置表单.express_app_secret" type="password" placeholder="快递AppSecret" show-password />
+          </el-form-item>
+          <el-form-item label="快递类型">
+            <el-select v-model="设置表单.express_type" style="width:200px">
+              <el-option label="京东快递 (20)" value="20" />
+              <el-option label="顺丰 (10)" value="10" />
+            </el-select>
+            <div class="字段说明">用于指定快递服务商</div>
+          </el-form-item>
+
+          <!-- 回调地址 -->
+          <div class="设置分组标题">── 回调配置 ──</div>
+          <el-form-item label="鲸蚁回调地址">
+            <el-input :value="回调地址" readonly />
+            <div class="字段说明">将此地址配置到鲸蚁系统，用于接收订单状态回调</div>
+          </el-form-item>
+
+          <el-form-item>
+            <el-button type="primary" :loading="快递保存中" @click="保存快递设置">💾 保存快递API配置</el-button>
+            <el-button type="success" :loading="快递测试中" @click="测试快递连接">⚡ 测试快递API连接</el-button>
+          </el-form-item>
+          <el-alert
+            v-if="快递测试结果"
+            :title="快递测试结果.消息"
+            :type="快递测试结果.成功 ? 'success' : 'error'"
+            :closable="false"
+            style="margin-top: 12px"
+          />
+        </el-form>
+      </el-tab-pane>
+
     </el-tabs>
   </div>
 </template>
@@ -161,13 +206,18 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { 获取设置API, 保存设置API, 测试洗衣API连接 } from '../api/index'
+import { 获取设置API, 保存设置API, 测试洗衣API连接, 测试快递API连接API } from '../api/index'
 
 const 加载中 = ref(false)
 const 保存中 = ref(false)
 const 测试中 = ref(false)
 const 当前标签 = ref('basic')
 const 测试结果 = ref(null)
+
+// 快递API相关状态
+const 快递保存中 = ref(false)
+const 快递测试中 = ref(false)
+const 快递测试结果 = ref(null)
 
 const 设置表单 = ref({
   site_url: '',
@@ -184,6 +234,11 @@ const 设置表单 = ref({
   laundry_tenant_id: '',
   laundry_token_expires: '',
   laundry_token_valid: '',
+  // 快递API配置
+  express_api_url: '',
+  express_app_id: '',
+  express_app_secret: '',
+  express_type: '20',
 })
 
 // 回调地址（自动拼接 site_url + /api/laundry/callback）
@@ -228,6 +283,11 @@ const 加载设置 = async () => {
         laundry_tenant_id: 数据.laundry_tenant_id || '',
         laundry_token_expires: 数据.laundry_token_expires || '',
         laundry_token_valid: 数据.laundry_token_valid || '',
+        // 快递API配置
+        express_api_url: 数据.express_api_url || '',
+        express_app_id: 数据.express_app_id || '',
+        express_app_secret: 数据.express_app_secret || '',
+        express_type: 数据.express_type || '20',
       }
     }
   } finally {
@@ -261,6 +321,42 @@ const 测试连接 = async () => {
     测试结果.value = { 成功: false, 消息: '连接失败，请检查API配置' }
   } finally {
     测试中.value = false
+  }
+}
+
+// 保存快递API配置
+const 保存快递设置 = async () => {
+  快递保存中.value = true
+  try {
+    await 保存设置API({
+      express_api_url: 设置表单.value.express_api_url,
+      express_app_id: 设置表单.value.express_app_id,
+      express_app_secret: 设置表单.value.express_app_secret,
+      express_type: 设置表单.value.express_type,
+    })
+    ElMessage.success('快递API配置保存成功')
+  } catch {
+    ElMessage.error('保存失败')
+  } finally {
+    快递保存中.value = false
+  }
+}
+
+// 测试快递API连接
+const 测试快递连接 = async () => {
+  快递测试中.value = true
+  快递测试结果.value = null
+  try {
+    const 结果 = await 测试快递API连接API()
+    if (结果.code === 1) {
+      快递测试结果.value = { 成功: true, 消息: `连接成功！TenantID: ${结果.data?.tenantId}` }
+    } else {
+      快递测试结果.value = { 成功: false, 消息: 结果.message || '连接失败' }
+    }
+  } catch {
+    快递测试结果.value = { 成功: false, 消息: '连接失败，请检查快递API配置' }
+  } finally {
+    快递测试中.value = false
   }
 }
 
