@@ -345,9 +345,12 @@ const 测试快递连接 = async (req, res) => {
  * POST /api/laundry/callback
  * 无需JWT鉴权
  *
+ * 回调参数：app_id, out_order_no, status, waybillCode, images, images_v2, factory_name, factory_code
+ * images_v2 为新版预检图片字段（优先使用），images 为旧版兼容字段
+ *
  * 状态码含义：
  * 1=已分配（鲸蚁分配工厂和快递员），2=已取件，3=已入厂，
- * 4=预检中（含衣物图片），5=已回寄，6=已送达，11=质检中，-1=已取消
+ * 4=预检中（含衣物图片 images_v2/images），5=已回寄，6=已送达，11=质检中，-1=已取消
  */
 const 接收鲸蚁回调 = async (req, res) => {
   try {
@@ -365,6 +368,9 @@ const 接收鲸蚁回调 = async (req, res) => {
       factory_code,
     } = 回调数据;
 
+    // 统一转为数值（鲸蚁可能传字符串或数值）
+    const 状态数值 = Number(status);
+
     // 验证 app_id（软验证，不匹配只打日志，不拒绝）
     const 设置列表 = await Setting.findAll();
     const 配置 = {};
@@ -380,7 +386,7 @@ const 接收鲸蚁回调 = async (req, res) => {
       return res.json({ code: 0 }); // 仍返回0避免鲸蚁重试
     }
 
-    // 状态映射
+    // 状态映射（统一用数值为key）
     const 洗衣状态映射 = {
       1: '已分配',
       2: '已取件',
@@ -389,16 +395,15 @@ const 接收鲸蚁回调 = async (req, res) => {
       5: '已回寄',
       6: '已送达',
       11: '质检中',
-      '-1': '已取消',
+      [-1]: '已取消',
     };
 
-    const 状态字符串 = String(status);
     const 更新数据 = {
-      laundry_status: 洗衣状态映射[状态字符串] || `状态${status}`,
+      laundry_status: 洗衣状态映射[状态数值] || `状态${状态数值}`,
     };
 
-    // 根据 status 更新对应字段
-    if (status === 1) {
+    // 根据 status 更新对应字段（统一用数值比较）
+    if (状态数值 === 1) {
       // 已分配：写入取件快递单号、工厂信息
       if (waybillCode) {
         更新数据.express_order_id = waybillCode;
@@ -406,21 +411,21 @@ const 接收鲸蚁回调 = async (req, res) => {
       }
       if (factory_name) 更新数据.factory_name = factory_name;
       if (factory_code) 更新数据.factory_code = factory_code;
-    } else if (status === 4) {
+    } else if (状态数值 === 4) {
       // 预检中：保存图片（优先用 images_v2）
       const 图片数据 = images_v2 || images;
       if (图片数据) {
         更新数据.laundry_images = typeof 图片数据 === 'string' ? 图片数据 : JSON.stringify(图片数据);
       }
-    } else if (status === 5) {
+    } else if (状态数值 === 5) {
       // 已回寄：写入回寄快递单号
       if (waybillCode) {
         更新数据.return_waybill_code = waybillCode;
       }
-    } else if (status === 6) {
+    } else if (状态数值 === 6) {
       // 已送达：更新主状态
       更新数据.status = 6;
-    } else if (status === -1) {
+    } else if (状态数值 === -1) {
       // 已取消
       更新数据.status = 4;
       更新数据.laundry_status = '已取消';

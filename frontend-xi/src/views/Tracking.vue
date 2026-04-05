@@ -185,11 +185,14 @@ const 步骤列表 = [
 // 步骤完成判断（当前状态之前的步骤都算完成）
 const 当前步骤索引 = computed(() => {
   const 当前 = 物流数据.value?.laundry_status
+  if (!当前) return -1
   const 索引 = 步骤列表.findIndex(步骤 => 步骤.状态 === 当前)
   return 索引
 })
 
 const 步骤已完成 = (步骤状态) => {
+  // 若当前状态不在步骤列表中（如已取消），不标记任何步骤完成
+  if (当前步骤索引.value < 0) return false
   const 步骤索引 = 步骤列表.findIndex(步骤 => 步骤.状态 === 步骤状态)
   return 步骤索引 <= 当前步骤索引.value
 }
