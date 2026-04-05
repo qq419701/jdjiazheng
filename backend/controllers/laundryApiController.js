@@ -337,7 +337,6 @@ const 查询洗衣订单物流 = async (req, res) => {
     const 订单 = await Order.findOne({ where: { order_no: orderNo, business_type: 'xiyifu' } });
     if (!订单) return res.json({ code: 0, message: '订单不存在' });
 
-    const { 查询物流路由 } = require('../services/expressApiService');
     const { 安全解析JSON: 解析 } = require('../utils/helpers');
 
     const 结果 = {
@@ -351,27 +350,7 @@ const 查询洗衣订单物流 = async (req, res) => {
       return_waybill_code: 订单.return_waybill_code,
       factory_name: 订单.factory_name,
       laundry_images: 解析(订单.laundry_images, []),
-      pickup_route: null,
-      return_route: null,
     };
-
-    // 查询取件物流
-    if (订单.express_order_id) {
-      try {
-        结果.pickup_route = await 查询物流路由(订单.express_order_id);
-      } catch (错误) {
-        console.warn('查询取件物流失败:', 错误.message);
-      }
-    }
-
-    // 查询回寄物流
-    if (订单.return_waybill_code) {
-      try {
-        结果.return_route = await 查询物流路由(订单.return_waybill_code);
-      } catch (错误) {
-        console.warn('查询回寄物流失败:', 错误.message);
-      }
-    }
 
     res.json({ code: 1, message: '查询成功', data: 结果 });
   } catch (错误) {

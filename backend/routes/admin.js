@@ -14,7 +14,7 @@ const { 获取所有设置, 批量更新设置 } = require('../controllers/setti
 const { 获取地区列表, 后台查询地区, 新增地区, 更新地区, 删除地区, 切换地区状态, 获取地区统计, 导入地区CSV } = require('../controllers/regionController');
 const multer = require('multer');
 const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
-const { 触发洗衣下单, 查询洗衣订单状态, 取消洗衣订单, 获取洗衣订单列表, 获取洗衣订单详情, 修改洗衣订单并同步鲸蚁, 查询快递物流路由, 查询快递结算费用, 测试快递连接, 测试洗衣API连接, 获取洗衣Token状态, 创建洗衣快递, 取消洗衣快递 } = require('../controllers/laundryController');
+const { 触发洗衣下单, 查询洗衣订单状态, 取消洗衣订单, 获取洗衣订单列表, 获取洗衣订单详情, 修改洗衣订单并同步鲸蚁, 测试洗衣API连接, 获取洗衣Token状态 } = require('../controllers/laundryController');
 
 // ===== 登录接口（无需鉴权）=====
 router.post('/login', async (req, res) => {
@@ -206,18 +206,6 @@ router.get('/laundry-orders/:id/status', 验证Token, 查询洗衣订单状态);
 // 取消洗衣订单
 router.post('/laundry-orders/:id/cancel', 验证Token, 取消洗衣订单);
 
-// 查询快递物流路由（type=pickup 取件快递 / type=return 回寄快递）
-router.post('/laundry-orders/:id/express-routes', 验证Token, 查询快递物流路由);
-
-// 查询快递结算费用（type=pickup 或 type=return）
-router.get('/laundry-orders/:id/express-balance', 验证Token, 查询快递结算费用);
-
-// 创建取件快递单（通过快递API主动创建）
-router.post('/laundry-orders/:id/create-express', 验证Token, 创建洗衣快递);
-
-// 取消快递单
-router.post('/laundry-orders/:id/cancel-express', 验证Token, 取消洗衣快递);
-
 // ===== 洗衣卡密管理（独立路由，强制 business_type='xiyifu'）=====
 router.get('/laundry-cards', 验证Token, async (req, res) => {
   req.query.business_type = 'xiyifu';
@@ -278,9 +266,6 @@ router.post('/laundry/test-connection', 验证Token, 测试洗衣API连接);
 
 // 获取洗衣Token状态
 router.get('/laundry/token-status', 验证Token, 获取洗衣Token状态);
-
-// 测试快递API连接（独立凭证）
-router.post('/laundry/test-express-connection', 验证Token, 测试快递连接);
 
 // 旧预留接口（向下兼容）
 router.post('/laundry/orders/:id/place-order', 验证Token, 触发洗衣下单);
