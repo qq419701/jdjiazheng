@@ -135,6 +135,20 @@ router.post('/orders/:id/reset', 验证Token, 重置订单);
 router.get('/cards', 验证Token, 获取卡密列表);
 router.post('/cards/generate', 验证Token, 生成卡密);
 router.get('/cards/export', 验证Token, 导出卡密);
+router.get('/cards/jiazheng/preview-card', 验证Token, async (req, res) => {
+  try {
+    const { Card } = require('../models');
+    const 卡密 = await Card.findOne({
+      where: { status: 0, business_type: 'jiazheng' },
+      order: [['created_at', 'DESC']],
+    });
+    if (!卡密) return res.json({ code: 0, message: '暂无可用家政卡密，请先生成卡密', data: null });
+    res.json({ code: 1, message: 'ok', data: { code: 卡密.code } });
+  } catch (错误) {
+    console.error('获取家政预览卡密出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
 router.delete('/cards/:id', 验证Token, 删除卡密);
 
 // 卡密批次管理
@@ -204,6 +218,21 @@ router.post('/laundry-cards/generate', 验证Token, async (req, res) => {
   return 生成卡密(req, res);
 });
 router.delete('/laundry-cards/:id', 验证Token, 删除卡密);
+
+router.get('/laundry-cards/preview-card', 验证Token, async (req, res) => {
+  try {
+    const { Card } = require('../models');
+    const 卡密 = await Card.findOne({
+      where: { status: 0, business_type: 'xiyifu' },
+      order: [['created_at', 'DESC']],
+    });
+    if (!卡密) return res.json({ code: 0, message: '暂无可用洗衣卡密，请先生成卡密', data: null });
+    res.json({ code: 1, message: 'ok', data: { code: 卡密.code } });
+  } catch (错误) {
+    console.error('获取洗衣预览卡密出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
 
 router.get('/laundry-card-batches', 验证Token, async (req, res) => {
   // 只返回洗衣卡密批次

@@ -4,10 +4,16 @@
 
     <!-- 顶部一键打开洗衣前端按钮 -->
     <el-card class="顶部操作栏" style="margin-bottom: 12px">
-      <el-button type="primary" @click="打开洗衣前端">
-        🔗 打开洗衣前端页面
-      </el-button>
-      <span class="前端链接提示">点击在新标签页打开洗衣H5前端</span>
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+        <el-button type="primary" size="large" @click="打开洗衣前端">
+          🌐 预览洗衣前端页面
+        </el-button>
+        <span v-if="预览链接" style="font-size:13px; color:#409eff">
+          {{ 预览链接 }}
+          <el-button link @click="复制预览链接">复制</el-button>
+        </span>
+        <span style="font-size:12px; color:#999">自动使用一个未使用的演示卡密打开前端</span>
+      </div>
     </el-card>
 
     <!-- 搜索筛选 -->
@@ -200,11 +206,12 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   获取洗衣订单列表API, 获取洗衣订单详情API,
   更新洗衣订单备注API, 触发洗衣API下单, 取消洗衣订单API,
-  重置洗衣订单API, 获取设置API
+  重置洗衣订单API, 获取设置API, 获取洗衣预览卡密API
 } from '../api/index'
 
 // 站点域名
 const 站点域名 = ref('')
+const 预览链接 = ref('')
 
 // 搜索条件
 const 搜索条件 = ref({ keyword: '', city: '', status: '' })
@@ -236,10 +243,31 @@ const 加载站点域名 = async () => {
   } catch {}
 }
 
-// 打开洗衣前端
-const 打开洗衣前端 = () => {
-  const 链接 = 站点域名.value ? `${站点域名.value}/xi/` : '/xi/'
-  window.open(链接, '_blank')
+// 打开洗衣前端（获取一个未使用的洗衣卡密）
+const 打开洗衣前端 = async () => {
+  try {
+    const 结果 = await 获取洗衣预览卡密API()
+    if (结果.code === 1 && 结果.data?.code) {
+      const 链接 = `${站点域名.value || ''}/xi/${结果.data.code}`
+      预览链接.value = 链接
+      window.open(链接, '_blank')
+    } else {
+      ElMessage.warning(结果.message || '请先生成洗衣卡密')
+    }
+  } catch {
+    ElMessage.error('获取预览卡密失败，请重试')
+  }
+}
+
+// 复制预览链接
+const 复制预览链接 = async () => {
+  if (!预览链接.value) return
+  try {
+    await navigator.clipboard.writeText(预览链接.value)
+    ElMessage.success('链接已复制')
+  } catch {
+    ElMessage.warning('复制失败，请手动复制')
+  }
 }
 
 // 加载订单

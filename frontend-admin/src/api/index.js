@@ -81,3 +81,7 @@ export const 删除洗衣时间规则API = (id) => 请求实例.delete(`/laundry
 
 // ===== 洗衣连接测试 =====
 export const 测试洗衣API连接 = () => 请求实例.post('/laundry/test-connection')
+
+// ===== 预览卡密 =====
+export const 获取家政预览卡密API = () => 请求实例.get('/cards/jiazheng/preview-card')
+export const 获取洗衣预览卡密API = () => 请求实例.get('/laundry-cards/preview-card')

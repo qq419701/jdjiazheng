@@ -1,0 +1,1 @@
+import{_ as e,c,a as s,l as d}from"./index-BbIu581K.js";const t={},o={class:"无效页面"};function n(r,a){return d(),c("div",o,[...a[0]||(a[0]=[s("div",{class:"无效图标"},"❌",-1),s("div",{class:"无效标题"},"卡密无效",-1),s("div",{class:"无效描述"},"该卡密不存在、已使用或已过期",-1),s("div",{class:"无效提示"},"如有疑问，请联系客服",-1)])])}const _=e(t,[["render",n],["__scopeId","data-v-edd6d5a9"]]);export{_ as default};
