@@ -165,6 +165,10 @@ const 获取Token状态 = async () => {
 const 获取请求头 = async () => {
   // [修复] 始终使用动态 access_token 作为 out-token，不再读取数据库中的固定 outToken
   const { token, tenantId } = await 获取AccessToken();
+  if (!tenantId) {
+    // tenantId 缺失时记录警告，有助于排查鲸蚁鉴权问题
+    console.warn('⚠️ 鲸蚁 tenantId 为空，请检查Token获取是否正常，tenant-id 将使用空字符串');
+  }
   return {
     'out-token': token,
     'tenant-id': tenantId || '',
