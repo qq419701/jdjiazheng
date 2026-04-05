@@ -83,8 +83,8 @@
           <el-form-item label="Token状态">
             <el-tag :type="Token状态类型" size="default">{{ Token状态文字 }}</el-tag>
           </el-form-item>
-          <el-form-item v-if="设置表单.laundry_token_expires" label="过期时间">
-            <span class="字段只读值">{{ 设置表单.laundry_token_expires }}</span>
+          <el-form-item v-if="Token过期时间文字" label="过期时间">
+            <span class="字段只读值">{{ Token过期时间文字 }}</span>
           </el-form-item>
 
           <el-form-item>
@@ -247,8 +247,7 @@ const 设置表单 = ref({
   laundry_app_id: '',
   laundry_app_secret: '',
   laundry_tenant_id: '',
-  laundry_token_expires: '',
-  laundry_token_valid: '',
+  laundry_token_expire_at: '0',
   // 快递API配置
   express_api_url: '',
   express_app_id: '',
@@ -268,10 +267,17 @@ const 快递回调地址 = computed(() => {
   return 域名 ? `${域名}/api/express/callback` : '/api/express/callback'
 })
 
+const Token过期时间文字 = computed(() => {
+  const expireAt = parseInt(设置表单.value.laundry_token_expire_at || '0')
+  if (expireAt <= 0) return ''
+  return new Date(expireAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+})
+
 // Token状态计算
 const Token状态文字 = computed(() => {
   if (!设置表单.value.laundry_app_id || !设置表单.value.laundry_api_url) return '未配置'
-  if (设置表单.value.laundry_token_valid === '1') return '有效'
+  const expireAt = parseInt(设置表单.value.laundry_token_expire_at || '0')
+  if (expireAt > Date.now()) return '有效'
   if (设置表单.value.laundry_tenant_id) return '已过期'
   return '未获取'
 })
@@ -304,8 +310,7 @@ const 加载设置 = async () => {
         laundry_app_id: 数据.laundry_app_id || '',
         laundry_app_secret: 数据.laundry_app_secret || '',
         laundry_tenant_id: 数据.laundry_tenant_id || '',
-        laundry_token_expires: 数据.laundry_token_expires || '',
-        laundry_token_valid: 数据.laundry_token_valid || '',
+        laundry_token_expire_at: 数据.laundry_token_expire_at || '0',
         // 快递API配置
         express_api_url: 数据.express_api_url || '',
         express_app_id: 数据.express_app_id || '',
