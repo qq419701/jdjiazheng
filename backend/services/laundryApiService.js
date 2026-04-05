@@ -100,7 +100,7 @@ const 获取AccessToken = async (强制刷新 = false) => {
       throw new Error(`获取Token失败：${JSON.stringify(响应.data)}`);
     }
 
-    缓存Token = 响应.data.data.access_token;
+    缓存Token = 响应.data.data.access_token || 响应.data.data.accessToken;
     缓存TenantId = 响应.data.data.tenantId;
     // 2小时有效期
     Token过期时间 = 当前时间 + 2 * 60 * 60 * 1000;
