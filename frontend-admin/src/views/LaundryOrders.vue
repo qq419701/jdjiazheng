@@ -112,6 +112,7 @@
               @click="触发下单(row.id)"
             >触发下单</el-button>
             <el-button size="small" type="success" plain @click="打开物流弹窗(row)">📋 物流查询</el-button>
+            <el-button size="small" type="primary" plain @click="执行创建快递(row.id)">🚚 创建快递</el-button>
             <el-button size="small" type="warning" plain @click="打开修改预约弹窗(row)">✏️ 修改预约</el-button>
             <el-button
               v-if="row.status !== 4"
@@ -311,7 +312,7 @@
     </el-dialog>
 
     <!-- 修改预约弹窗 -->
-    <el-dialog v-model="显示修改预约弹窗" title="✏️ 修改预约信息" width="560px" :close-on-click-modal="false">
+    <el-dialog v-model="显示修改预约弹窗" title="✏️ 修改预约信息" width="600px" :close-on-click-modal="false">
       <el-alert
         v-if="修改预约表单.status === 2"
         title="订单已下单，保存后将同步修改到鲸蚁系统"
@@ -339,6 +340,25 @@
           >
             <el-option v-for="段 in 时间段选项" :key="段.label" :label="段.label" :value="段.label" />
           </el-select>
+        </el-form-item>
+        <el-divider content-position="left">取件地址</el-divider>
+        <el-form-item label="取件姓名">
+          <el-input v-model="修改预约表单.name" placeholder="取件人姓名" />
+        </el-form-item>
+        <el-form-item label="取件手机">
+          <el-input v-model="修改预约表单.phone" placeholder="取件人手机号" />
+        </el-form-item>
+        <el-form-item label="取件省份">
+          <el-input v-model="修改预约表单.province" placeholder="省份" />
+        </el-form-item>
+        <el-form-item label="取件城市">
+          <el-input v-model="修改预约表单.city" placeholder="城市" />
+        </el-form-item>
+        <el-form-item label="取件区县">
+          <el-input v-model="修改预约表单.district" placeholder="区县" />
+        </el-form-item>
+        <el-form-item label="取件详址">
+          <el-input v-model="修改预约表单.address" type="textarea" rows="2" placeholder="取件详细地址" />
         </el-form-item>
         <el-divider content-position="left">收件地址</el-divider>
         <el-form-item label="收件姓名">
@@ -376,6 +396,7 @@ import {
   更新洗衣订单备注API, 触发洗衣API下单, 取消洗衣订单API,
   重置洗衣订单API, 获取设置API, 获取洗衣预览卡密API,
   修改洗衣订单API, 查询洗衣物流路由API, 获取洗衣时间段API,
+  创建洗衣快递API, 取消洗衣快递API,
 } from '../api/index'
 
 // 站点域名
@@ -620,6 +641,14 @@ const 打开修改预约弹窗 = (订单) => {
     visit_time_label: 订单.visit_time || '',
     visit_time_start: 订单.visit_time_start || '',
     visit_time_end: 订单.visit_time_end || '',
+    // 取件地址
+    name: 订单.name || '',
+    phone: 订单.phone || '',
+    province: 订单.province || '',
+    city: 订单.city || '',
+    district: 订单.district || '',
+    address: 订单.address || '',
+    // 收件地址
     return_name: 订单.return_name || '',
     return_phone: 订单.return_phone || '',
     return_province: 订单.return_province || '',
@@ -642,6 +671,14 @@ const 保存修改预约 = async () => {
       visit_time: 修改预约表单.value.visit_time_label,
       visit_time_start: 选中时间段?.start || 修改预约表单.value.visit_time_start,
       visit_time_end: 选中时间段?.end || 修改预约表单.value.visit_time_end,
+      // 取件地址
+      name: 修改预约表单.value.name,
+      phone: 修改预约表单.value.phone,
+      province: 修改预约表单.value.province,
+      city: 修改预约表单.value.city,
+      district: 修改预约表单.value.district,
+      address: 修改预约表单.value.address,
+      // 收件地址
       return_name: 修改预约表单.value.return_name,
       return_phone: 修改预约表单.value.return_phone,
       return_province: 修改预约表单.value.return_province,
@@ -658,6 +695,20 @@ const 保存修改预约 = async () => {
   } finally {
     修改保存中.value = false
   }
+}
+
+// 创建取件快递
+const 执行创建快递 = async (id) => {
+  try {
+    await ElMessageBox.confirm('确认为此订单创建取件快递？', '提示', { type: 'info' })
+    const 结果 = await 创建洗衣快递API(id)
+    if (结果.code === 1) {
+      ElMessage.success(结果.message || '创建快递成功')
+      加载订单()
+    } else {
+      ElMessage.warning(结果.message || '创建失败')
+    }
+  } catch {}
 }
 
 // 复制订单信息

@@ -33,6 +33,10 @@
           <span class="信息标签">洗护商品</span>
           <span class="信息值">{{ 物流数据.service_type }}</span>
         </div>
+        <div class="信息行" v-if="物流数据.factory_name">
+          <span class="信息标签">洗衣工厂</span>
+          <span class="信息值">{{ 物流数据.factory_name }}</span>
+        </div>
         <div class="信息行" v-if="物流数据.visit_date">
           <span class="信息标签">预约取件</span>
           <span class="信息值蓝色">{{ 物流数据.visit_date }} {{ 物流数据.visit_time }}</span>
@@ -122,11 +126,11 @@
       </div>
 
       <!-- 预检图片 -->
-      <div class="信息卡片" v-if="物流数据.laundry_images?.length > 0">
+      <div class="信息卡片" v-if="预检图片列表.length > 0">
         <div class="信息卡片标题">🖼️ 预检图片</div>
         <div class="图片列表">
           <van-image
-            v-for="(图片, 索引) in 物流数据.laundry_images"
+            v-for="(图片, 索引) in 预检图片列表"
             :key="索引"
             :src="图片"
             width="100"
@@ -148,7 +152,7 @@
     <!-- 图片预览 -->
     <van-image-preview
       v-model:show="显示图片预览"
-      :images="物流数据?.laundry_images || []"
+      :images="预检图片列表"
       :start-position="预览图片索引"
     />
   </div>
@@ -173,6 +177,7 @@ const 预览图片索引 = ref(0)
 
 // 洗衣步骤（按流程顺序）
 const 步骤列表 = [
+  { 名称: '已提交', 状态: '已提交' },
   { 名称: '已分配', 状态: '已分配' },
   { 名称: '已取件', 状态: '已取件' },
   { 名称: '已入厂', 状态: '已入厂' },
@@ -211,6 +216,21 @@ const 取件路由列表 = computed(() => {
 const 回寄路由列表 = computed(() => {
   const 数据 = 物流数据.value?.return_route
   return 数据?.routes || 数据?.routeList || []
+})
+
+// 预检图片列表（兼容 images_v2 对象数组和旧版字符串数组两种格式）
+// images_v2 格式：[{image: ["url1", "url2"], ...}, ...]
+// 旧版 images 格式：["url1", "url2"]
+const 预检图片列表 = computed(() => {
+  const 原始 = 物流数据.value?.laundry_images
+  if (!原始 || !Array.isArray(原始) || 原始.length === 0) return []
+  // 判断是否为 images_v2 格式（数组元素是对象且含 image 字段）
+  if (typeof 原始[0] === 'object' && 原始[0] !== null && Array.isArray(原始[0].image)) {
+    // 将所有 image 数组内的 URL 合并为一个平铺列表
+    return 原始.flatMap(项 => 项.image || [])
+  }
+  // 旧版：元素直接是 URL 字符串
+  return 原始.filter(项 => typeof 项 === 'string')
 })
 
 // 加载物流数据

@@ -193,6 +193,10 @@
             <el-input :value="回调地址" readonly />
             <div class="字段说明">将此地址配置到鲸蚁系统，用于接收订单状态回调</div>
           </el-form-item>
+          <el-form-item label="快递推送回调">
+            <el-input :value="快递回调地址" readonly />
+            <div class="字段说明">将此地址配置到快递系统，用于接收京东快递推送通知</div>
+          </el-form-item>
 
           <el-form-item>
             <el-button type="primary" :loading="快递保存中" @click="保存快递设置">💾 保存快递API配置</el-button>
@@ -256,6 +260,12 @@ const 设置表单 = ref({
 const 回调地址 = computed(() => {
   const 域名 = (设置表单.value.site_url || '').replace(/\/$/, '')
   return 域名 ? `${域名}/api/laundry/callback` : '/api/laundry/callback'
+})
+
+// 快递推送回调地址（自动拼接 site_url + /api/express/callback）
+const 快递回调地址 = computed(() => {
+  const 域名 = (设置表单.value.site_url || '').replace(/\/$/, '')
+  return 域名 ? `${域名}/api/express/callback` : '/api/express/callback'
 })
 
 // Token状态计算

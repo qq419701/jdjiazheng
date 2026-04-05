@@ -79,7 +79,7 @@ const 获取快递请求头 = async () => {
 
 /**
  * 查询物流路由（取件/回寄快递轨迹）
- * GET /api/out-express/get-route-by-waybill-code/:waybillCode
+ * GET /api/get-route-by-waybill-code/:waybillCode（快递API独立系统路径，无 out-express 前缀）
  * @param {string} waybillCode - 快递单号
  * @returns {Object} 含快递员姓名/电话/路由列表
  */
@@ -91,7 +91,7 @@ const 查询物流路由 = async (waybillCode) => {
   const 请求头 = await 获取快递请求头();
   try {
     const 响应 = await axios.get(
-      `${api地址}/api/out-express/get-route-by-waybill-code/${encodeURIComponent(waybillCode)}`,
+      `${api地址}/api/get-route-by-waybill-code/${encodeURIComponent(waybillCode)}`,
       { headers: 请求头, timeout: 15000 }
     );
 
@@ -109,7 +109,7 @@ const 查询物流路由 = async (waybillCode) => {
       快递Token过期时间 = 0;
       const 新请求头 = await 获取快递请求头();
       const 重试响应 = await axios.get(
-        `${api地址}/api/out-express/get-route-by-waybill-code/${encodeURIComponent(waybillCode)}`,
+        `${api地址}/api/get-route-by-waybill-code/${encodeURIComponent(waybillCode)}`,
         { headers: 新请求头, timeout: 15000 }
       );
       if (重试响应.data.code !== 0) {
@@ -123,11 +123,46 @@ const 查询物流路由 = async (waybillCode) => {
 };
 
 /**
- * 查询物流结算费用
- * GET /api/out/get-express-balance/:waybillCode
- * @param {string} waybillCode - 快递单号
+ * 创建快递单（取件快递）
+ * POST /api/out-express
+ * @param {Object} 快递数据 - 含 pickupStartTime/expressType/type/goodsTypeText/cargoes/remark
+ * @returns {Object} 含 waybillCode 等快递单信息
  */
-const 查询物流结算费用 = async (waybillCode) => {
+const 创建快递 = async (快递数据) => {
+  const { api地址, 快递类型 } = await 读取快递API配置();
+  if (!api地址) throw new Error('快递API地址未配置');
+
+  const 请求头 = await 获取快递请求头();
+  try {
+    const 请求体 = {
+      expressType: parseInt(快递类型) || 20, // 默认20=京东快递
+      type: 10,                               // 10=取件
+      ...快递数据,
+    };
+    const 响应 = await axios.post(
+      `${api地址}/api/out-express`,
+      请求体,
+      { headers: 请求头, timeout: 15000 }
+    );
+
+    if (响应.data.code !== 0) {
+      throw new Error(`创建快递失败：${JSON.stringify(响应.data)}`);
+    }
+
+    console.log('✅ 创建快递成功，快递单号:', 响应.data.data?.waybillCode);
+    return 响应.data.data;
+  } catch (错误) {
+    console.error('创建快递出错:', 错误.message);
+    throw 错误;
+  }
+};
+
+/**
+ * 取消快递
+ * GET /api/out-express/cancel/:waybillCode
+ * @param {string} waybillCode - 要取消的快递单号
+ */
+const 取消快递 = async (waybillCode) => {
   if (!waybillCode) throw new Error('快递单号不能为空');
   const { api地址 } = await 读取快递API配置();
   if (!api地址) throw new Error('快递API地址未配置');
@@ -135,17 +170,49 @@ const 查询物流结算费用 = async (waybillCode) => {
   const 请求头 = await 获取快递请求头();
   try {
     const 响应 = await axios.get(
-      `${api地址}/api/out/get-express-balance/${encodeURIComponent(waybillCode)}`,
+      `${api地址}/api/out-express/cancel/${encodeURIComponent(waybillCode)}`,
       { headers: 请求头, timeout: 15000 }
     );
 
     if (响应.data.code !== 0) {
-      throw new Error(`查询物流结算费用失败：${JSON.stringify(响应.data)}`);
+      throw new Error(`取消快递失败：${JSON.stringify(响应.data)}`);
     }
 
+    console.log('✅ 取消快递成功:', waybillCode);
     return 响应.data.data;
   } catch (错误) {
-    console.error('查询物流结算费用出错:', 错误.message);
+    console.error('取消快递出错:', 错误.message);
+    throw 错误;
+  }
+};
+
+/**
+ * 打印面单
+ * POST /api/out-express/print-waybill/
+ * @param {string} waybillCode - 快递单号
+ * @returns {Object} 面单打印数据（如PDF URL或base64）
+ */
+const 打印面单 = async (waybillCode) => {
+  if (!waybillCode) throw new Error('快递单号不能为空');
+  const { api地址 } = await 读取快递API配置();
+  if (!api地址) throw new Error('快递API地址未配置');
+
+  const 请求头 = await 获取快递请求头();
+  try {
+    const 响应 = await axios.post(
+      `${api地址}/api/out-express/print-waybill/`,
+      { waybillCode },
+      { headers: 请求头, timeout: 15000 }
+    );
+
+    if (响应.data.code !== 0) {
+      throw new Error(`打印面单失败：${JSON.stringify(响应.data)}`);
+    }
+
+    console.log('✅ 打印面单成功:', waybillCode);
+    return 响应.data.data;
+  } catch (错误) {
+    console.error('打印面单出错:', 错误.message);
     throw 错误;
   }
 };
@@ -157,4 +224,4 @@ const 测试快递API连接 = async () => {
   return await 获取快递AccessToken(true);
 };
 
-module.exports = { 读取快递API配置, 获取快递AccessToken, 查询物流路由, 查询物流结算费用, 测试快递API连接 };
+module.exports = { 读取快递API配置, 获取快递AccessToken, 查询物流路由, 创建快递, 取消快递, 打印面单, 测试快递API连接 };

@@ -189,4 +189,33 @@ const 测试API连接 = async () => {
   return await 获取AccessToken(true);
 };
 
-module.exports = { 获取AccessToken, 推送预约单, 同步订单状态, 修改预约单, 测试API连接 };
+/**
+ * 查询物流结算费用（鲸蚁订单API）
+ * GET /api/out/get-express-balance/:waybillCode
+ * 注意：此接口属于鲸蚁订单API，使用鲸蚁AppID/AppSecret凭证
+ * @param {string} waybillCode - 快递单号
+ */
+const 查询物流结算费用 = async (waybillCode) => {
+  if (!waybillCode) throw new Error('快递单号不能为空');
+  const { api地址 } = await 读取API配置();
+  if (!api地址) throw new Error('洗衣API地址未配置');
+
+  const 请求头 = await 获取请求头();
+  try {
+    const 响应 = await axios.get(
+      `${api地址}/api/out/get-express-balance/${encodeURIComponent(waybillCode)}`,
+      { headers: 请求头, timeout: 15000 }
+    );
+
+    if (响应.data.code !== 0) {
+      throw new Error(`查询物流结算费用失败：${JSON.stringify(响应.data)}`);
+    }
+
+    return 响应.data.data;
+  } catch (错误) {
+    console.error('查询物流结算费用出错:', 错误.message);
+    throw 错误;
+  }
+};
+
+module.exports = { 获取AccessToken, 推送预约单, 同步订单状态, 修改预约单, 测试API连接, 查询物流结算费用 };
