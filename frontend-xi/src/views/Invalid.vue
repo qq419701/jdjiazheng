@@ -12,6 +12,13 @@
         📦 查询快递物流
       </div>
     </template>
+    <template v-else-if="是已作废">
+      <div class="无效图标">🚫</div>
+      <div class="无效标题">卡密已作废</div>
+      <div class="无效描述">该卡密已被商家作废，无法使用</div>
+      <div class="无效提示">如有疑问，请联系客服处理退款</div>
+      <div class="客服按钮" @click="联系客服">📞 联系客服</div>
+    </template>
     <template v-else>
       <div class="无效图标">❌</div>
       <div class="无效标题">卡密无效</div>
@@ -30,6 +37,7 @@ const route = useRoute()
 const router = useRouter()
 
 const 是已使用 = computed(() => route.query.used === '1')
+const 是已作废 = computed(() => route.query.invalidated === '1')
 const 卡密码 = computed(() => route.query.code || '')
 
 const 查询快递 = () => {
