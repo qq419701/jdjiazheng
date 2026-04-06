@@ -4,6 +4,8 @@ import axios from 'axios'
 
 // ===== 认证 =====
 export const 登录API = (数据) => 请求实例.post('/login', 数据)
+// 获取当前登录账号最新权限（用于路由守卫实时刷新）
+export const 获取当前权限API = () => 请求实例.get('/auth/me')
 
 // ===== 数据看板 =====
 export const 获取看板数据API = () => 请求实例.get('/dashboard')

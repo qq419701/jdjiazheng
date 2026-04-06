@@ -504,6 +504,50 @@ router.get('/laundry/token-status', 验证Token, 获取洗衣Token状态);
 // router.post('/laundry/orders/:id/place-order', 验证Token, 触发洗衣下单);
 router.get('/laundry/orders/:id/status', 验证Token, 查询洗衣订单状态);
 
+// ===== 当前登录账号信息（用于前端权限实时刷新）=====
+
+/**
+ * 获取当前登录账号的最新权限信息
+ * GET /admin/api/auth/me
+ * 前端路由守卫在每次跳转时调用此接口，确保权限始终与数据库同步
+ * 若账号已被禁用，返回 code:0 通知前端跳转登录页
+ */
+router.get('/auth/me', 验证Token, async (req, res) => {
+  try {
+    // 从JWT解码数据中取用户id，查询最新账号信息
+    const 账号 = await Admin.findByPk(req.管理员.id, {
+      attributes: ['id', 'username', 'nickname', 'role', 'permissions', 'is_active'],
+    });
+    if (!账号) {
+      return res.json({ code: 0, message: '账号不存在' });
+    }
+    // 账号已被禁用，通知前端强制退出
+    if (账号.is_active === 0) {
+      return res.json({ code: 0, message: '账号已被禁用' });
+    }
+    // 解析权限列表（JSON字符串 → 数组）
+    let 权限列表 = [];
+    try {
+      权限列表 = JSON.parse(账号.permissions || '[]');
+    } catch {
+      权限列表 = [];
+    }
+    res.json({
+      code: 1,
+      message: '获取成功',
+      data: {
+        permissions: 权限列表,
+        role: 账号.role,
+        nickname: 账号.nickname || 账号.username,
+        username: 账号.username,
+      },
+    });
+  } catch (错误) {
+    console.error('获取当前权限出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
 // ===== 子账号管理（仅 super 角色可操作）=====
 
 // 权限验证中间件：仅允许 super 角色
