@@ -20,6 +20,7 @@ const { 触发洗衣下单, 查询洗衣订单状态, 取消洗衣订单, 获取
 
 // ===== 备注图片上传配置 =====
 // 图片保存到 backend/uploads/remarks/ 目录，通过 /uploads/remarks/ 静态路径访问
+const crypto = require('crypto');
 const 上传目录 = path.join(__dirname, '../uploads/remarks');
 if (!fs.existsSync(上传目录)) fs.mkdirSync(上传目录, { recursive: true });
 
@@ -27,8 +28,9 @@ const 图片上传 = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, 上传目录),
     filename: (req, file, cb) => {
+      // 使用 crypto.randomBytes 避免文件名碰撞
       const 扩展名 = path.extname(file.originalname).toLowerCase() || '.jpg';
-      cb(null, `remark_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${扩展名}`);
+      cb(null, `remark_${crypto.randomBytes(16).toString('hex')}${扩展名}`);
     },
   }),
   limits: { fileSize: 5 * 1024 * 1024 }, // 单张限5MB
@@ -39,19 +41,23 @@ const 图片上传 = multer({
 });
 
 // ===== 图形验证码接口（无需鉴权）=====
-// 返回 SVG 验证码 base64 和 session key（简单实现：返回值存在内存 Map 中，有效期2分钟）
+// 返回 SVG 验证码 base64 和 session key（内存 Map 缓存，有效期2分钟）
 const 验证码缓存 = new Map();
+// 每5分钟定期清理过期验证码，避免占用内存
+setInterval(() => {
+  const 现在 = Date.now();
+  for (const [k, v] of 验证码缓存) { if (v.expires < 现在) 验证码缓存.delete(k); }
+}, 5 * 60 * 1000);
+
 router.get('/captcha', (req, res) => {
   // 生成4位随机字母数字
   const 字符集 = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let 验证码文字 = '';
   for (let i = 0; i < 4; i++) 验证码文字 += 字符集[Math.floor(Math.random() * 字符集.length)];
-  // 生成唯一key
-  const key = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  // 使用 crypto.randomBytes 生成安全的唯一 key
+  const key = crypto.randomBytes(16).toString('hex');
   // 缓存2分钟
   验证码缓存.set(key, { text: 验证码文字.toLowerCase(), expires: Date.now() + 2 * 60 * 1000 });
-  // 清理过期验证码
-  for (const [k, v] of 验证码缓存) { if (v.expires < Date.now()) 验证码缓存.delete(k); }
   // 生成 SVG
   const 宽 = 100, 高 = 38;
   const 颜色列表 = ['#e54635','#409eff','#67c23a','#e6a23c','#6c5ce7'];
