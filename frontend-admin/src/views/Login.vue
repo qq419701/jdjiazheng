@@ -6,7 +6,6 @@
       <div class="登录标题">
         <span class="标题图标">🏠</span>
         <h2>京东家政代下单系统</h2>
-        <p class="标题副文字">后台管理</p>
       </div>
 
       <!-- 登录表单 -->
@@ -44,10 +43,6 @@
         </el-button>
       </el-form>
 
-      <!-- 默认账号提示 -->
-      <div class="账号提示">
-        默认账号：admin &nbsp;|&nbsp; 默认密码：admin123
-      </div>
     </div>
   </div>
 </template>
@@ -131,17 +126,5 @@ const 提交登录 = async () => {
   font-weight: 700;
   color: #333;
   margin-bottom: 6px;
-}
-
-.标题副文字 {
-  font-size: 13px;
-  color: #999;
-}
-
-.账号提示 {
-  text-align: center;
-  margin-top: 16px;
-  font-size: 12px;
-  color: #ccc;
 }
 </style>
