@@ -116,19 +116,19 @@ const routes = [
         path: 'topup-orders',
         name: 'TopupOrders',
         component: () => import('../views/TopupOrders.vue'),
-        meta: { 标题: '充值订单管理', 权限Key: 'topup' },
+        meta: { 标题: '充值订单管理', 权限Key: 'topup_orders' },
       },
       {
         path: 'topup-cards',
         name: 'TopupCards',
         component: () => import('../views/TopupCards.vue'),
-        meta: { 标题: '充值卡密管理', 权限Key: 'topup' },
+        meta: { 标题: '充值卡密管理', 权限Key: 'topup_cards' },
       },
       {
         path: 'topup-settings',
         name: 'TopupSettings',
         component: () => import('../views/TopupSettings.vue'),
-        meta: { 标题: '虚拟充值设置', 权限Key: 'topup' },
+        meta: { 标题: '虚拟充值设置', 权限Key: 'topup_settings' },
       },
       // ===== 子账号管理 =====
       {

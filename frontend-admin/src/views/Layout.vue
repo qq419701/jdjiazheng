@@ -60,15 +60,15 @@
         </el-menu-item-group>
 
         <el-menu-item-group v-if="显示充值分组" title="充值业务（预留）">
-          <el-menu-item v-if="authStore.有权限('topup')" index="/admin/topup-orders">
+          <el-menu-item v-if="authStore.有权限('topup_orders')" index="/admin/topup-orders">
             <el-icon><CreditCard /></el-icon>
             <span>充值订单管理</span>
           </el-menu-item>
-          <el-menu-item v-if="authStore.有权限('topup')" index="/admin/topup-cards">
+          <el-menu-item v-if="authStore.有权限('topup_cards')" index="/admin/topup-cards">
             <el-icon><Ticket /></el-icon>
             <span>充值卡密管理</span>
           </el-menu-item>
-          <el-menu-item v-if="authStore.有权限('topup')" index="/admin/topup-settings">
+          <el-menu-item v-if="authStore.有权限('topup_settings')" index="/admin/topup-settings">
             <el-icon><Setting /></el-icon>
             <span>虚拟充值设置</span>
           </el-menu-item>
@@ -133,7 +133,7 @@ const 当前页标题 = computed(() => route.meta?.标题 || '京东代下单系
 // 分组可见性：有任意菜单项可见则显示该分组
 const 显示家政分组 = computed(() => ['orders', 'cards', 'jd_accounts', 'time_rules'].some(k => authStore.有权限(k)))
 const 显示洗衣分组 = computed(() => ['laundry_orders', 'laundry_cards', 'laundry_time_rules', 'laundry_settings'].some(k => authStore.有权限(k)))
-const 显示充值分组 = computed(() => authStore.有权限('topup'))
+const 显示充值分组 = computed(() => ['topup_orders', 'topup_cards', 'topup_settings'].some(k => authStore.有权限(k)))
 const 显示系统分组 = computed(() => ['regions', 'settings', 'sub_accounts'].some(k => authStore.有权限(k)))
 
 // 退出登录

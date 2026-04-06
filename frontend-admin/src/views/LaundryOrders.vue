@@ -130,12 +130,6 @@
         </el-table-column>
         <el-table-column prop="card_code" label="卡密" width="160" />
         <el-table-column prop="service_type" label="商品名称" width="100" />
-        <el-table-column label="鲸蚁订单号" width="140" show-overflow-tooltip>
-          <template #default="{ row }">
-            <span v-if="row.laundry_order_id" class="鲸蚁订单号">{{ row.laundry_order_id }}</span>
-            <span v-else class="无值">-</span>
-          </template>
-        </el-table-column>
         <el-table-column label="洗衣状态" width="100">
           <template #default="{ row }">
             <el-tag v-if="row.laundry_status" :type="获取洗衣状态类型(row.laundry_status)" size="small">
