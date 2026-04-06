@@ -49,6 +49,8 @@
         <el-form-item>
           <el-button type="primary" @click="搜索订单">搜索</el-button>
           <el-button @click="重置筛选">重置</el-button>
+          <!-- 导出当前筛选条件下的洗衣订单为CSV文件 -->
+          <el-button type="success" @click="导出订单" :loading="导出中">导出CSV</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -344,6 +346,7 @@ import {
   更新洗衣订单备注API, 触发洗衣API下单, 取消洗衣订单API,
   重置洗衣订单API, 获取设置API, 获取洗衣预览卡密API,
   修改洗衣订单API, 获取洗衣时间段API, 查询洗衣物流API,
+  导出洗衣订单API,
 } from '../api/index'
 
 // 站点域名
@@ -356,6 +359,7 @@ const 日期范围 = ref(null)
 
 // 表格数据
 const 加载中 = ref(false)
+const 导出中 = ref(false)  // 导出订单时的loading状态
 const 订单列表 = ref([])
 const 总数 = ref(0)
 const 当前页 = ref(1)
@@ -483,6 +487,37 @@ const 重置筛选 = () => {
   日期范围.value = null
   当前页.value = 1
   加载订单()
+}
+
+/**
+ * 导出洗衣订单为CSV文件（携带当前所有筛选条件）
+ * 通过axios携带Token认证后触发浏览器下载
+ */
+const 导出订单 = async () => {
+  导出中.value = true
+  try {
+    // 构建与加载列表相同的查询参数（不包含分页）
+    const 参数 = { ...搜索条件.value }
+    if (日期范围.value) {
+      参数.date_start = 日期范围.value[0]
+      参数.date_end = 日期范围.value[1]
+    }
+    const blob = await 导出洗衣订单API(参数)
+    // 创建临时下载链接触发浏览器下载
+    const url = window.URL.createObjectURL(new Blob([blob], { type: 'text/csv;charset=utf-8' }))
+    const 链接 = document.createElement('a')
+    链接.href = url
+    链接.setAttribute('download', `洗衣订单_${new Date().toISOString().split('T')[0].replace(/-/g, '')}.csv`)
+    document.body.appendChild(链接)
+    链接.click()
+    document.body.removeChild(链接)
+    window.URL.revokeObjectURL(url)
+    ElMessage.success('导出成功')
+  } catch {
+    ElMessage.error('导出失败，请重试')
+  } finally {
+    导出中.value = false
+  }
 }
 
 // 查看详情

@@ -6,8 +6,8 @@ const bcrypt = require('bcryptjs');
 const 配置 = require('../config/config');
 const { Admin, Order } = require('../models');
 const { 验证Token } = require('../middleware/auth');
-const { 获取订单列表, 获取订单详情, 更新订单状态, 触发自动下单, 重置订单, 更新订单备注 } = require('../controllers/orderController');
-const { 获取卡密列表, 生成卡密, 导出卡密, 删除卡密, 获取批次列表, 获取批次卡密, 删除批次 } = require('../controllers/cardController');
+const { 获取订单列表, 获取订单详情, 更新订单状态, 触发自动下单, 重置订单, 更新订单备注, 导出订单 } = require('../controllers/orderController');
+const { 获取卡密列表, 生成卡密, 导出卡密, 作废卡密, 删除卡密, 获取批次列表, 获取批次卡密, 删除批次 } = require('../controllers/cardController');
 const { 获取账号列表, 新增账号, 更新账号, 删除账号, 触发自动登录 } = require('../controllers/jdAccountController');
 const { 获取规则列表, 新增规则, 更新规则, 删除规则 } = require('../controllers/timeRuleController');
 const { 获取所有设置, 批量更新设置 } = require('../controllers/settingController');
@@ -125,6 +125,12 @@ router.get('/dashboard', 验证Token, async (req, res) => {
 
 // 订单管理
 router.get('/orders', 验证Token, 获取订单列表);
+// 导出家政订单为CSV（必须在 /orders/:id 之前注册，防止被参数路由拦截）
+router.get('/orders/export', 验证Token, async (req, res) => {
+  // 强制业务类型为家政
+  req.query.business_type = 'jiazheng';
+  return 导出订单(req, res);
+});
 router.get('/orders/:id', 验证Token, 获取订单详情);
 router.put('/orders/:id/status', 验证Token, 更新订单状态);
 router.put('/orders/:id/remark', 验证Token, 更新订单备注); // 快速更新备注接口
@@ -150,6 +156,8 @@ router.get('/cards/jiazheng/preview-card', 验证Token, async (req, res) => {
   }
 });
 router.delete('/cards/:id', 验证Token, 删除卡密);
+// 作废卡密（将未使用的家政卡密标记为已失效，不可逆操作）
+router.put('/cards/:id/invalidate', 验证Token, 作废卡密);
 
 // 卡密批次管理
 router.get('/card-batches', 验证Token, 获取批次列表);
@@ -184,6 +192,12 @@ router.delete('/regions/:id', 验证Token, 删除地区);
 router.put('/regions/:id/toggle', 验证Token, 切换地区状态);
 
 // ===== 洗衣订单管理（独立路由，强制 business_type='xiyifu'）=====
+
+// 导出洗衣订单为CSV（必须在 /laundry-orders/:id 之前注册，防止被参数路由拦截）
+router.get('/laundry-orders/export', 验证Token, async (req, res) => {
+  req.query.business_type = 'xiyifu';
+  return 导出订单(req, res);
+});
 
 // 获取洗衣订单列表（带筛选分页）
 router.get('/laundry-orders', 验证Token, 获取洗衣订单列表);
@@ -220,6 +234,13 @@ router.post('/laundry-cards/generate', 验证Token, async (req, res) => {
   return 生成卡密(req, res);
 });
 router.delete('/laundry-cards/:id', 验证Token, 删除卡密);
+// 作废洗衣卡密（将未使用的洗衣卡密标记为已失效，不可逆操作）
+router.put('/laundry-cards/:id/invalidate', 验证Token, 作废卡密);
+// 洗衣卡密导出TXT（强制 business_type='xiyifu'）
+router.get('/laundry-cards/export', 验证Token, async (req, res) => {
+  req.query.business_type = 'xiyifu';
+  return 导出卡密(req, res);
+});
 
 router.get('/laundry-cards/preview-card', 验证Token, async (req, res) => {
   try {
