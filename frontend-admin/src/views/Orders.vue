@@ -113,12 +113,13 @@
     <el-card>
       <el-table :data="订单列表" v-loading="加载中" stripe>
         <el-table-column prop="id" label="ID" width="60" />
-        <!-- 订单号列：显示末尾10位，tooltip 悬浮显示完整订单号 -->
-        <el-table-column label="订单号" width="130">
+        <!-- 创建时间列：转换为北京时间 YYYY-MM-DD HH:mm -->
+        <el-table-column label="创建时间" width="145">
           <template #default="{ row }">
-            <el-tooltip :content="row.order_no" placement="top" :show-after="300">
-              <span class="订单号截断">…{{ (row.order_no || '').slice(-10) }}</span>
-            </el-tooltip>
+            <span v-if="row.created_at" class="创建时间">
+              {{ 格式化北京时间(row.created_at) }}
+            </span>
+            <span v-else class="无值">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="name" label="姓名" width="80" />
@@ -146,15 +147,6 @@
           </template>
         </el-table-column>
         <el-table-column prop="card_code" label="卡密" width="160" />
-        <!-- 创建时间列：转换为北京时间 YYYY-MM-DD HH:mm -->
-        <el-table-column label="创建时间" width="145">
-          <template #default="{ row }">
-            <span v-if="row.created_at" class="创建时间">
-              {{ 格式化北京时间(row.created_at) }}
-            </span>
-            <span v-else class="无值">-</span>
-          </template>
-        </el-table-column>
         <!-- 备注列：有图片时显示 📝🖼️ 图标 + hover 悬浮预览，纯文字显示摘要 -->
         <el-table-column label="备注" width="155">
           <template #default="{ row }">
@@ -397,7 +389,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
@@ -838,6 +830,12 @@ const 处理粘贴上传 = async (事件) => {
   }
 }
 
+// 备注弹窗打开时挂载全局粘贴监听，关闭时移除，确保 Ctrl+V 粘贴图片生效
+watch(显示备注弹窗, (val) => {
+  if (val) document.addEventListener('paste', 处理粘贴上传)
+  else document.removeEventListener('paste', 处理粘贴上传)
+})
+
 // 保存备注（调用API，包含图片）
 const 保存备注 = async () => {
   if (!当前备注订单.value) return
@@ -926,6 +924,10 @@ onMounted(() => {
     if (结果.code === 1) 站点域名.value = (结果.data.site_url || '').replace(/\/$/, '')
   }).catch(() => {})
   加载订单()
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('paste', 处理粘贴上传)
 })
 </script>
 

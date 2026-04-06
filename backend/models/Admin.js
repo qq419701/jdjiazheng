@@ -45,6 +45,11 @@ const Admin = 数据库连接.define('Admin', {
     allowNull: true,
     comment: '最后登录时间',
   },
+  remark: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: '备注信息',
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,

@@ -53,6 +53,12 @@
             <span class="创建时间">{{ 格式化时间(row.last_login) }}</span>
           </template>
         </el-table-column>
+        <el-table-column label="备注" min-width="120" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span v-if="row.remark" class="备注文字">{{ row.remark }}</span>
+            <span v-else class="无值">-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="打开编辑弹窗(row)">编辑</el-button>
@@ -83,6 +89,9 @@
         </el-form-item>
         <el-form-item label="启用状态">
           <el-switch v-model="编辑表单.is_active" :active-value="1" :inactive-value="0" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="编辑表单.remark" placeholder="备注信息（可选）" />
         </el-form-item>
         <el-form-item label="权限模块" v-if="编辑表单.role === 'sub'">
           <el-checkbox-group v-model="编辑表单.permissions">
@@ -146,6 +155,7 @@ const 权限模块标签 = {
   laundry_cards: '洗衣卡密',
   laundry_time_rules: '洗衣时间规则',
   laundry_settings: '洗衣设置',
+  topup: '充值业务（预留）',
   regions: '地区管理',
   settings: '系统设置',
   sub_accounts: '子账号管理',
@@ -175,7 +185,7 @@ const 保存中 = ref(false)
 const 显示编辑弹窗 = ref(false)
 const 是新增 = ref(true)
 const 当前编辑ID = ref(null)
-const 编辑表单 = ref({ username: '', password: '', nickname: '', role: 'sub', permissions: [], is_active: 1 })
+const 编辑表单 = ref({ username: '', password: '', nickname: '', role: 'sub', permissions: [], is_active: 1, remark: '' })
 
 // 重置密码
 const 显示重置密码弹窗 = ref(false)
@@ -197,7 +207,7 @@ const 加载账号列表 = async () => {
 const 打开新增弹窗 = () => {
   是新增.value = true
   当前编辑ID.value = null
-  编辑表单.value = { username: '', password: '', nickname: '', role: 'sub', permissions: [], is_active: 1 }
+  编辑表单.value = { username: '', password: '', nickname: '', role: 'sub', permissions: [], is_active: 1, remark: '' }
   显示编辑弹窗.value = true
 }
 
@@ -210,6 +220,7 @@ const 打开编辑弹窗 = (行) => {
     role: 行.role,
     permissions: 解析权限(行.permissions),
     is_active: 行.is_active,
+    remark: 行.remark || '',
   }
   显示编辑弹窗.value = true
 }
@@ -225,6 +236,7 @@ const 保存账号 = async () => {
         nickname: 编辑表单.value.nickname,
         role: 编辑表单.value.role,
         permissions: 编辑表单.value.permissions,
+        remark: 编辑表单.value.remark,
       })
       if (结果.code === 1) { ElMessage.success('创建成功'); 显示编辑弹窗.value = false; 加载账号列表() }
       else ElMessage.warning(结果.message)
@@ -234,6 +246,7 @@ const 保存账号 = async () => {
         role: 编辑表单.value.role,
         permissions: 编辑表单.value.permissions,
         is_active: 编辑表单.value.is_active,
+        remark: 编辑表单.value.remark,
       })
       if (结果.code === 1) { ElMessage.success('更新成功'); 显示编辑弹窗.value = false; 加载账号列表() }
       else ElMessage.warning(结果.message)
@@ -289,4 +302,5 @@ onMounted(() => { 加载账号列表() })
 .提示文字 { color: #999; font-size: 12px; }
 .无值 { color: #ccc; font-size: 12px; }
 .创建时间 { font-size: 12px; color: #888; }
+.备注文字 { font-size: 12px; color: #555; }
 </style>
