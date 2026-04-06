@@ -229,6 +229,9 @@ onMounted(async () => {
     } else if (结果.code === 2) {
       router.replace({ name: 'Invalid', query: { used: '1', code: 卡密码 } })
       return
+    } else if (结果.code === 3) {
+      router.replace({ name: 'Invalid', query: { invalidated: '1' } })
+      return
     } else {
       router.replace({ name: 'Invalid' })
       return

@@ -10,6 +10,15 @@
         <div class="客服按钮" @click="联系客服">📞 联系客服</div>
       </div>
     </template>
+    <template v-else-if="是已作废">
+      <div class="无效内容">
+        <div class="无效图标">🚫</div>
+        <div class="无效标题">卡密已作废</div>
+        <div class="无效描述">该卡密已被商家作废，无法使用</div>
+        <div class="无效提示">如有疑问，请联系客服处理退款</div>
+        <div class="客服按钮" @click="联系客服">📞 联系客服</div>
+      </div>
+    </template>
     <template v-else>
       <div class="无效内容">
         <div class="无效图标">❌</div>
@@ -27,6 +36,7 @@ import { showToast } from 'vant'
 
 const route = useRoute()
 const 是已使用 = computed(() => route.query.used === '1')
+const 是已作废 = computed(() => route.query.invalidated === '1')
 const 错误信息 = route.query.msg || '该卡密不存在或已过期，请联系客服'
 
 const 联系客服 = () => {
@@ -108,6 +118,13 @@ const 联系客服 = () => {
   font-size: 14px;
   color: #999;
   line-height: 1.6;
+}
+
+.无效提示 {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 16px;
 }
 </style>
 

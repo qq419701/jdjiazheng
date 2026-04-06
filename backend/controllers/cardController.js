@@ -182,7 +182,12 @@ const 删除卡密 = async (req, res) => {
  */
 const 获取批次列表 = async (req, res) => {
   try {
+    const { business_type } = req.query;
+    const 条件 = {};
+    if (business_type) 条件.business_type = business_type;
+
     const 批次列表 = await CardBatch.findAll({
+      where: 条件,
       order: [['created_at', 'DESC']],
     });
 
