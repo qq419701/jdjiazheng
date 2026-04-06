@@ -30,7 +30,7 @@ log_info()    { echo -e "${BLUE}[INFO]${NC}  $1"; }
 log_ok()      { echo -e "${GREEN}[✓]${NC}    $1"; }
 log_warn()    { echo -e "${YELLOW}[WARN]${NC}  $1"; }
 log_error()   { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
-log_section() { echo -e "\n${CYAN}══════════════════════════════════════${NC}"; echo -e "${CYAN}  $1${NC}"; echo -e "${CYAN}══════════════════════════════════════${NC}"; }
+log_section() { echo -e "\n${CYAN}══════════════════════════════════════${NC}"; echo -e "${CYAN}  $1${NC}"; echo -e "${CYAN}══════════════════════════════════════${NC}\n"; }
 
 # 记录开始时间
 START_TIME=$(date +%s)
@@ -39,14 +39,12 @@ START_TIME=$(date +%s)
 pull_code() {
   log_section "📥 拉取最新代码（git pull）"
   cd "$PROJECT_DIR"
-  if ! git diff --quiet; then
-    log_warn "检测到本地有未提交的修改，跳过 git pull（避免冲突）"
-    log_warn "如需强制更新，请先执行：git stash 或 git checkout -- ."
-    echo ""
-  else
-    git pull origin main
-    log_ok "代码拉取完成"
-  fi
+
+  # 强制拉取：先 fetch，再 reset 到远端最新，彻底忽略本地修改和 untracked 文件
+  log_info "正在从远端拉取最新代码..."
+  git fetch origin main
+  git reset --hard origin/main
+  log_ok "代码已强制同步到最新版本（$(git log -1 --format='%h %s')）"
 }
 
 # ─────────────────────── 后端 ───────────────────────
@@ -164,7 +162,7 @@ main() {
     h5)
       pull_code
       update_h5
-      ;;
+      ;; 
     xi)
       pull_code
       update_xi
