@@ -104,8 +104,10 @@
           </el-table-column>
           <el-table-column prop="remark" label="备注" show-overflow-tooltip />
           <el-table-column prop="created_at" label="创建时间" width="160" />
-          <el-table-column label="操作" width="80">
+          <el-table-column label="操作" width="150">
             <template #default="{ row }">
+              <!-- 仅未使用的卡密可以作废（作废后不可恢复） -->
+              <el-button v-if="row.status === 0" size="small" type="warning" @click="作废卡密(row.id)">作废</el-button>
               <el-button v-if="row.status !== 1" size="small" type="danger" @click="删除卡密(row.id)">删除</el-button>
             </template>
           </el-table-column>
@@ -156,7 +158,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { 获取洗衣卡密列表API, 删除洗衣卡密API, 获取洗衣批次列表API, 获取洗衣批次卡密API, 获取设置API, 删除洗衣批次API } from '../api/index'
+import { 获取洗衣卡密列表API, 删除洗衣卡密API, 作废洗衣卡密API, 获取洗衣批次列表API, 获取洗衣批次卡密API, 获取设置API, 删除洗衣批次API } from '../api/index'
 
 const copyToClipboard = (text) => {
   return new Promise((resolve, reject) => {
@@ -297,6 +299,28 @@ const 删除卡密 = async (id) => {
     const 结果 = await 删除洗衣卡密API(id)
     if (结果.code === 1) { ElMessage.success('删除成功'); 加载卡密() }
     else ElMessage.error(结果.message || '删除失败')
+  } catch {}
+}
+
+/**
+ * 作废洗衣卡密（将未使用的洗衣卡密标记为已失效，不可逆操作）
+ * 作废后卡密无法被使用，但记录保留在系统中
+ */
+const 作废卡密 = async (id) => {
+  try {
+    await ElMessageBox.confirm('确认作废该卡密？作废后该卡密将无法使用，此操作不可撤销！', '作废确认', {
+      type: 'warning',
+      confirmButtonText: '确认作废',
+      cancelButtonText: '取消',
+    })
+    const 结果 = await 作废洗衣卡密API(id)
+    if (结果.code === 1) {
+      ElMessage.success('卡密已作废')
+      加载卡密()
+      加载统计()
+    } else {
+      ElMessage.error(结果.message || '作废失败')
+    }
   } catch {}
 }
 

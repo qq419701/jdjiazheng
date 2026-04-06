@@ -51,6 +51,8 @@
         <el-form-item>
           <el-button type="primary" @click="搜索订单" :icon="Search">搜索</el-button>
           <el-button @click="重置筛选">重置</el-button>
+          <!-- 导出当前筛选条件下的订单为CSV文件 -->
+          <el-button type="success" @click="导出订单" :loading="导出中">导出CSV</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -268,7 +270,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import { 获取订单列表API, 更新订单状态API, 触发自动下单API, 重置订单API, 更新订单备注API, 获取设置API, 获取家政预览卡密API } from '../api/index'
+import { 获取订单列表API, 更新订单状态API, 触发自动下单API, 重置订单API, 更新订单备注API, 获取设置API, 获取家政预览卡密API, 导出家政订单API } from '../api/index'
 
 const router = useRouter()
 const route = useRoute()
@@ -309,6 +311,7 @@ const 业务类型 = computed(() => route.params.businessType || 'jiazheng')
 const 是洗衣服务 = computed(() => 业务类型.value === 'xiyifu')
 
 const 加载中 = ref(false)
+const 导出中 = ref(false)  // 导出订单时的loading状态
 const 订单列表 = ref([])
 const 总数 = ref(0)
 const 当前页 = ref(1)
@@ -414,6 +417,37 @@ const 重置筛选 = () => {
   搜索条件.value = { keyword: '', city: '', status: '' }
   日期范围.value = []
   搜索订单()
+}
+
+/**
+ * 导出订单为CSV文件（携带当前所有筛选条件）
+ * 通过axios携带Token认证后触发浏览器下载
+ */
+const 导出订单 = async () => {
+  导出中.value = true
+  try {
+    // 构建与加载列表相同的查询参数（不包含分页）
+    const 查询参数 = { ...搜索条件.value }
+    if (日期范围.value && 日期范围.value.length === 2) {
+      查询参数.date_start = 日期范围.value[0]
+      查询参数.date_end = 日期范围.value[1]
+    }
+    const blob = await 导出家政订单API(查询参数)
+    // 创建临时下载链接触发浏览器下载
+    const url = window.URL.createObjectURL(new Blob([blob], { type: 'text/csv;charset=utf-8' }))
+    const 链接 = document.createElement('a')
+    链接.href = url
+    链接.setAttribute('download', `家政订单_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '')}.csv`)
+    document.body.appendChild(链接)
+    链接.click()
+    document.body.removeChild(链接)
+    window.URL.revokeObjectURL(url)
+    ElMessage.success('导出成功')
+  } catch {
+    ElMessage.error('导出失败，请重试')
+  } finally {
+    导出中.value = false
+  }
 }
 
 // 查看详情（使用带 businessType 参数的路由）

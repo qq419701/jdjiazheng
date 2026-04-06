@@ -15,12 +15,17 @@ export const 更新订单状态API = (id, 数据) => 请求实例.put(`/orders/$
 export const 更新订单备注API = (id, 备注) => 请求实例.put(`/orders/${id}/remark`, { remark: 备注 }) // 快速更新备注
 export const 触发自动下单API = (id) => 请求实例.post(`/orders/${id}/place-order`)
 export const 重置订单API = (id) => 请求实例.post(`/orders/${id}/reset`)
+// 导出家政订单为CSV（携带当前筛选条件，返回Blob文件流）
+export const 导出家政订单API = (参数) => 请求实例.get('/orders/export', { params: 参数, responseType: 'blob' })
 
 // ===== 卡密管理 =====
 export const 获取卡密列表API = (参数) => 请求实例.get('/cards', { params: 参数 })
 export const 生成卡密API = (数据) => 请求实例.post('/cards/generate', 数据)
-export const 导出卡密API = (参数) => `/admin/api/cards/export?${new URLSearchParams(参数)}`
+// 修复：改为axios blob下载，原URL方式无法携带认证Token；同时后端已修复缺少business_type过滤的Bug
+export const 导出卡密API = (参数) => 请求实例.get('/cards/export', { params: 参数, responseType: 'blob' })
 export const 删除卡密API = (id) => 请求实例.delete(`/cards/${id}`)
+// 作废家政卡密（将未使用的卡密标记为已失效，不可逆）
+export const 作废卡密API = (id) => 请求实例.put(`/cards/${id}/invalidate`)
 
 // ===== 卡密批次管理 =====
 export const 获取批次列表API = (params = {}) => 请求实例.get('/card-batches', { params })
@@ -67,11 +72,15 @@ export const 取消洗衣订单API = (id) => 请求实例.post(`/laundry-orders/
 export const 修改洗衣订单API = (id, 数据) => 请求实例.put(`/laundry-orders/${id}`, 数据)
 // 查询洗衣物流轨迹（调用鲸蚁物流接口实时返回轨迹节点）
 export const 查询洗衣物流API = (id) => 请求实例.get(`/laundry-orders/${id}/express-routes`)
+// 导出洗衣订单为CSV（携带当前筛选条件，返回Blob文件流）
+export const 导出洗衣订单API = (参数) => 请求实例.get('/laundry-orders/export', { params: 参数, responseType: 'blob' })
 
 // ===== 洗衣卡密管理 =====
 export const 获取洗衣卡密列表API = (参数) => 请求实例.get('/laundry-cards', { params: 参数 })
 export const 生成洗衣卡密API = (数据) => 请求实例.post('/laundry-cards/generate', 数据)
 export const 删除洗衣卡密API = (id) => 请求实例.delete(`/laundry-cards/${id}`)
+// 作废洗衣卡密（将未使用的洗衣卡密标记为已失效，不可逆）
+export const 作废洗衣卡密API = (id) => 请求实例.put(`/laundry-cards/${id}/invalidate`)
 export const 获取洗衣批次列表API = () => 请求实例.get('/laundry-card-batches')
 export const 获取洗衣批次卡密API = (id) => 请求实例.get(`/laundry-card-batches/${id}/cards`)
 export const 删除批次API = (id) => 请求实例.delete(`/card-batches/${id}`)

@@ -105,13 +105,18 @@ const 生成卡密 = async (req, res) => {
 /**
  * 导出卡密TXT
  * GET /admin/api/cards/export
+ * 支持 status、category、business_type 过滤
+ * Bug修复：原接口缺少 business_type 过滤，会把家政和洗衣卡密混在一起导出
  */
 const 导出卡密 = async (req, res) => {
   try {
-    const { status = 0, category } = req.query;
+    const { status, category, business_type } = req.query;
     const 条件 = {};
+    // 状态过滤（不传时默认导出全部状态）
     if (status !== undefined && status !== '') 条件.status = parseInt(status);
     if (category) 条件.category = category;
+    // 修复：按业务类型过滤，防止家政和洗衣卡密混用
+    if (business_type) 条件.business_type = business_type;
 
     const 卡密列表 = await Card.findAll({
       where: 条件,
@@ -120,11 +125,35 @@ const 导出卡密 = async (req, res) => {
 
     const 内容 = 卡密列表.map(c => c.code).join('\n');
 
+    // 根据业务类型生成对应的文件名
+    const 业务名称 = business_type === 'xiyifu' ? '洗衣' : (business_type === 'jiazheng' ? '家政' : '全部');
+    const 文件名 = `${业务名称}卡密_${Date.now()}.txt`;
+
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="cards_${Date.now()}.txt"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(文件名)}"`);
     res.send(内容);
   } catch (错误) {
     console.error('导出卡密出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+};
+
+/**
+ * 作废卡密（将状态设为2-已失效）
+ * PUT /admin/api/cards/:id/invalidate
+ * PUT /admin/api/laundry-cards/:id/invalidate（路由层强制 business_type='xiyifu'）
+ */
+const 作废卡密 = async (req, res) => {
+  try {
+    const 卡密 = await Card.findByPk(req.params.id);
+    if (!卡密) return res.json({ code: 0, message: '卡密不存在' });
+    if (卡密.status === 1) return res.json({ code: 0, message: '已使用的卡密不能作废' });
+    if (卡密.status === 2) return res.json({ code: 0, message: '该卡密已经是失效状态' });
+
+    await 卡密.update({ status: 2 });
+    res.json({ code: 1, message: '卡密已作废' });
+  } catch (错误) {
+    console.error('作废卡密出错:', 错误);
     res.status(500).json({ code: -1, message: '服务器错误' });
   }
 };
@@ -229,4 +258,4 @@ const 删除批次 = async (req, res) => {
   }
 };
 
-module.exports = { 获取卡密列表, 生成卡密, 导出卡密, 删除卡密, 获取批次列表, 获取批次卡密, 删除批次 };
+module.exports = { 获取卡密列表, 生成卡密, 导出卡密, 作废卡密, 删除卡密, 获取批次列表, 获取批次卡密, 删除批次 };

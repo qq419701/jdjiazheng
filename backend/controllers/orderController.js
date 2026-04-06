@@ -274,4 +274,133 @@ const 更新订单备注 = async (req, res) => {
   }
 };
 
-module.exports = { 获取订单列表, 获取订单详情, 获取洗衣订单详情, 更新订单状态, 触发自动下单, 重置订单, 更新订单备注 };
+/**
+ * 导出订单为CSV文件
+ * GET /admin/api/orders/export
+ * GET /admin/api/laundry-orders/export（路由层强制 business_type='xiyifu'）
+ * 支持与订单列表相同的搜索参数（keyword、status、city、date_start、date_end、business_type）
+ */
+const 导出订单 = async (req, res) => {
+  try {
+    const {
+      keyword = '',
+      status,
+      city,
+      date_start,
+      date_end,
+      business_type,
+    } = req.query;
+
+    const 条件 = {};
+
+    // 关键词搜索（同订单列表接口）
+    if (keyword) {
+      条件[Op.or] = [
+        { order_no: { [Op.like]: `%${keyword}%` } },
+        { name: { [Op.like]: `%${keyword}%` } },
+        { phone: { [Op.like]: `%${keyword}%` } },
+        { card_code: { [Op.like]: `%${keyword}%` } },
+        { remark: { [Op.like]: `%${keyword}%` } },
+      ];
+    }
+    if (status !== undefined && status !== '') 条件.status = parseInt(status);
+    if (city) 条件.city = { [Op.like]: `%${city}%` };
+    if (business_type) 条件.business_type = business_type;
+    if (date_start || date_end) {
+      条件.created_at = {};
+      if (date_start) 条件.created_at[Op.gte] = new Date(date_start);
+      if (date_end) 条件.created_at[Op.lte] = new Date(date_end + ' 23:59:59');
+    }
+
+    const 订单列表 = await Order.findAll({
+      where: 条件,
+      order: [['created_at', 'DESC']],
+    });
+
+    // 订单状态文字映射
+    const 状态文字映射 = {
+      0: '待处理', 1: '下单中', 2: '已下单', 3: '失败',
+      4: '已取消', 5: '安排中', 6: '预约完成', 7: '预约失败',
+    };
+
+    // 转义CSV字段（含逗号/引号/换行时加双引号包裹）
+    const 转义字段 = (值) => {
+      if (值 === null || 值 === undefined) return '';
+      const 文本 = String(值);
+      if (文本.includes(',') || 文本.includes('"') || 文本.includes('\n')) {
+        return `"${文本.replace(/"/g, '""')}"`;
+      }
+      return 文本;
+    };
+
+    const 是洗衣 = business_type === 'xiyifu';
+
+    // 根据业务类型决定导出字段
+    let 表头;
+    let 生成行;
+    if (是洗衣) {
+      // 洗衣订单包含洗衣专用字段
+      表头 = ['订单号', '姓名', '手机号', '省', '市', '区', '详细地址', '预约日期', '取件时间段',
+        '商品名称', '卡密', '鲸蚁订单号', '洗衣状态', '取件快递单号', '状态', '备注', '创建时间'];
+      生成行 = (订单) => [
+        订单.order_no,
+        订单.name,
+        订单.phone,
+        订单.province || '',
+        订单.city || '',
+        订单.district || '',
+        订单.address || '',
+        订单.visit_date || '',
+        订单.visit_time || '',
+        订单.service_type || '',
+        订单.card_code || '',
+        订单.laundry_order_id || '',
+        订单.laundry_status || '',
+        订单.express_order_id || '',
+        状态文字映射[订单.status] || String(订单.status),
+        订单.remark || '',
+        订单.created_at ? new Date(订单.created_at).toLocaleString('zh-CN') : '',
+      ].map(转义字段).join(',');
+    } else {
+      // 家政订单
+      表头 = ['订单号', '姓名', '手机号', '省', '市', '区', '街道', '详细地址', '预约日期', '预约时间',
+        '服务类型', '服务时长(小时)', '卡密', '状态', '京东订单号', '备注', '创建时间'];
+      生成行 = (订单) => [
+        订单.order_no,
+        订单.name,
+        订单.phone,
+        订单.province || '',
+        订单.city || '',
+        订单.district || '',
+        订单.street || '',
+        订单.address || '',
+        订单.visit_date || '',
+        订单.visit_time || '',
+        订单.service_type || '',
+        订单.service_hours || '',
+        订单.card_code || '',
+        状态文字映射[订单.status] || String(订单.status),
+        订单.jd_order_id || '',
+        订单.remark || '',
+        订单.created_at ? new Date(订单.created_at).toLocaleString('zh-CN') : '',
+      ].map(转义字段).join(',');
+    }
+
+    const CSV行 = 订单列表.map(生成行);
+    const CSV内容 = [表头.join(','), ...CSV行].join('\r\n');
+
+    // 添加 UTF-8 BOM，防止 Excel 打开时中文乱码
+    const BOM = '\uFEFF';
+    const 业务名称 = 是洗衣 ? '洗衣' : '家政';
+    const 文件名 = `${业务名称}订单_${Date.now()}.csv`;
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(文件名)}"`);
+    res.send(BOM + CSV内容);
+  } catch (错误) {
+    console.error('导出订单出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+};
+
+module.exports = { 获取订单列表, 获取订单详情, 获取洗衣订单详情, 更新订单状态, 触发自动下单, 重置订单, 更新订单备注, 导出订单 };
