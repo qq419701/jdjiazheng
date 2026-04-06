@@ -75,6 +75,12 @@ export const 查询洗衣物流API = (id) => 请求实例.get(`/laundry-orders/$
 // 导出洗衣订单为CSV（携带当前筛选条件，返回Blob文件流）
 export const 导出洗衣订单API = (参数) => 请求实例.get('/laundry-orders/export', { params: 参数, responseType: 'blob' })
 
+// ===== 订单管理页卡密搜索（用于卡密作废功能）=====
+// 按卡密码搜索家政卡密（精确/模糊匹配，返回卡密状态及关联订单号）
+export const 订单页搜索家政卡密API = (keyword) => 请求实例.get('/orders/search-card', { params: { keyword } })
+// 按卡密码搜索洗衣卡密（精确/模糊匹配，返回卡密状态及关联订单号）
+export const 订单页搜索洗衣卡密API = (keyword) => 请求实例.get('/laundry-orders/search-card', { params: { keyword } })
+
 // ===== 洗衣卡密管理 =====
 export const 获取洗衣卡密列表API = (参数) => 请求实例.get('/laundry-cards', { params: 参数 })
 export const 生成洗衣卡密API = (数据) => 请求实例.post('/laundry-cards/generate', 数据)

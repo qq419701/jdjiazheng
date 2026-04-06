@@ -13,8 +13,60 @@
           <el-button link @click="复制预览链接">复制</el-button>
         </span>
         <span style="font-size:12px; color:#999">自动使用一个未使用的演示卡密打开前端</span>
+        <el-button type="danger" plain size="large" @click="打开卡密作废弹窗">
+          🚫 卡密作废
+        </el-button>
       </div>
     </el-card>
+
+    <!-- 卡密作废弹窗 -->
+    <el-dialog v-model="显示卡密作废弹窗" title="🚫 卡密作废" width="760px" :close-on-click-modal="false">
+      <div style="margin-bottom:12px; display:flex; gap:8px">
+        <el-input
+          v-model="卡密搜索关键词"
+          placeholder="输入卡密码（支持模糊匹配）"
+          clearable
+          style="flex:1"
+          @keyup.enter="搜索卡密"
+        />
+        <el-button type="primary" @click="搜索卡密" :loading="卡密搜索中">搜索</el-button>
+      </div>
+      <el-table :data="卡密搜索结果" v-loading="卡密搜索中" stripe empty-text="暂无数据，请输入卡密码搜索">
+        <el-table-column prop="code" label="卡密码" width="180" />
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }">
+            <el-tag :type="row.status === 0 ? 'primary' : row.status === 1 ? 'success' : 'info'" size="small">
+              {{ row.status === 0 ? '未使用' : row.status === 1 ? '已使用' : '已失效' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="service_type" label="服务类型" width="120" />
+        <el-table-column label="创建时间" width="160">
+          <template #default="{ row }">{{ row.created_at ? new Date(row.created_at).toLocaleString('zh-CN') : '-' }}</template>
+        </el-table-column>
+        <el-table-column label="关联订单号" min-width="140" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.order_no || '-' }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="100" fixed="right">
+          <template #default="{ row }">
+            <el-tooltip :content="row.status === 1 ? '已使用的卡密不可作废' : row.status === 2 ? '已失效的卡密不可再次作废' : ''" :disabled="row.status === 0">
+              <span>
+                <el-button
+                  type="danger"
+                  plain
+                  size="small"
+                  :disabled="row.status !== 0"
+                  @click="确认作废卡密(row)"
+                >作废</el-button>
+              </span>
+            </el-tooltip>
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <el-button @click="显示卡密作废弹窗 = false">关闭</el-button>
+      </template>
+    </el-dialog>
 
     <!-- 搜索筛选 -->
     <el-card class="搜索卡片">
@@ -346,7 +398,7 @@ import {
   更新洗衣订单备注API, 触发洗衣API下单, 取消洗衣订单API,
   重置洗衣订单API, 获取设置API, 获取洗衣预览卡密API,
   修改洗衣订单API, 获取洗衣时间段API, 查询洗衣物流API,
-  导出洗衣订单API,
+  导出洗衣订单API, 订单页搜索洗衣卡密API, 作废洗衣卡密API,
 } from '../api/index'
 
 // 站点域名
@@ -364,6 +416,59 @@ const 订单列表 = ref([])
 const 总数 = ref(0)
 const 当前页 = ref(1)
 const 每页数量 = ref(20)
+
+// 卡密作废弹窗
+const 显示卡密作废弹窗 = ref(false)
+const 卡密搜索关键词 = ref('')
+const 卡密搜索结果 = ref([])
+const 卡密搜索中 = ref(false)
+
+const 打开卡密作废弹窗 = () => {
+  卡密搜索关键词.value = ''
+  卡密搜索结果.value = []
+  显示卡密作废弹窗.value = true
+}
+
+const 搜索卡密 = async () => {
+  if (!卡密搜索关键词.value.trim()) {
+    ElMessage.warning('请输入卡密码')
+    return
+  }
+  卡密搜索中.value = true
+  try {
+    const 结果 = await 订单页搜索洗衣卡密API(卡密搜索关键词.value.trim())
+    if (结果.code === 1) {
+      卡密搜索结果.value = 结果.data || []
+      if (卡密搜索结果.value.length === 0) ElMessage.info('未找到匹配的卡密')
+    } else {
+      ElMessage.warning(结果.message || '搜索失败')
+    }
+  } catch {
+    ElMessage.error('搜索卡密失败，请重试')
+  } finally {
+    卡密搜索中.value = false
+  }
+}
+
+const 确认作废卡密 = async (行) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要作废卡密 ${行.code} 吗？作废后客户将无法使用该卡密，且操作不可逆。`,
+      '确认作废',
+      { confirmButtonText: '确认作废', cancelButtonText: '取消', type: 'warning' }
+    )
+    const 结果 = await 作废洗衣卡密API(行.id)
+    if (结果.code === 1) {
+      ElMessage.success(`卡密 ${行.code} 已作废`)
+      卡密搜索结果.value = []
+      加载订单()
+    } else {
+      ElMessage.warning(结果.message || '作废失败')
+    }
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error('作废失败，请重试')
+  }
+}
 
 // 备注弹窗
 const 显示备注弹窗 = ref(false)
