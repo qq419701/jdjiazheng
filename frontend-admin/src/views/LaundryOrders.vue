@@ -156,6 +156,15 @@
             <span v-else class="无值">-</span>
           </template>
         </el-table-column>
+        <!-- 创建时间列：格式化为本地时间字符串 -->
+        <el-table-column label="创建时间" width="160">
+          <template #default="{ row }">
+            <span v-if="row.created_at" class="创建时间">
+              {{ new Date(row.created_at).toLocaleString('zh-CN') }}
+            </span>
+            <span v-else class="无值">-</span>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="380" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="查看详情(row.id)">详情</el-button>
@@ -192,17 +201,35 @@
       />
     </el-card>
 
-    <!-- 备注编辑弹窗 -->
+    <!-- 备注编辑弹窗：支持快捷标签一键追加和清空 -->
     <el-dialog v-model="显示备注弹窗" title="编辑备注" width="460px" :close-on-click-modal="false">
-      <el-input
-        v-model="备注文本"
-        type="textarea"
-        rows="4"
-        placeholder="请输入备注内容"
-      />
+      <div class="备注弹窗内容">
+        <!-- 快捷标签区：点击标签可快速追加到备注 -->
+        <p class="快捷标签标题">快捷追加：</p>
+        <div class="快捷标签列表">
+          <el-tag
+            v-for="标签 in 快捷备注标签"
+            :key="标签"
+            class="快捷标签"
+            type="info"
+            effect="plain"
+            style="cursor: pointer; margin: 4px"
+            @click="追加快捷标签(标签)"
+          >{{ 标签 }}</el-tag>
+        </div>
+        <!-- 备注输入框 -->
+        <el-input
+          v-model="备注文本"
+          type="textarea"
+          :rows="4"
+          placeholder="请输入备注内容（点击上方标签可快速追加）"
+          style="margin-top: 12px"
+        />
+      </div>
       <template #footer>
         <el-button @click="显示备注弹窗 = false">取消</el-button>
-        <el-button type="primary" @click="保存备注">保存</el-button>
+        <el-button @click="清空备注">清空</el-button>
+        <el-button type="primary" :loading="备注保存中" @click="保存备注">保存备注</el-button>
       </template>
     </el-dialog>
 
@@ -234,7 +261,7 @@
           <el-descriptions-item label="订单状态">
             <el-tag :type="获取状态类型(当前详情.status)" size="small">{{ 获取状态文字(当前详情.status) }}</el-tag>
           </el-descriptions-item>
-          <el-descriptions-item label="创建时间">{{ 当前详情.created_at }}</el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ 当前详情.created_at ? new Date(当前详情.created_at).toLocaleString('zh-CN') : '-' }}</el-descriptions-item>
           <el-descriptions-item label="备注" :span="2">{{ 当前详情.remark || '-' }}</el-descriptions-item>
         </el-descriptions>
 
@@ -473,7 +500,21 @@ const 确认作废卡密 = async (行) => {
 // 备注弹窗
 const 显示备注弹窗 = ref(false)
 const 备注文本 = ref('')
-const 当前备注订单ID = ref(null)
+const 当前备注订单 = ref(null)
+const 备注保存中 = ref(false)
+
+// 快捷备注标签列表（点击一键追加，洗衣订单专用）
+const 快捷备注标签 = ['已联系客户', '需改期', '客户催单', '已安排取件', '已回寄', '客户已确认']
+
+// 快捷标签追加到备注内容（使用中文分号分隔）
+const 追加快捷标签 = (标签文字) => {
+  备注文本.value = 备注文本.value ? `${备注文本.value}；${标签文字}` : 标签文字
+}
+
+// 清空备注输入
+const 清空备注 = () => {
+  备注文本.value = ''
+}
 
 // 详情弹窗
 const 显示详情弹窗 = ref(false)
@@ -638,20 +679,26 @@ const 查看详情 = async (id) => {
   }
 }
 
-// 备注
+// 打开备注弹窗
 const 打开备注弹窗 = (订单) => {
-  当前备注订单ID.value = 订单.id
+  当前备注订单.value = 订单
   备注文本.value = 订单.remark || ''
   显示备注弹窗.value = true
 }
+
+// 保存备注（调用洗衣订单备注API）
 const 保存备注 = async () => {
+  if (!当前备注订单.value) return
+  备注保存中.value = true
   try {
-    await 更新洗衣订单备注API(当前备注订单ID.value, { remark: 备注文本.value })
+    await 更新洗衣订单备注API(当前备注订单.value.id, { remark: 备注文本.value })
     ElMessage.success('备注已保存')
     显示备注弹窗.value = false
     加载订单()
   } catch {
     ElMessage.error('保存失败')
+  } finally {
+    备注保存中.value = false
   }
 }
 
@@ -835,4 +882,11 @@ onMounted(() => {
 .鲸蚁订单号, .快递单号 { font-size: 12px; color: #409eff; font-family: monospace; }
 .无值 { color: #ccc; font-size: 12px; }
 .备注摘要 { font-size: 12px; color: #666; display: flex; align-items: center; gap: 4px; }
+/* 创建时间列样式 */
+.创建时间 { font-size: 12px; color: #888; }
+/* 备注弹窗内容样式（同家政版） */
+.备注弹窗内容 { padding: 0 4px; }
+.快捷标签标题 { color: #666; font-size: 13px; margin-bottom: 6px; }
+.快捷标签列表 { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.快捷标签:hover { background: #ecf5ff; border-color: #409eff; }
 </style>

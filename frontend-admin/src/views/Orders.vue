@@ -139,6 +139,15 @@
           </template>
         </el-table-column>
         <el-table-column prop="card_code" label="卡密" width="160" />
+        <!-- 创建时间列：格式化为本地时间字符串 -->
+        <el-table-column label="创建时间" width="160">
+          <template #default="{ row }">
+            <span v-if="row.created_at" class="创建时间">
+              {{ new Date(row.created_at).toLocaleString('zh-CN') }}
+            </span>
+            <span v-else class="无备注">-</span>
+          </template>
+        </el-table-column>
         <!-- 备注列：显示摘要（最多20字），有备注时显示📝图标 -->
         <el-table-column label="备注" width="140">
           <template #default="{ row }">
@@ -818,6 +827,9 @@ onMounted(() => {
 .快捷标签标题 { color: #666; font-size: 13px; margin-bottom: 6px; }
 .快捷标签列表 { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
 .快捷标签:hover { background: #ecf5ff; border-color: #409eff; }
+
+/* 创建时间列样式 */
+.创建时间 { font-size: 12px; color: #888; }
 
 /* 复制面板样式 */
 .复制面板 { padding: 0 4px; }
