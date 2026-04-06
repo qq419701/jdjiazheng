@@ -93,14 +93,32 @@ router.post('/upload/remark-image', 验证Token, 图片上传.single('image'), (
 // ===== 登录接口（无需鉴权）=====
 router.post('/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, captcha_key, captcha_text } = req.body;
     if (!username || !password) {
       return res.json({ code: 0, message: '请输入用户名和密码' });
+    }
+
+    // 验证图形验证码（有 captcha_key 时才验证）
+    if (captcha_key) {
+      const 缓存 = 验证码缓存.get(captcha_key);
+      if (!缓存 || Date.now() > 缓存.expires) {
+        return res.json({ code: 0, message: '验证码已过期，请刷新重试' });
+      }
+      if (!captcha_text || captcha_text.toLowerCase() !== 缓存.text) {
+        验证码缓存.delete(captcha_key);
+        return res.json({ code: 0, message: '验证码错误' });
+      }
+      验证码缓存.delete(captcha_key);
     }
 
     const 管理员 = await Admin.findOne({ where: { username } });
     if (!管理员) {
       return res.json({ code: 0, message: '用户名或密码错误' });
+    }
+
+    // 检查账号是否启用
+    if (管理员.is_active === 0) {
+      return res.json({ code: 0, message: '账号已被禁用，请联系管理员' });
     }
 
     const 密码正确 = await bcrypt.compare(password, 管理员.password);
@@ -111,9 +129,13 @@ router.post('/login', async (req, res) => {
     // 更新最后登录时间
     await 管理员.update({ last_login: new Date() });
 
-    // 生成JWT
+    // 解析权限
+    let permissions = [];
+    try { permissions = JSON.parse(管理员.permissions || '[]') } catch {}
+
+    // 生成JWT（包含权限信息）
     const token = jwt.sign(
-      { id: 管理员.id, username: 管理员.username, role: 管理员.role },
+      { id: 管理员.id, username: 管理员.username, role: 管理员.role, permissions },
       配置.JWT密钥,
       { expiresIn: 配置.JWT过期时间 }
     );
@@ -121,7 +143,13 @@ router.post('/login', async (req, res) => {
     res.json({
       code: 1,
       message: '登录成功',
-      data: { token, username: 管理员.username, role: 管理员.role },
+      data: {
+        token,
+        username: 管理员.username,
+        nickname: 管理员.nickname || 管理员.username,
+        role: 管理员.role,
+        permissions,
+      },
     });
   } catch (错误) {
     console.error('登录出错:', 错误);
@@ -469,5 +497,119 @@ router.get('/laundry/token-status', 验证Token, 获取洗衣Token状态);
 // [已删除] 旧版路由，功能已迁移至 /laundry-orders/:id/place-order
 // router.post('/laundry/orders/:id/place-order', 验证Token, 触发洗衣下单);
 router.get('/laundry/orders/:id/status', 验证Token, 查询洗衣订单状态);
+
+// ===== 子账号管理（仅 super 角色可操作）=====
+
+// 权限验证中间件：仅允许 super 角色
+const 仅超管 = (req, res, next) => {
+  if (req.管理员?.role !== 'super') {
+    return res.json({ code: 0, message: '权限不足，仅超级管理员可操作' });
+  }
+  next();
+};
+
+// 获取子账号列表
+router.get('/sub-accounts', 验证Token, 仅超管, async (req, res) => {
+  try {
+    const 列表 = await Admin.findAll({
+      where: { role: ['admin', 'sub'] },
+      attributes: ['id', 'username', 'nickname', 'role', 'permissions', 'is_active', 'last_login', 'created_at'],
+      order: [['created_at', 'DESC']],
+    });
+    res.json({ code: 1, message: 'ok', data: 列表 });
+  } catch (错误) {
+    console.error('获取子账号列表出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+// 新增子账号
+router.post('/sub-accounts', 验证Token, 仅超管, async (req, res) => {
+  try {
+    const { username, password, nickname, role = 'sub', permissions = [] } = req.body;
+    if (!username || !password) return res.json({ code: 0, message: '用户名和密码不能为空' });
+    if (password.length < 6) return res.json({ code: 0, message: '密码至少6位' });
+    const 已存在 = await Admin.findOne({ where: { username } });
+    if (已存在) return res.json({ code: 0, message: '用户名已存在' });
+    const 加密密码 = await bcrypt.hash(password, 10);
+    const 新账号 = await Admin.create({
+      username,
+      password: 加密密码,
+      nickname: nickname || username,
+      role: ['admin', 'sub'].includes(role) ? role : 'sub',
+      permissions: JSON.stringify(permissions),
+      is_active: 1,
+      created_at: new Date(),
+    });
+    res.json({ code: 1, message: '子账号创建成功', data: { id: 新账号.id, username: 新账号.username } });
+  } catch (错误) {
+    console.error('新增子账号出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+// 修改子账号（权限/状态/昵称，不含密码）
+router.put('/sub-accounts/:id', 验证Token, 仅超管, async (req, res) => {
+  try {
+    const 账号 = await Admin.findByPk(req.params.id);
+    if (!账号 || 账号.role === 'super') return res.json({ code: 0, message: '账号不存在或无法修改' });
+    const { nickname, permissions, is_active, role } = req.body;
+    const 更新 = {};
+    if (nickname !== undefined) 更新.nickname = nickname;
+    if (permissions !== undefined) 更新.permissions = JSON.stringify(permissions);
+    if (is_active !== undefined) 更新.is_active = is_active ? 1 : 0;
+    if (role !== undefined && ['admin', 'sub'].includes(role)) 更新.role = role;
+    await 账号.update(更新);
+    res.json({ code: 1, message: '更新成功' });
+  } catch (错误) {
+    console.error('修改子账号出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+// 重置子账号密码
+router.put('/sub-accounts/:id/password', 验证Token, 仅超管, async (req, res) => {
+  try {
+    const 账号 = await Admin.findByPk(req.params.id);
+    if (!账号 || 账号.role === 'super') return res.json({ code: 0, message: '账号不存在或无法修改' });
+    const { password } = req.body;
+    if (!password || password.length < 6) return res.json({ code: 0, message: '密码至少6位' });
+    await 账号.update({ password: await bcrypt.hash(password, 10) });
+    res.json({ code: 1, message: '密码重置成功' });
+  } catch (错误) {
+    console.error('重置密码出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+// 修改自己密码（无需超管权限）
+router.put('/sub-accounts/self/password', 验证Token, async (req, res) => {
+  try {
+    const { old_password, new_password } = req.body;
+    if (!new_password || new_password.length < 6) return res.json({ code: 0, message: '新密码至少6位' });
+    const 账号 = await Admin.findByPk(req.管理员.id);
+    if (!账号) return res.json({ code: 0, message: '账号不存在' });
+    const 旧密码正确 = await bcrypt.compare(old_password, 账号.password);
+    if (!旧密码正确) return res.json({ code: 0, message: '原密码错误' });
+    await 账号.update({ password: await bcrypt.hash(new_password, 10) });
+    res.json({ code: 1, message: '密码修改成功' });
+  } catch (错误) {
+    console.error('修改密码出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+// 删除子账号
+router.delete('/sub-accounts/:id', 验证Token, 仅超管, async (req, res) => {
+  try {
+    const 账号 = await Admin.findByPk(req.params.id);
+    if (!账号 || 账号.role === 'super') return res.json({ code: 0, message: '账号不存在或无法删除' });
+    await 账号.destroy();
+    res.json({ code: 1, message: '删除成功' });
+  } catch (错误) {
+    console.error('删除子账号出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
 
 module.exports = router;
