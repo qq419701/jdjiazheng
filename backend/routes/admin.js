@@ -131,6 +131,50 @@ router.get('/orders/export', 验证Token, async (req, res) => {
   req.query.business_type = 'jiazheng';
   return 导出订单(req, res);
 });
+// 订单管理页搜索家政卡密（按卡密码或手机号查找，用于卡密作废功能；必须在 /orders/:id 之前注册）
+router.get('/orders/search-card', 验证Token, async (req, res) => {
+  try {
+    const { Op } = require('sequelize');
+    const { Card } = require('../models');
+    const keyword = (req.query.keyword || '').trim();
+    if (!keyword) return res.json({ code: 0, message: '请输入卡密码或手机号' });
+
+    const 卡密列表 = await Card.findAll({
+      where: {
+        business_type: 'jiazheng',
+        code: { [Op.like]: `%${keyword}%` },
+      },
+      order: [['created_at', 'DESC']],
+      limit: 20,
+    });
+
+    // 查询关联订单号
+    const 结果 = await Promise.all(卡密列表.map(async (卡密) => {
+      let order_no = null;
+      try {
+        const 订单 = await Order.findOne({
+          where: { card_code: 卡密.code },
+          order: [['created_at', 'DESC']],
+          attributes: ['order_no'],
+        });
+        if (订单) order_no = 订单.order_no;
+      } catch {}
+      return {
+        id: 卡密.id,
+        code: 卡密.code,
+        status: 卡密.status,
+        service_type: 卡密.service_type,
+        created_at: 卡密.created_at,
+        order_no,
+      };
+    }));
+
+    res.json({ code: 1, message: '获取成功', data: 结果 });
+  } catch (错误) {
+    console.error('搜索家政卡密出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
 router.get('/orders/:id', 验证Token, 获取订单详情);
 router.put('/orders/:id/status', 验证Token, 更新订单状态);
 router.put('/orders/:id/remark', 验证Token, 更新订单备注); // 快速更新备注接口
@@ -197,6 +241,51 @@ router.put('/regions/:id/toggle', 验证Token, 切换地区状态);
 router.get('/laundry-orders/export', 验证Token, async (req, res) => {
   req.query.business_type = 'xiyifu';
   return 导出订单(req, res);
+});
+
+// 订单管理页搜索洗衣卡密（按卡密码查找，用于卡密作废功能；必须在 /laundry-orders/:id 之前注册）
+router.get('/laundry-orders/search-card', 验证Token, async (req, res) => {
+  try {
+    const { Op } = require('sequelize');
+    const { Card } = require('../models');
+    const keyword = (req.query.keyword || '').trim();
+    if (!keyword) return res.json({ code: 0, message: '请输入卡密码或手机号' });
+
+    const 卡密列表 = await Card.findAll({
+      where: {
+        business_type: 'xiyifu',
+        code: { [Op.like]: `%${keyword}%` },
+      },
+      order: [['created_at', 'DESC']],
+      limit: 20,
+    });
+
+    // 查询关联订单号
+    const 结果 = await Promise.all(卡密列表.map(async (卡密) => {
+      let order_no = null;
+      try {
+        const 订单 = await Order.findOne({
+          where: { card_code: 卡密.code },
+          order: [['created_at', 'DESC']],
+          attributes: ['order_no'],
+        });
+        if (订单) order_no = 订单.order_no;
+      } catch {}
+      return {
+        id: 卡密.id,
+        code: 卡密.code,
+        status: 卡密.status,
+        service_type: 卡密.service_type,
+        created_at: 卡密.created_at,
+        order_no,
+      };
+    }));
+
+    res.json({ code: 1, message: '获取成功', data: 结果 });
+  } catch (错误) {
+    console.error('搜索洗衣卡密出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
 });
 
 // 获取洗衣订单列表（带筛选分页）
