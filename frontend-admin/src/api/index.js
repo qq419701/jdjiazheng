@@ -12,11 +12,21 @@ export const 获取看板数据API = () => 请求实例.get('/dashboard')
 export const 获取订单列表API = (参数) => 请求实例.get('/orders', { params: 参数 })
 export const 获取订单详情API = (id) => 请求实例.get(`/orders/${id}`)
 export const 更新订单状态API = (id, 数据) => 请求实例.put(`/orders/${id}/status`, 数据)
-export const 更新订单备注API = (id, 备注) => 请求实例.put(`/orders/${id}/remark`, { remark: 备注 }) // 快速更新备注
+// 更新备注：支持文字备注 + 图片数组（remark_images JSON字符串）
+export const 更新订单备注API = (id, 备注, 图片列表 = []) => 请求实例.put(`/orders/${id}/remark`, {
+  remark: 备注,
+  remark_images: JSON.stringify(图片列表),
+})
 export const 触发自动下单API = (id) => 请求实例.post(`/orders/${id}/place-order`)
 export const 重置订单API = (id) => 请求实例.post(`/orders/${id}/reset`)
 // 导出家政订单为CSV（携带当前筛选条件，返回Blob文件流）
 export const 导出家政订单API = (参数) => 请求实例.get('/orders/export', { params: 参数, responseType: 'blob' })
+
+// ===== 备注图片上传 =====
+// POST /admin/api/upload/remark-image，返回 { code:1, data: { url: '/uploads/remarks/xxx.jpg' } }
+export const 上传备注图片API = (formData) => 请求实例.post('/upload/remark-image', formData, {
+  headers: { 'Content-Type': 'multipart/form-data' },
+})
 
 // ===== 卡密管理 =====
 export const 获取卡密列表API = (参数) => 请求实例.get('/cards', { params: 参数 })
@@ -108,3 +118,13 @@ export const 测试洗衣API连接 = () => 请求实例.post('/laundry/test-conn
 // ===== 预览卡密 =====
 export const 获取家政预览卡密API = () => 请求实例.get('/cards/jiazheng/preview-card')
 export const 获取洗衣预览卡密API = () => 请求实例.get('/laundry-cards/preview-card')
+
+// ===== 图形验证码 =====
+export const 获取验证码API = () => 请求实例.get('/captcha')
+
+// ===== 子账号管理 =====
+export const 获取子账号列表API = () => 请求实例.get('/sub-accounts')
+export const 新增子账号API = (数据) => 请求实例.post('/sub-accounts', 数据)
+export const 更新子账号API = (id, 数据) => 请求实例.put(`/sub-accounts/${id}`, 数据)
+export const 删除子账号API = (id) => 请求实例.delete(`/sub-accounts/${id}`)
+export const 修改自己密码API = (数据) => 请求实例.put('/sub-accounts/self/password', 数据)

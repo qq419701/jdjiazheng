@@ -80,6 +80,8 @@ const 页面限流 = rateLimit({
 app.use('/admin', express.static(path.join(__dirname, 'public/admin')));
 // 洗衣H5静态文件（/xi 路径）
 app.use('/xi', express.static(path.join(__dirname, 'public/xi')));
+// 备注图片上传目录（/uploads/remarks/ 路径，供前端直接访问）
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // 前端H5静态文件（/ 根路径）
 app.use(express.static(path.join(__dirname, 'public/h5')));
 
