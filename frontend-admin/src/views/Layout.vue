@@ -16,55 +16,70 @@
         active-text-color="#ffffff"
         class="侧边菜单"
       >
-        <el-menu-item index="/admin/dashboard">
+        <el-menu-item v-if="authStore.有权限('dashboard')" index="/admin/dashboard">
           <el-icon><DataAnalysis /></el-icon>
           <span>数据看板</span>
         </el-menu-item>
 
-        <el-menu-item-group title="京东家政">
-          <el-menu-item index="/admin/orders/jiazheng">
+        <el-menu-item-group v-if="显示家政分组" title="京东家政">
+          <el-menu-item v-if="authStore.有权限('orders')" index="/admin/orders/jiazheng">
             <el-icon><List /></el-icon>
             <span>家政订单管理</span>
           </el-menu-item>
-          <el-menu-item index="/admin/cards/jiazheng">
+          <el-menu-item v-if="authStore.有权限('cards')" index="/admin/cards/jiazheng">
             <el-icon><Ticket /></el-icon>
             <span>家政卡密管理</span>
           </el-menu-item>
-          <el-menu-item index="/admin/jd-accounts">
+          <el-menu-item v-if="authStore.有权限('jd_accounts')" index="/admin/jd-accounts">
             <el-icon><User /></el-icon>
             <span>京东账号管理</span>
           </el-menu-item>
-          <el-menu-item index="/admin/time-rules">
+          <el-menu-item v-if="authStore.有权限('time_rules')" index="/admin/time-rules">
             <el-icon><Clock /></el-icon>
             <span>时间规则</span>
           </el-menu-item>
         </el-menu-item-group>
 
-        <el-menu-item-group title="京东洗衣服">
-          <el-menu-item index="/admin/laundry-orders">
+        <el-menu-item-group v-if="显示洗衣分组" title="京东洗衣服">
+          <el-menu-item v-if="authStore.有权限('laundry_orders')" index="/admin/laundry-orders">
             <el-icon><List /></el-icon>
             <span>洗衣订单管理</span>
           </el-menu-item>
-          <el-menu-item index="/admin/laundry-cards">
+          <el-menu-item v-if="authStore.有权限('laundry_cards')" index="/admin/laundry-cards">
             <el-icon><Ticket /></el-icon>
             <span>洗衣卡密管理</span>
           </el-menu-item>
-          <el-menu-item index="/admin/laundry-time-rules">
+          <el-menu-item v-if="authStore.有权限('laundry_time_rules')" index="/admin/laundry-time-rules">
             <el-icon><Clock /></el-icon>
             <span>洗衣时间规则</span>
           </el-menu-item>
-          <el-menu-item index="/admin/laundry-settings">
+          <el-menu-item v-if="authStore.有权限('laundry_settings')" index="/admin/laundry-settings">
             <el-icon><Setting /></el-icon>
             <span>洗衣服设置</span>
           </el-menu-item>
         </el-menu-item-group>
 
-        <el-menu-item-group title="系统管理">
-          <el-menu-item index="/admin/regions">
+        <el-menu-item-group v-if="显示充值分组" title="充值业务（预留）">
+          <el-menu-item v-if="authStore.有权限('topup')" index="/admin/topup-orders">
+            <el-icon><CreditCard /></el-icon>
+            <span>充值订单管理</span>
+          </el-menu-item>
+          <el-menu-item v-if="authStore.有权限('topup')" index="/admin/topup-cards">
+            <el-icon><Ticket /></el-icon>
+            <span>充值卡密管理</span>
+          </el-menu-item>
+          <el-menu-item v-if="authStore.有权限('topup')" index="/admin/topup-settings">
+            <el-icon><Setting /></el-icon>
+            <span>虚拟充值设置</span>
+          </el-menu-item>
+        </el-menu-item-group>
+
+        <el-menu-item-group v-if="显示系统分组" title="系统管理">
+          <el-menu-item v-if="authStore.有权限('regions')" index="/admin/regions">
             <el-icon><MapLocation /></el-icon>
             <span>地区管理</span>
           </el-menu-item>
-          <el-menu-item index="/admin/settings">
+          <el-menu-item v-if="authStore.有权限('settings')" index="/admin/settings">
             <el-icon><Setting /></el-icon>
             <span>系统设置</span>
           </el-menu-item>
@@ -72,21 +87,6 @@
           <el-menu-item v-if="authStore.有权限('sub_accounts')" index="/admin/sub-accounts">
             <el-icon><UserFilled /></el-icon>
             <span>子账号管理</span>
-          </el-menu-item>
-        </el-menu-item-group>
-
-        <el-menu-item-group title="充值业务（预留）">
-          <el-menu-item index="/admin/topup-orders">
-            <el-icon><CreditCard /></el-icon>
-            <span>充值订单管理</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/topup-cards">
-            <el-icon><Ticket /></el-icon>
-            <span>充值卡密管理</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/topup-settings">
-            <el-icon><Setting /></el-icon>
-            <span>虚拟充值设置</span>
           </el-menu-item>
         </el-menu-item-group>
       </el-menu>
@@ -129,6 +129,12 @@ const 当前路由 = computed(() => route.path)
 
 // 当前页面标题
 const 当前页标题 = computed(() => route.meta?.标题 || '京东代下单系统')
+
+// 分组可见性：有任意菜单项可见则显示该分组
+const 显示家政分组 = computed(() => ['orders', 'cards', 'jd_accounts', 'time_rules'].some(k => authStore.有权限(k)))
+const 显示洗衣分组 = computed(() => ['laundry_orders', 'laundry_cards', 'laundry_time_rules', 'laundry_settings'].some(k => authStore.有权限(k)))
+const 显示充值分组 = computed(() => authStore.有权限('topup'))
+const 显示系统分组 = computed(() => ['regions', 'settings', 'sub_accounts'].some(k => authStore.有权限(k)))
 
 // 退出登录
 const 退出登录 = async () => {

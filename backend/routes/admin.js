@@ -519,7 +519,7 @@ router.get('/sub-accounts', 验证Token, 仅超管, async (req, res) => {
   try {
     const 列表 = await Admin.findAll({
       where: { role: ['admin', 'sub'] },
-      attributes: ['id', 'username', 'nickname', 'role', 'permissions', 'is_active', 'last_login', 'created_at'],
+      attributes: ['id', 'username', 'nickname', 'role', 'permissions', 'is_active', 'last_login', 'remark', 'created_at'],
       order: [['created_at', 'DESC']],
     });
     res.json({ code: 1, message: 'ok', data: 列表 });
@@ -532,7 +532,7 @@ router.get('/sub-accounts', 验证Token, 仅超管, async (req, res) => {
 // 新增子账号
 router.post('/sub-accounts', 验证Token, 仅超管, async (req, res) => {
   try {
-    const { username, password, nickname, role = 'sub', permissions = [] } = req.body;
+    const { username, password, nickname, role = 'sub', permissions = [], remark } = req.body;
     if (!username || !password) return res.json({ code: 0, message: '用户名和密码不能为空' });
     if (password.length < 6) return res.json({ code: 0, message: '密码至少6位' });
     const 已存在 = await Admin.findOne({ where: { username } });
@@ -545,6 +545,7 @@ router.post('/sub-accounts', 验证Token, 仅超管, async (req, res) => {
       role: ['admin', 'sub'].includes(role) ? role : 'sub',
       permissions: JSON.stringify(permissions),
       is_active: 1,
+      remark: remark || null,
       created_at: new Date(),
     });
     res.json({ code: 1, message: '子账号创建成功', data: { id: 新账号.id, username: 新账号.username } });
@@ -559,12 +560,13 @@ router.put('/sub-accounts/:id', 验证Token, 仅超管, async (req, res) => {
   try {
     const 账号 = await Admin.findByPk(req.params.id);
     if (!账号 || 账号.role === 'super') return res.json({ code: 0, message: '账号不存在或无法修改' });
-    const { nickname, permissions, is_active, role } = req.body;
+    const { nickname, permissions, is_active, role, remark } = req.body;
     const 更新 = {};
     if (nickname !== undefined) 更新.nickname = nickname;
     if (permissions !== undefined) 更新.permissions = JSON.stringify(permissions);
     if (is_active !== undefined) 更新.is_active = is_active ? 1 : 0;
     if (role !== undefined && ['admin', 'sub'].includes(role)) 更新.role = role;
+    if (remark !== undefined) 更新.remark = remark || null;
     await 账号.update(更新);
     res.json({ code: 1, message: '更新成功' });
   } catch (错误) {

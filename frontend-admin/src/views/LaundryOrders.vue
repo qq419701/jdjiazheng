@@ -111,12 +111,13 @@
     <el-card>
       <el-table :data="订单列表" v-loading="加载中" stripe>
         <el-table-column prop="id" label="ID" width="60" />
-        <!-- 订单号列：显示末尾10位，tooltip 悬浮显示完整订单号 -->
-        <el-table-column label="订单号" width="130">
+        <!-- 创建时间列：转换为北京时间 YYYY-MM-DD HH:mm -->
+        <el-table-column label="创建时间" width="145">
           <template #default="{ row }">
-            <el-tooltip :content="row.order_no" placement="top" :show-after="300">
-              <span class="订单号截断">…{{ (row.order_no || '').slice(-10) }}</span>
-            </el-tooltip>
+            <span v-if="row.created_at" class="创建时间">
+              {{ 格式化北京时间(row.created_at) }}
+            </span>
+            <span v-else class="无值">-</span>
           </template>
         </el-table-column>
         <el-table-column prop="name" label="姓名" width="80" />
@@ -189,15 +190,6 @@
                 {{ row.remark.length > 15 ? row.remark.substring(0, 15) + '…' : row.remark }}
               </span>
             </template>
-            <span v-else class="无值">-</span>
-          </template>
-        </el-table-column>
-        <!-- 创建时间列：转换为北京时间 YYYY-MM-DD HH:mm -->
-        <el-table-column label="创建时间" width="145">
-          <template #default="{ row }">
-            <span v-if="row.created_at" class="创建时间">
-              {{ 格式化北京时间(row.created_at) }}
-            </span>
             <span v-else class="无值">-</span>
           </template>
         </el-table-column>
@@ -479,7 +471,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   获取洗衣订单列表API, 获取洗衣订单详情API,
@@ -647,6 +639,12 @@ const 处理粘贴上传 = async (事件) => {
   catch { ElMessage.error('图片上传失败，请重试') }
   finally { 图片上传中.value = false }
 }
+
+// 备注弹窗打开时挂载全局粘贴监听，关闭时移除，确保 Ctrl+V 粘贴图片生效
+watch(显示备注弹窗, (val) => {
+  if (val) document.addEventListener('paste', 处理粘贴上传)
+  else document.removeEventListener('paste', 处理粘贴上传)
+})
 
 // 详情弹窗
 const 显示详情弹窗 = ref(false)
@@ -1008,6 +1006,10 @@ const 获取洗衣状态类型 = (洗衣状态) => {
 onMounted(() => {
   加载站点域名()
   加载订单()
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('paste', 处理粘贴上传)
 })
 </script>
 
