@@ -145,7 +145,7 @@
             <span v-if="row.created_at" class="创建时间">
               {{ new Date(row.created_at).toLocaleString('zh-CN') }}
             </span>
-            <span v-else class="无备注">-</span>
+            <span v-else class="无值">-</span>
           </template>
         </el-table-column>
         <!-- 备注列：显示摘要（最多20字），有备注时显示📝图标 -->
@@ -830,6 +830,7 @@ onMounted(() => {
 
 /* 创建时间列样式 */
 .创建时间 { font-size: 12px; color: #888; }
+.无值 { color: #ccc; font-size: 12px; }
 
 /* 复制面板样式 */
 .复制面板 { padding: 0 4px; }
