@@ -11,6 +11,10 @@ const app = express();
 
 // ===== 中间件配置 =====
 
+// 修复：开启信任代理，解决 Nginx 反向代理下 express-rate-limit 报
+// ERR_ERL_UNEXPECTED_X_FORWARDED_FOR 错误的问题
+app.set('trust proxy', 1);
+
 // 跨域配置（H5页面需要跨域访问）
 app.use(cors({
   origin: '*',
@@ -95,8 +99,7 @@ app.use('/api/xi/verify-card', 卡密限流);
 app.use('/api/xi/orders', 订单限流);
 app.use('/api', apiRouter);
 
-// ===== 前端路由处理（SPA支持）=====
-
+// ===== 前端路由处理（SPA支持）===== 
 // 后台管理页面路由兜底（/admin/* 返回后台首页）
 app.get('/admin/*', 页面限流, (req, res) => {
   res.sendFile(path.join(__dirname, 'public/admin/index.html'));
@@ -127,7 +130,7 @@ app.listen(端口, async () => {
   try {
     const 数据库连接 = require('./config/database');
     await 数据库连接.authenticate();
-    console.log('✅ 数据库连接成功');
+    console.log('✅ 数据库���接成功');
 
     // 自动同步数据库结构（仅创建不存在的表，不修改已有表）
     await 数据库连接.sync({ alter: true });
