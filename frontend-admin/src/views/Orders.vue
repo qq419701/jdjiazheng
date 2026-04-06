@@ -437,7 +437,7 @@ const 导出订单 = async () => {
     const url = window.URL.createObjectURL(new Blob([blob], { type: 'text/csv;charset=utf-8' }))
     const 链接 = document.createElement('a')
     链接.href = url
-    链接.setAttribute('download', `家政订单_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '')}.csv`)
+    链接.setAttribute('download', `家政订单_${new Date().toISOString().split('T')[0].replace(/-/g, '')}.csv`)
     document.body.appendChild(链接)
     链接.click()
     document.body.removeChild(链接)
