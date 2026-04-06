@@ -3,6 +3,8 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const path = require('path');
+const fs = require('fs');
 const 配置 = require('../config/config');
 const { Admin, Order } = require('../models');
 const { 验证Token } = require('../middleware/auth');
@@ -16,17 +18,113 @@ const multer = require('multer');
 const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 const { 触发洗衣下单, 查询洗衣订单状态, 取消洗衣订单, 获取洗衣订单列表, 获取洗衣订单详情, 修改洗衣订单并同步鲸蚁, 测试洗衣API连接, 获取洗衣Token状态, 查询洗衣物流 } = require('../controllers/laundryController');
 
+// ===== 备注图片上传配置 =====
+// 图片保存到 backend/uploads/remarks/ 目录，通过 /uploads/remarks/ 静态路径访问
+const crypto = require('crypto');
+const 上传目录 = path.join(__dirname, '../uploads/remarks');
+if (!fs.existsSync(上传目录)) fs.mkdirSync(上传目录, { recursive: true });
+
+const 图片上传 = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, 上传目录),
+    filename: (req, file, cb) => {
+      // 使用 crypto.randomBytes 避免文件名碰撞
+      const 扩展名 = path.extname(file.originalname).toLowerCase() || '.jpg';
+      cb(null, `remark_${crypto.randomBytes(16).toString('hex')}${扩展名}`);
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 单张限5MB
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) cb(null, true);
+    else cb(new Error('只允许上传图片文件'));
+  },
+});
+
+// ===== 图形验证码接口（无需鉴权）=====
+// 返回 SVG 验证码 base64 和 session key（内存 Map 缓存，有效期2分钟）
+const 验证码缓存 = new Map();
+// 每5分钟定期清理过期验证码，避免占用内存
+setInterval(() => {
+  const 现在 = Date.now();
+  for (const [k, v] of 验证码缓存) { if (v.expires < 现在) 验证码缓存.delete(k); }
+}, 5 * 60 * 1000);
+
+router.get('/captcha', (req, res) => {
+  // 生成4位随机字母数字
+  const 字符集 = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let 验证码文字 = '';
+  for (let i = 0; i < 4; i++) 验证码文字 += 字符集[Math.floor(Math.random() * 字符集.length)];
+  // 使用 crypto.randomBytes 生成安全的唯一 key
+  const key = crypto.randomBytes(16).toString('hex');
+  // 缓存2分钟
+  验证码缓存.set(key, { text: 验证码文字.toLowerCase(), expires: Date.now() + 2 * 60 * 1000 });
+  // 生成 SVG
+  const 宽 = 100, 高 = 38;
+  const 颜色列表 = ['#e54635','#409eff','#67c23a','#e6a23c','#6c5ce7'];
+  let 字符SVG = '';
+  for (let i = 0; i < 验证码文字.length; i++) {
+    const x = 12 + i * 22 + (Math.random() - 0.5) * 4;
+    const y = 26 + (Math.random() - 0.5) * 6;
+    const rotate = (Math.random() - 0.5) * 20;
+    const color = 颜色列表[Math.floor(Math.random() * 颜色列表.length)];
+    字符SVG += `<text x="${x}" y="${y}" fill="${color}" font-size="20" font-family="Arial" font-weight="bold" transform="rotate(${rotate} ${x} ${y})">${验证码文字[i]}</text>`;
+  }
+  // 干扰线
+  let 干扰线 = '';
+  for (let i = 0; i < 3; i++) {
+    const x1 = Math.random() * 宽, y1 = Math.random() * 高;
+    const x2 = Math.random() * 宽, y2 = Math.random() * 高;
+    const color = 颜色列表[Math.floor(Math.random() * 颜色列表.length)];
+    干扰线 += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="1" opacity="0.5"/>`;
+  }
+  const svg = `<svg width="${宽}" height="${高}" xmlns="http://www.w3.org/2000/svg"><rect width="${宽}" height="${高}" fill="#f5f7fa" rx="4"/>${干扰线}${字符SVG}</svg>`;
+  res.json({ code: 1, data: { key, svg: `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}` } });
+});
+
+// ===== 备注图片上传接口（需鉴权）=====
+// POST /admin/api/upload/remark-image
+// 返回图片访问 URL（相对路径，前端拼接域名使用）
+router.post('/upload/remark-image', 验证Token, 图片上传.single('image'), (req, res) => {
+  try {
+    if (!req.file) return res.json({ code: 0, message: '未收到图片文件' });
+    // 返回可通过 /uploads/remarks/filename 访问的 URL
+    const url = `/uploads/remarks/${req.file.filename}`;
+    res.json({ code: 1, message: '上传成功', data: { url } });
+  } catch (错误) {
+    console.error('图片上传出错:', 错误);
+    res.status(500).json({ code: -1, message: '上传失败' });
+  }
+});
+
 // ===== 登录接口（无需鉴权）=====
 router.post('/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, captcha_key, captcha_text } = req.body;
     if (!username || !password) {
       return res.json({ code: 0, message: '请输入用户名和密码' });
+    }
+
+    // 验证图形验证码（有 captcha_key 时才验证）
+    if (captcha_key) {
+      const 缓存 = 验证码缓存.get(captcha_key);
+      if (!缓存 || Date.now() > 缓存.expires) {
+        return res.json({ code: 0, message: '验证码已过期，请刷新重试' });
+      }
+      if (!captcha_text || captcha_text.toLowerCase() !== 缓存.text) {
+        验证码缓存.delete(captcha_key);
+        return res.json({ code: 0, message: '验证码错误' });
+      }
+      验证码缓存.delete(captcha_key);
     }
 
     const 管理员 = await Admin.findOne({ where: { username } });
     if (!管理员) {
       return res.json({ code: 0, message: '用户名或密码错误' });
+    }
+
+    // 检查账号是否启用
+    if (管理员.is_active === 0) {
+      return res.json({ code: 0, message: '账号已被禁用，请联系管理员' });
     }
 
     const 密码正确 = await bcrypt.compare(password, 管理员.password);
@@ -37,9 +135,13 @@ router.post('/login', async (req, res) => {
     // 更新最后登录时间
     await 管理员.update({ last_login: new Date() });
 
-    // 生成JWT
+    // 解析权限
+    let permissions = [];
+    try { permissions = JSON.parse(管理员.permissions || '[]') } catch {}
+
+    // 生成JWT（包含权限信息）
     const token = jwt.sign(
-      { id: 管理员.id, username: 管理员.username, role: 管理员.role },
+      { id: 管理员.id, username: 管理员.username, role: 管理员.role, permissions },
       配置.JWT密钥,
       { expiresIn: 配置.JWT过期时间 }
     );
@@ -47,7 +149,13 @@ router.post('/login', async (req, res) => {
     res.json({
       code: 1,
       message: '登录成功',
-      data: { token, username: 管理员.username, role: 管理员.role },
+      data: {
+        token,
+        username: 管理员.username,
+        nickname: 管理员.nickname || 管理员.username,
+        role: 管理员.role,
+        permissions,
+      },
     });
   } catch (错误) {
     console.error('登录出错:', 错误);
@@ -395,5 +503,119 @@ router.get('/laundry/token-status', 验证Token, 获取洗衣Token状态);
 // [已删除] 旧版路由，功能已迁移至 /laundry-orders/:id/place-order
 // router.post('/laundry/orders/:id/place-order', 验证Token, 触发洗衣下单);
 router.get('/laundry/orders/:id/status', 验证Token, 查询洗衣订单状态);
+
+// ===== 子账号管理（仅 super 角色可操作）=====
+
+// 权限验证中间件：仅允许 super 角色
+const 仅超管 = (req, res, next) => {
+  if (req.管理员?.role !== 'super') {
+    return res.json({ code: 0, message: '权限不足，仅超级管理员可操作' });
+  }
+  next();
+};
+
+// 获取子账号列表
+router.get('/sub-accounts', 验证Token, 仅超管, async (req, res) => {
+  try {
+    const 列表 = await Admin.findAll({
+      where: { role: ['admin', 'sub'] },
+      attributes: ['id', 'username', 'nickname', 'role', 'permissions', 'is_active', 'last_login', 'created_at'],
+      order: [['created_at', 'DESC']],
+    });
+    res.json({ code: 1, message: 'ok', data: 列表 });
+  } catch (错误) {
+    console.error('获取子账号列表出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+// 新增子账号
+router.post('/sub-accounts', 验证Token, 仅超管, async (req, res) => {
+  try {
+    const { username, password, nickname, role = 'sub', permissions = [] } = req.body;
+    if (!username || !password) return res.json({ code: 0, message: '用户名和密码不能为空' });
+    if (password.length < 6) return res.json({ code: 0, message: '密码至少6位' });
+    const 已存在 = await Admin.findOne({ where: { username } });
+    if (已存在) return res.json({ code: 0, message: '用户名已存在' });
+    const 加密密码 = await bcrypt.hash(password, 10);
+    const 新账号 = await Admin.create({
+      username,
+      password: 加密密码,
+      nickname: nickname || username,
+      role: ['admin', 'sub'].includes(role) ? role : 'sub',
+      permissions: JSON.stringify(permissions),
+      is_active: 1,
+      created_at: new Date(),
+    });
+    res.json({ code: 1, message: '子账号创建成功', data: { id: 新账号.id, username: 新账号.username } });
+  } catch (错误) {
+    console.error('新增子账号出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+// 修改子账号（权限/状态/昵称，不含密码）
+router.put('/sub-accounts/:id', 验证Token, 仅超管, async (req, res) => {
+  try {
+    const 账号 = await Admin.findByPk(req.params.id);
+    if (!账号 || 账号.role === 'super') return res.json({ code: 0, message: '账号不存在或无法修改' });
+    const { nickname, permissions, is_active, role } = req.body;
+    const 更新 = {};
+    if (nickname !== undefined) 更新.nickname = nickname;
+    if (permissions !== undefined) 更新.permissions = JSON.stringify(permissions);
+    if (is_active !== undefined) 更新.is_active = is_active ? 1 : 0;
+    if (role !== undefined && ['admin', 'sub'].includes(role)) 更新.role = role;
+    await 账号.update(更新);
+    res.json({ code: 1, message: '更新成功' });
+  } catch (错误) {
+    console.error('修改子账号出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+// 重置子账号密码
+router.put('/sub-accounts/:id/password', 验证Token, 仅超管, async (req, res) => {
+  try {
+    const 账号 = await Admin.findByPk(req.params.id);
+    if (!账号 || 账号.role === 'super') return res.json({ code: 0, message: '账号不存在或无法修改' });
+    const { password } = req.body;
+    if (!password || password.length < 6) return res.json({ code: 0, message: '密码至少6位' });
+    await 账号.update({ password: await bcrypt.hash(password, 10) });
+    res.json({ code: 1, message: '密码重置成功' });
+  } catch (错误) {
+    console.error('重置密码出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+// 修改自己密码（无需超管权限）
+router.put('/sub-accounts/self/password', 验证Token, async (req, res) => {
+  try {
+    const { old_password, new_password } = req.body;
+    if (!new_password || new_password.length < 6) return res.json({ code: 0, message: '新密码至少6位' });
+    const 账号 = await Admin.findByPk(req.管理员.id);
+    if (!账号) return res.json({ code: 0, message: '账号不存在' });
+    const 旧密码正确 = await bcrypt.compare(old_password, 账号.password);
+    if (!旧密码正确) return res.json({ code: 0, message: '原密码错误' });
+    await 账号.update({ password: await bcrypt.hash(new_password, 10) });
+    res.json({ code: 1, message: '密码修改成功' });
+  } catch (错误) {
+    console.error('修改密码出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+// 删除子账号
+router.delete('/sub-accounts/:id', 验证Token, 仅超管, async (req, res) => {
+  try {
+    const 账号 = await Admin.findByPk(req.params.id);
+    if (!账号 || 账号.role === 'super') return res.json({ code: 0, message: '账号不存在或无法删除' });
+    await 账号.destroy();
+    res.json({ code: 1, message: '删除成功' });
+  } catch (错误) {
+    console.error('删除子账号出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
 
 module.exports = router;

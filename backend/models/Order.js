@@ -111,7 +111,12 @@ const Order = 数据库连接.define('Order', {
   remark: {
     type: DataTypes.TEXT,
     allowNull: true,
-    comment: '备注',
+    comment: '备注（文字部分）',
+  },
+  remark_images: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: '备注图片JSON数组（管理员上传的图片URL列表）',
   },
   street: {
     type: DataTypes.STRING(100),

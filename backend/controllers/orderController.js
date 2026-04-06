@@ -244,10 +244,11 @@ const 获取洗衣订单详情 = async (req, res) => {
 /**
  * 快速更新订单备注（独立接口，无需更新状态）
  * PUT /admin/api/orders/:id/remark
+ * 支持同时保存文字备注（remark）和图片数组（remark_images，JSON字符串）
  */
 const 更新订单备注 = async (req, res) => {
   try {
-    const { remark } = req.body;
+    const { remark, remark_images } = req.body;
     const 订单 = await Order.findByPk(req.params.id);
 
     if (!订单) {
@@ -256,16 +257,24 @@ const 更新订单备注 = async (req, res) => {
 
     // 记录操作日志
     const 现有日志 = 安全解析JSON(订单.order_log, []);
+    const 图片数量 = (() => { try { return (JSON.parse(remark_images || '[]') || []).length } catch { return 0 } })();
+    const 日志描述 = [remark ? `备注：${remark}` : null, 图片数量 ? `${图片数量}张图片` : null].filter(Boolean).join('，') || '（已清空）';
     现有日志.push({
       时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
-      操作: `管理员更新备注：${remark || '（已清空）'}`,
+      操作: `管理员更新备注：${日志描述}`,
       状态: 'info',
     });
 
-    await 订单.update({
+    const 更新数据 = {
       remark: remark || null,
       order_log: JSON.stringify(现有日志),
-    });
+    };
+    // 仅当 remark_images 字段存在时才更新（防止旧版本前端误清空）
+    if (remark_images !== undefined) {
+      更新数据.remark_images = remark_images || null;
+    }
+
+    await 订单.update(更新数据);
 
     res.json({ code: 1, message: '备注更新成功' });
   } catch (错误) {

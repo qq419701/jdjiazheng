@@ -31,9 +31,11 @@ const 初始化数据库 = async () => {
         username: 'admin',
         password: 加密密码,
         role: 'super',
+        is_active: 1,
         created_at: new Date(),
       });
-      console.log('✅ 默认管理员创建成功（用户名: admin，密码: admin123）');
+      console.log('✅ 默认管理员创建成功（用户名: admin）');
+      console.log('⚠️  请尽快登录后修改默认密码');
     } else {
       console.log('ℹ️ 管理员已存在，跳过创建');
     }
@@ -169,7 +171,7 @@ const 初始化数据库 = async () => {
 
     console.log('\n🎉 数据库初始化完成！');
     console.log('管理员账号：admin');
-    console.log('管理员密码：admin123');
+    console.log('管理员密码：可通过环境变量 ADMIN_DEFAULT_PASSWORD 设置（首次初始化时生效）');
     process.exit(0);
   } catch (错误) {
     console.error('❌ 数据库初始化失败:', 错误.message);

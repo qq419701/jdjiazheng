@@ -68,6 +68,26 @@
             <el-icon><Setting /></el-icon>
             <span>系统设置</span>
           </el-menu-item>
+          <!-- 子账号管理（仅 super/admin 可见） -->
+          <el-menu-item v-if="authStore.有权限('sub_accounts')" index="/admin/sub-accounts">
+            <el-icon><UserFilled /></el-icon>
+            <span>子账号管理</span>
+          </el-menu-item>
+        </el-menu-item-group>
+
+        <el-menu-item-group title="充值业务（预留）">
+          <el-menu-item index="/admin/topup-orders">
+            <el-icon><CreditCard /></el-icon>
+            <span>充值订单管理</span>
+          </el-menu-item>
+          <el-menu-item index="/admin/topup-cards">
+            <el-icon><Ticket /></el-icon>
+            <span>充值卡密管理</span>
+          </el-menu-item>
+          <el-menu-item index="/admin/topup-settings">
+            <el-icon><Setting /></el-icon>
+            <span>虚拟充值设置</span>
+          </el-menu-item>
         </el-menu-item-group>
       </el-menu>
     </aside>
@@ -80,7 +100,7 @@
           <span class="当前页标题">{{ 当前页标题 }}</span>
         </div>
         <div class="用户信息">
-          <span class="用户名显示">👤 {{ authStore.username }}</span>
+          <span class="用户名显示">👤 {{ authStore.nickname || authStore.username }}</span>
           <el-button type="danger" plain size="small" @click="退出登录">退出登录</el-button>
         </div>
       </header>
@@ -97,7 +117,7 @@
 import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
-import { DataAnalysis, List, Ticket, User, Clock, Setting, MapLocation } from '@element-plus/icons-vue'
+import { DataAnalysis, List, Ticket, User, UserFilled, CreditCard, Clock, Setting, MapLocation } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()

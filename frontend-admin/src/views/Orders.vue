@@ -113,7 +113,14 @@
     <el-card>
       <el-table :data="订单列表" v-loading="加载中" stripe>
         <el-table-column prop="id" label="ID" width="60" />
-        <el-table-column prop="order_no" label="订单号" width="180" />
+        <!-- 订单号列：显示末尾10位，tooltip 悬浮显示完整订单号 -->
+        <el-table-column label="订单号" width="130">
+          <template #default="{ row }">
+            <el-tooltip :content="row.order_no" placement="top" :show-after="300">
+              <span class="订单号截断">…{{ (row.order_no || '').slice(-10) }}</span>
+            </el-tooltip>
+          </template>
+        </el-table-column>
         <el-table-column prop="name" label="姓名" width="80" />
         <el-table-column prop="phone" label="手机号" width="120" />
         <el-table-column prop="city" label="城市" width="80" />
@@ -139,13 +146,51 @@
           </template>
         </el-table-column>
         <el-table-column prop="card_code" label="卡密" width="160" />
-        <!-- 备注列：显示摘要（最多20字），有备注时显示📝图标 -->
-        <el-table-column label="备注" width="140">
+        <!-- 创建时间列：转换为北京时间 YYYY-MM-DD HH:mm -->
+        <el-table-column label="创建时间" width="145">
           <template #default="{ row }">
-            <span v-if="row.remark" class="备注摘要">
-              <span class="备注图标">📝</span>
-              {{ row.remark.length > 20 ? row.remark.substring(0, 20) + '…' : row.remark }}
+            <span v-if="row.created_at" class="创建时间">
+              {{ 格式化北京时间(row.created_at) }}
             </span>
+            <span v-else class="无值">-</span>
+          </template>
+        </el-table-column>
+        <!-- 备注列：有图片时显示 📝🖼️ 图标 + hover 悬浮预览，纯文字显示摘要 -->
+        <el-table-column label="备注" width="155">
+          <template #default="{ row }">
+            <template v-if="row.remark || (row.remark_images && JSON.parse(row.remark_images || '[]').length)">
+              <el-popover
+                v-if="解析备注图片(row.remark_images).length"
+                placement="right"
+                trigger="hover"
+                width="320"
+                :show-after="200"
+              >
+                <template #reference>
+                  <span class="备注摘要">
+                    <span class="备注图标">📝🖼️</span>
+                    <span v-if="row.remark">{{ row.remark.length > 12 ? row.remark.substring(0, 12) + '…' : row.remark }}</span>
+                    <span v-else class="图片备注标签">{{ 解析备注图片(row.remark_images).length }}张图</span>
+                  </span>
+                </template>
+                <div class="备注图片预览">
+                  <div v-if="row.remark" class="备注预览文字">{{ row.remark }}</div>
+                  <el-image
+                    v-for="(图片, 索引) in 解析备注图片(row.remark_images)"
+                    :key="索引"
+                    :src="图片"
+                    style="width:90px;height:90px;object-fit:cover;border-radius:4px;margin:4px"
+                    :preview-src-list="解析备注图片(row.remark_images)"
+                    :initial-index="索引"
+                    fit="cover"
+                  />
+                </div>
+              </el-popover>
+              <span v-else-if="row.remark" class="备注摘要">
+                <span class="备注图标">📝</span>
+                {{ row.remark.length > 20 ? row.remark.substring(0, 20) + '…' : row.remark }}
+              </span>
+            </template>
             <span v-else class="无备注">-</span>
           </template>
         </el-table-column>
@@ -260,8 +305,8 @@
       </template>
     </el-dialog>
 
-    <!-- 快速编辑备注弹窗 -->
-    <el-dialog v-model="显示备注弹窗" title="编辑备注" width="460px" :close-on-click-modal="false">
+    <!-- 快速编辑备注弹窗（支持文字 + 图片混合备注） -->
+    <el-dialog v-model="显示备注弹窗" title="编辑备注" width="520px" :close-on-click-modal="false">
       <div class="备注弹窗内容">
         <!-- 快捷标签区 -->
         <p class="快捷标签标题">快捷追加：</p>
@@ -280,10 +325,44 @@
         <el-input
           v-model="备注表单.内容"
           type="textarea"
-          :rows="4"
+          :rows="3"
           placeholder="请输入备注内容（点击上方标签可快速追加）"
           style="margin-top: 12px"
         />
+        <!-- 图片上传区域 -->
+        <div class="备注图片区">
+          <p class="快捷标签标题" style="margin-top:12px">备注图片（可选）：</p>
+          <!-- 已上传图片预览 -->
+          <div v-if="备注图片列表.length" class="已上传图片列表">
+            <div v-for="(图片, 索引) in 备注图片列表" :key="索引" class="已上传图片项">
+              <el-image :src="图片" style="width:80px;height:80px;object-fit:cover;border-radius:4px" fit="cover" :preview-src-list="备注图片列表" :initial-index="索引" />
+              <el-button class="删除图片按钮" type="danger" size="small" circle plain @click="删除备注图片(索引)">✕</el-button>
+            </div>
+          </div>
+          <!-- 上传按钮 & 拖拽区域 -->
+          <div
+            class="图片上传区"
+            :class="{ '拖拽悬停': 拖拽中 }"
+            @dragover.prevent="拖拽中 = true"
+            @dragleave.prevent="拖拽中 = false"
+            @drop.prevent="处理拖拽上传"
+            @paste.capture="处理粘贴上传"
+          >
+            <el-upload
+              action="#"
+              :auto-upload="false"
+              :show-file-list="false"
+              accept="image/*"
+              multiple
+              :on-change="处理文件选择上传"
+            >
+              <div class="上传提示">
+                <span>📷 点击选择 / 拖拽 / 粘贴图片</span>
+                <span v-if="图片上传中" class="上传进度">上传中…</span>
+              </div>
+            </el-upload>
+          </div>
+        </div>
       </div>
       <template #footer>
         <el-button @click="显示备注弹窗 = false">取消</el-button>
@@ -322,12 +401,34 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import { 获取订单列表API, 更新订单状态API, 触发自动下单API, 重置订单API, 更新订单备注API, 获取设置API, 获取家政预览卡密API, 导出家政订单API, 订单页搜索家政卡密API, 作废卡密API } from '../api/index'
+import { 获取订单列表API, 更新订单状态API, 触发自动下单API, 重置订单API, 更新订单备注API, 上传备注图片API, 获取设置API, 获取家政预览卡密API, 导出家政订单API, 订单页搜索家政卡密API, 作废卡密API } from '../api/index'
 
 const router = useRouter()
 const route = useRoute()
 
-// 站点域名
+/**
+ * 格式化为北京时间 YYYY-MM-DD HH:mm
+ * 使用 en-CA locale 获得 YYYY-MM-DD 格式，配合 Asia/Shanghai 时区
+ */
+const 格式化北京时间 = (isoStr) => {
+  if (!isoStr) return '-'
+  const d = new Date(isoStr)
+  if (isNaN(d.getTime())) return isoStr
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  })
+  return fmt.format(d).replace(', ', ' ')
+}
+
+/**
+ * 解析备注图片JSON数组
+ */
+const 解析备注图片 = (imagesJson) => {
+  if (!imagesJson) return []
+  try { return JSON.parse(imagesJson) } catch { return [] }
+}
 const 站点域名 = ref('')
 const 预览链接 = ref('')
 
@@ -446,6 +547,10 @@ const 显示备注弹窗 = ref(false)      // 控制备注弹窗显示
 const 当前备注订单 = ref(null)        // 当前正在编辑备注的订单
 const 备注保存中 = ref(false)         // 备注保存中标志
 const 备注表单 = ref({ 内容: '' })   // 备注输入内容
+// 备注图片相关
+const 备注图片列表 = ref([])          // 已上传/已有的图片URL数组
+const 图片上传中 = ref(false)         // 图片上传中标志
+const 拖拽中 = ref(false)             // 拖拽悬停状态
 
 // 快捷备注标签列表（点击一键追加）
 const 快捷备注标签 = ['已联系客户', '需改期', '客户催单', '特殊要求', '已安排师傅', '客户已确认']
@@ -648,6 +753,7 @@ const 执行重置订单 = async (id) => {
 const 打开备注弹窗 = (行) => {
   当前备注订单.value = 行
   备注表单.value.内容 = 行.remark || ''
+  备注图片列表.value = 解析备注图片(行.remark_images)
   显示备注弹窗.value = true
 }
 
@@ -662,17 +768,82 @@ const 追加快捷标签 = (标签文字) => {
   备注表单.value.内容 = 当前内容 ? `${当前内容}；${标签文字}` : 标签文字
 }
 
-// 清空备注输入
+// 清空备注输入（同时清空图片）
 const 清空备注 = () => {
   备注表单.value.内容 = ''
+  备注图片列表.value = []
 }
 
-// 保存备注（调用API）
+// 删除某张备注图片
+const 删除备注图片 = (索引) => {
+  备注图片列表.value.splice(索引, 1)
+}
+
+/**
+ * 上传单张图片文件到服务器
+ */
+const 上传单张图片 = async (文件) => {
+  const formData = new FormData()
+  formData.append('image', 文件)
+  const 结果 = await 上传备注图片API(formData)
+  if (结果.code === 1 && 结果.data?.url) {
+    备注图片列表.value.push(结果.data.url)
+  } else {
+    ElMessage.warning(结果.message || '图片上传失败')
+  }
+}
+
+// 处理点击选择文件上传（el-upload onChange 回调）
+const 处理文件选择上传 = async (文件对象) => {
+  图片上传中.value = true
+  try {
+    await 上传单张图片(文件对象.raw)
+  } catch {
+    ElMessage.error('图片上传失败，请重试')
+  } finally {
+    图片上传中.value = false
+  }
+}
+
+// 处理拖拽上传
+const 处理拖拽上传 = async (事件) => {
+  拖拽中.value = false
+  const 文件列表 = Array.from(事件.dataTransfer?.files || []).filter(f => f.type.startsWith('image/'))
+  if (!文件列表.length) return
+  图片上传中.value = true
+  try {
+    for (const 文件 of 文件列表) await 上传单张图片(文件)
+  } catch {
+    ElMessage.error('图片上传失败，请重试')
+  } finally {
+    图片上传中.value = false
+  }
+}
+
+// 处理粘贴上传（支持 Ctrl+V 粘贴图片）
+const 处理粘贴上传 = async (事件) => {
+  const items = Array.from(事件.clipboardData?.items || [])
+  const 图片项 = items.filter(item => item.type.startsWith('image/'))
+  if (!图片项.length) return
+  图片上传中.value = true
+  try {
+    for (const 项 of 图片项) {
+      const 文件 = 项.getAsFile()
+      if (文件) await 上传单张图片(文件)
+    }
+  } catch {
+    ElMessage.error('图片上传失败，请重试')
+  } finally {
+    图片上传中.value = false
+  }
+}
+
+// 保存备注（调用API，包含图片）
 const 保存备注 = async () => {
   if (!当前备注订单.value) return
   备注保存中.value = true
   try {
-    const 结果 = await 更新订单备注API(当前备注订单.value.id, 备注表单.value.内容)
+    const 结果 = await 更新订单备注API(当前备注订单.value.id, 备注表单.value.内容, 备注图片列表.value)
     if (结果.code === 1) {
       ElMessage.success('备注保存成功')
       显示备注弹窗.value = false
@@ -818,6 +989,38 @@ onMounted(() => {
 .快捷标签标题 { color: #666; font-size: 13px; margin-bottom: 6px; }
 .快捷标签列表 { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
 .快捷标签:hover { background: #ecf5ff; border-color: #409eff; }
+
+/* 创建时间列样式 */
+.创建时间 { font-size: 12px; color: #888; }
+.无值 { color: #ccc; font-size: 12px; }
+
+/* 订单号截断样式 */
+.订单号截断 { font-size: 12px; color: #555; font-family: monospace; cursor: default; }
+
+/* 备注图片预览（popover 内部） */
+.备注图片预览 { display: flex; flex-wrap: wrap; gap: 6px; max-width: 300px; }
+.备注预览文字 { width: 100%; font-size: 12px; color: #555; margin-bottom: 6px; word-break: break-all; }
+.图片备注标签 { color: #409eff; font-size: 12px; }
+
+/* 备注弹窗图片上传区域 */
+.备注图片区 { margin-top: 4px; }
+.已上传图片列表 { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.已上传图片项 { position: relative; display: inline-block; }
+.删除图片按钮 {
+  position: absolute; top: -6px; right: -6px;
+  width: 20px; height: 20px; font-size: 10px; padding: 0;
+}
+.图片上传区 {
+  border: 2px dashed #dcdfe6;
+  border-radius: 6px;
+  padding: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.图片上传区:hover, .拖拽悬停 { border-color: #409eff; background: #ecf5ff; }
+.上传提示 { color: #aaa; font-size: 13px; display: flex; flex-direction: column; gap: 4px; }
+.上传进度 { color: #409eff; }
 
 /* 复制面板样式 */
 .复制面板 { padding: 0 4px; }
