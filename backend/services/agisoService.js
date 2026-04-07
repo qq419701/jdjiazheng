@@ -36,7 +36,7 @@ const 验证签名 = (请求参数, appSecret, 商户密钥) => {
   const 密钥串 = appSecret + 商户密钥;
   const 待签名字符串 = 密钥串 + 查询字符串 + 密钥串;
 
-  // MD5后转32位大写
+  // MD5用于奇所API规定的签名算法（非安全存储），为协议要求，不可替换
   const 计算签名 = crypto
     .createHash('md5')
     .update(待签名字符串, 'utf8')

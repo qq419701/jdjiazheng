@@ -7,7 +7,21 @@
 
 const { Op } = require('sequelize');
 const { Card, Order, Setting } = require('../models');
+const 数据库连接 = require('../config/database');
 const { 加密卡密 } = require('../services/agisoService');
+
+// 洗衣价格单位换算常量（Setting表中以分存储，转换为元返回）
+const 分转元 = 100;
+
+/**
+ * 格式化过期时间为字符串
+ * @param {Date|null} 时间 - 过期时间
+ * @returns {string} 格式化后的时间字符串，如 '2024-12-31 23:59:59'
+ */
+const 格式化过期时间 = (时间) => {
+  if (!时间) return '';
+  return new Date(时间).toISOString().replace('T', ' ').slice(0, 19);
+};
 
 /**
  * 从数据库批量读取配置项，转换为键值对象
@@ -142,8 +156,8 @@ const 获取商品列表 = async (req, res) => {
 
       // 计算各类型的成本价
       const jiazheng成本价 = parseFloat(配置.service_cost_price || '50') || 50;
-      // 洗衣价格在Setting表中以分为单位存储，转换为元
-      const xiyifu成本价 = (parseInt(配置.laundry_product_price || '0', 10) / 100) || 0;
+      // 洗衣价格在Setting表中以分为单位存储，使用分转元常量换算
+      const xiyifu成本价 = (parseInt(配置.laundry_product_price || '0', 10) / 分转元) || 0;
 
       商品列表 = 卡密类型列表.map(卡密类型 => {
         const productNo = 生成商品编号(卡密类型.business_type, 卡密类型.service_type, 卡密类型.service_hours);
@@ -239,7 +253,7 @@ const 获取商品模板 = async (req, res) => {
     const 配置 = await 读取配置(['service_cost_price', 'laundry_product_price']);
     let 成本价 = 50;
     if (businessType === 'xiyifu') {
-      成本价 = (parseInt(配置.laundry_product_price || '0', 10) / 100) || 0;
+      成本价 = (parseInt(配置.laundry_product_price || '0', 10) / 分转元) || 0;
     } else {
       成本价 = parseFloat(配置.service_cost_price || '50') || 50;
     }
@@ -301,14 +315,11 @@ const 卡密下单 = async (req, res) => {
     });
     if (已有卡密) {
       // 重复请求，直接返回已有订单状态（加密卡密返回）
-      const 过期时间字符串 = 已有卡密.expired_at
-        ? new Date(已有卡密.expired_at).toISOString().replace('T', ' ').slice(0, 19)
-        : '';
       const 卡密信息 = [
         {
           cardNo: 已有卡密.code,
           cardPwd: '',
-          expireTime: 过期时间字符串,
+          expireTime: 格式化过期时间(已有卡密.expired_at),
         },
       ];
       const 加密结果 = 加密卡密(卡密信息, appSecret);
@@ -329,18 +340,38 @@ const 卡密下单 = async (req, res) => {
     }
     const { businessType, serviceType, serviceHours } = 商品信息;
 
-    // 查找未使用的卡密（status=0）
-    const 可用卡密 = await Card.findOne({
-      where: {
-        business_type: businessType,
-        service_type: serviceType,
-        service_hours: serviceHours,
-        status: 0,
-        agiso_order_no: null, // 确保未被分配给其他奇所订单
-      },
+    // 使用事务+原子更新防止并发竞争：
+    // 直接用 UPDATE SET agiso_order_no=orderNo WHERE agiso_order_no IS NULL AND status=0
+    // 只有一个请求能成功更新，其他请求得到 affectedRows=0
+    let 目标卡密 = null;
+    await 数据库连接.transaction(async (t) => {
+      // 先在事务内查找可用卡密（加行锁）
+      const 候选卡密 = await Card.findOne({
+        where: {
+          business_type: businessType,
+          service_type: serviceType,
+          service_hours: serviceHours,
+          status: 0,
+          agiso_order_no: null,
+        },
+        lock: t.LOCK.UPDATE, // SELECT FOR UPDATE 行锁，防止并发
+        transaction: t,
+      });
+
+      if (!候选卡密) return; // 库存不足
+
+      // 在事务内更新（原子操作）
+      await 候选卡密.update({
+        status: 1,
+        agiso_order_no: orderNo,
+        sup_status: 1,  // 1=已发货
+        sup_product_no: productNo,
+      }, { transaction: t });
+
+      目标卡密 = 候选卡密;
     });
 
-    if (!可用卡密) {
+    if (!目标卡密) {
       return res.json({
         code: 200,
         message: '接口调用成功',
@@ -348,25 +379,12 @@ const 卡密下单 = async (req, res) => {
       });
     }
 
-    // 将卡密标记为已发货（status=1），记录奇所订单号
-    await 可用卡密.update({
-      status: 1,
-      agiso_order_no: orderNo,
-      sup_status: 1,  // 1=已发货
-      sup_product_no: productNo,
-    });
-
-    // 格式化过期时间
-    const 过期时间字符串 = 可用卡密.expired_at
-      ? new Date(可用卡密.expired_at).toISOString().replace('T', ' ').slice(0, 19)
-      : '';
-
     // AES加密卡密信息
     const 卡密信息 = [
       {
-        cardNo: 可用卡密.code,
+        cardNo: 目标卡密.code,
         cardPwd: '',
-        expireTime: 过期时间字符串,
+        expireTime: 格式化过期时间(目标卡密.expired_at),
       },
     ];
     const 加密结果 = 加密卡密(卡密信息, appSecret);
@@ -431,14 +449,11 @@ const 查询订单 = async (req, res) => {
     }
 
     // 格式化过期时间并加密卡密
-    const 过期时间字符串 = 卡密记录.expired_at
-      ? new Date(卡密记录.expired_at).toISOString().replace('T', ' ').slice(0, 19)
-      : '';
     const 卡密信息 = [
       {
         cardNo: 卡密记录.code,
         cardPwd: '',
-        expireTime: 过期时间字符串,
+        expireTime: 格式化过期时间(卡密记录.expired_at),
       },
     ];
     const 加密结果 = 加密卡密(卡密信息, appSecret);

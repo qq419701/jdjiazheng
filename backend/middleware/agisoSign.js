@@ -5,6 +5,9 @@
 const { Setting } = require('../models');
 const { 验证签名 } = require('../services/agisoService');
 
+// 时间戳有效期（秒），超过此时间的请求将被拒绝
+const 时间戳有效期秒 = 5 * 60;
+
 /**
  * 奇所SUP签名验证中间件
  * 验证流程：
@@ -48,7 +51,7 @@ const 验证奇所签名 = async (req, res, next) => {
     }
     const 当前时间戳 = Math.floor(Date.now() / 1000);
     const 请求时间戳 = parseInt(timestamp);
-    if (Math.abs(当前时间戳 - 请求时间戳) > 5 * 60) {
+    if (Math.abs(当前时间戳 - 请求时间戳) > 时间戳有效期秒) {
       return res.json({ code: 408, message: '时间戳已过期' });
     }
 
