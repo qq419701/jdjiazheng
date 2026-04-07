@@ -202,7 +202,7 @@ const 获取商品模板 = async (req, res) => {
     });
 
     if (!商品) {
-      return res.json({ code: 1100, message: '商品不存在' });
+      return res.json({ code: 1100, message: '失败原因:商品不存在', data: null });
     }
 
     res.json({
@@ -283,7 +283,7 @@ const 卡密下单 = async (req, res) => {
       where: { product_no: productNo, status: 1 },
     });
     if (!商品) {
-      return res.json({ code: 1100, message: '商品不存在' });
+      return res.json({ code: 1100, message: '失败原因:商品不存在', data: null });
     }
     const businessType = 商品.business_type;
     const serviceType = 商品.service_type;
@@ -323,9 +323,9 @@ const 卡密下单 = async (req, res) => {
 
     if (!目标卡密) {
       return res.json({
-        code: 200,
-        message: '接口调用成功',
-        data: { orderStatus: 30 }, // 30=失败（库存不足）
+        code: 1230,
+        message: '失败原因:库存不足',
+        data: null,
       });
     }
 
