@@ -25,25 +25,10 @@
                   :value="商品.id"
                 />
               </el-select>
-              <div class="字段说明">选择商品后自动填充业务类型、服务类型、时长（推荐使用）</div>
-            </el-form-item>
-
-            <!-- 选商品后只读展示，不选商品时可手动填写 -->
-            <el-form-item label="业务类型">
-              <el-select v-model="表单.business_type" style="width: 100%" :disabled="!!表单.product_id">
-                <el-option label="京东家政" value="jiazheng" />
-                <el-option label="京东洗衣服" value="xiyifu" />
-              </el-select>
-              <div v-if="表单.product_id" class="字段说明只读">由商品自动填充</div>
-            </el-form-item>
-            <el-form-item label="服务类型">
-              <el-input v-model="表单.service_type" placeholder="如：日常保洁" :readonly="!!表单.product_id" />
-              <div v-if="表单.product_id" class="字段说明只读">由商品自动填充</div>
-            </el-form-item>
-            <el-form-item label="服务时长">
-              <el-input-number v-model="表单.service_hours" :min="0" :max="24" :disabled="!!表单.product_id" />
-              <span style="margin-left: 8px; color: #999">小时</span>
-              <div v-if="表单.product_id" class="字段说明只读">由商品自动填充</div>
+              <!-- 选中商品后静态展示商品信息 -->
+              <div v-if="选中商品信息" class="商品信息提示">
+                商品: {{ 选中商品信息.product_no }} - {{ 选中商品信息.product_name }} | 类型: {{ 选中商品信息.business_type === 'xiyifu' ? '洗衣' : '家政' }} | 成本: ¥{{ parseFloat(选中商品信息.cost_price || 0).toFixed(2) }}
+              </div>
             </el-form-item>
             <el-form-item label="生成数量">
               <el-input-number v-model="表单.count" :min="1" :max="1000" />
@@ -137,27 +122,27 @@ const 生成结果 = ref({ codes: [], batch_no: '' })
 const 站点域名 = ref('')
 // 商品列表
 const 商品列表 = ref([])
+// 当前选中的商品信息（用于静态展示）
+const 选中商品信息 = ref(null)
 
 const 表单 = ref({
   product_id: null,
-  category: '日常保洁',
-  service_type: '日常保洁',
-  service_hours: 2,
   count: 10,
   remark: '',
   expired_at: null,
   business_type: route.params.businessType || 'jiazheng',
 })
 
-// 处理商品选择：自动填充服务类型、时长、业务类型
+// 处理商品选择：自动设置业务类型（不在界面显示，但提交时需要）
 const 处理商品选择 = (商品ID) => {
-  if (!商品ID) return
+  if (!商品ID) {
+    选中商品信息.value = null
+    return
+  }
   const 选中商品 = 商品列表.value.find(c => c.id === 商品ID)
   if (选中商品) {
     表单.value.business_type = 选中商品.business_type
-    表单.value.service_type = 选中商品.service_type || ''
-    表单.value.service_hours = 选中商品.service_hours || 0
-    表单.value.category = 选中商品.service_type || '日常保洁'
+    选中商品信息.value = 选中商品
   }
 }
 
@@ -260,14 +245,13 @@ onMounted(() => {
   color: #666;
   margin-bottom: 8px;
 }
-.字段说明 {
+.商品信息提示 {
   font-size: 12px;
-  color: #999;
-  margin-top: 4px;
-}
-.字段说明只读 {
-  font-size: 12px;
-  color: #e6a23c;
-  margin-top: 4px;
+  color: #0ea5e9;
+  margin-top: 6px;
+  padding: 4px 8px;
+  background: #f0f9ff;
+  border-radius: 4px;
+  border: 1px solid #bae6fd;
 }
 </style>
