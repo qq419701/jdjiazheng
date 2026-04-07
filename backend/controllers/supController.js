@@ -268,11 +268,20 @@ const 卡密下单 = async (req, res) => {
         },
       ];
       const 加密结果 = 加密卡密(卡密信息, appSecret);
+      // 查询关联商品以获取成本价
+      let orderCost = 0;
+      if (已有卡密.product_id) {
+        const 关联商品 = await Product.findByPk(已有卡密.product_id);
+        if (关联商品) orderCost = parseFloat(关联商品.cost_price) || 0;
+      }
       return res.json({
         code: 200,
         message: '接口调用成功',
         data: {
+          orderNo: orderNo,
+          outTradeNo: 已有卡密.id.toString(),
           orderStatus: 20,
+          orderCost,
           cards: 加密结果,
         },
       });
@@ -343,7 +352,10 @@ const 卡密下单 = async (req, res) => {
       code: 200,
       message: '接口调用成功',
       data: {
+        orderNo: orderNo,
+        outTradeNo: 目标卡密.id.toString(),
         orderStatus: 20, // 20=成功
+        orderCost: parseFloat(商品.cost_price) || 0,
         cards: 加密结果,
       },
     });
@@ -390,12 +402,23 @@ const 查询订单 = async (req, res) => {
     // 根据 sup_status 映射订单状态
     // sup_status: 0=未发货, 1=已发货, 2=已撤单
     let orderStatus;
+    let failCode = 0;
+    let failReason = '';
     if (卡密记录.sup_status === 1) {
       orderStatus = 20; // 成功
     } else if (卡密记录.sup_status === 2) {
       orderStatus = 30; // 已撤单/失败
+      failCode = 30;
+      failReason = '订单已撤单';
     } else {
       orderStatus = 10; // 处理中
+    }
+
+    // 查询关联商品获取成本价
+    let orderCost = 0;
+    if (卡密记录.product_id) {
+      const 关联商品 = await Product.findByPk(卡密记录.product_id);
+      if (关联商品) orderCost = parseFloat(关联商品.cost_price) || 0;
     }
 
     // 格式化过期时间并加密卡密
@@ -412,7 +435,12 @@ const 查询订单 = async (req, res) => {
       code: 200,
       message: '接口调用成功',
       data: {
+        orderNo: orderNo,
+        outTradeNo: 卡密记录.id.toString(),
         orderStatus,
+        failCode,
+        failReason,
+        orderCost,
         cards: 加密结果,
       },
     });
