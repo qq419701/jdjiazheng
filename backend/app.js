@@ -89,6 +89,11 @@ app.use(express.static(path.join(__dirname, 'public/h5')));
 const apiRouter = require('./routes/api');
 const adminRouter = require('./routes/admin');
 
+// 奇所SUP接口（供奇所平台调用，不需要JWT，有独立签名验证）
+// 注意：SUP接口不做限流，让奇所平台自由调用
+const supRouter = require('./routes/sup');
+app.use('/', supRouter);
+
 // 后台管理接口（登录接口独立限流 + 所有管理接口通用限流）
 // 注意：/admin/api 必须在 /api 之前注册，避免路由冲突
 app.use('/admin/api/login', 登录限流);
@@ -126,7 +131,8 @@ app.listen(端口, async () => {
   console.log(`📡 服务端口：${端口}`);
   console.log(`🌐 前端H5：http://localhost:${端口}/{卡密}`);
   console.log(`🖥️  后台管理：http://localhost:${端口}/admin`);
-  console.log(`📋 后端接口：http://localhost:${端口}/api\n`);
+  console.log(`📋 后端接口：http://localhost:${端口}/api`);
+  console.log(`🔗 SUP接口：http://localhost:${端口}/agisoAcprSupplierApi/...\n`);
 
   // 尝试连接数据库
   try {

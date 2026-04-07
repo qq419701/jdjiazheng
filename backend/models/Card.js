@@ -70,6 +70,21 @@ const Card = 数据库连接.define('Card', {
     defaultValue: 'jiazheng',
     comment: '业务类型：jiazheng=京东家政 xiyifu=京东洗衣服',
   },
+  agiso_order_no: {
+    type: DataTypes.STRING(64),
+    allowNull: true,
+    comment: '奇所平台订单号（用于撤单和查单）',
+  },
+  sup_status: {
+    type: DataTypes.TINYINT,
+    defaultValue: 0,
+    comment: 'SUP发货状态：0未发货 1已发货 2已撤单',
+  },
+  sup_product_no: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: 'SUP商品编号（下单时的productNo）',
+  },
 }, {
   tableName: 'cards',
   timestamps: false,
