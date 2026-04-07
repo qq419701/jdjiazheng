@@ -577,7 +577,7 @@ const 导出订单 = async () => {
     const url = window.URL.createObjectURL(new Blob([响应]))
     const a = document.createElement('a')
     a.href = url
-    a.download = `充值订单_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '')}.csv`
+    a.download = `充值订单_${new Date().toISOString().split('T')[0].replace(/-/g, '')}.csv`
     a.click()
     window.URL.revokeObjectURL(url)
   } catch { ElMessage.error('导出失败') } finally { 导出中.value = false }

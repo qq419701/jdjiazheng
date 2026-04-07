@@ -800,8 +800,8 @@ router.post('/topup-cards/generate', 验证Token, async (req, res) => {
     // 限制数量
     const 实际数量 = Math.min(parseInt(count) || 1, 1000);
 
-    // 生成批次号
-    const 批次号 = `CZB${Date.now()}`;
+    // 生成批次号（时间戳+随机数，防止并发时碰撞）
+    const 批次号 = `CZB${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 
     // 创建批次（存储充值配置）
     const 批次 = await CardBatch.create({

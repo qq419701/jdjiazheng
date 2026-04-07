@@ -69,6 +69,23 @@ const 验证充值账号格式 = (账号, 账号类型, 设置对象) => {
 };
 
 /**
+ * 验证IP格式（IPv4或IPv6，防止SSRF攻击）
+ * @param {string} ip
+ * @returns {boolean}
+ */
+const 是有效IP = (ip) => {
+  if (!ip) return false
+  // 验证IPv4
+  if (/^(\d{1,3}\.){3}\d{1,3}$/.test(ip)) {
+    const 段 = ip.split('.')
+    return 段.every(s => parseInt(s) >= 0 && parseInt(s) <= 255)
+  }
+  // 验证IPv6（简化验证）
+  if (/^[0-9a-fA-F:]{2,39}$/.test(ip)) return true
+  return false
+}
+
+/**
  * 异步查询IP城市并写入订单
  * @param {number} 订单ID - 订单ID
  * @param {string} IP地址 - 用户IP
@@ -77,6 +94,8 @@ const 异步写入IP城市 = async (订单ID, IP地址) => {
   try {
     const 纯IP = IP地址.replace(/^::ffff:/, '');
     if (!纯IP || 纯IP === '127.0.0.1' || 纯IP === '::1') return;
+    // 验证IP格式，防止SSRF攻击
+    if (!是有效IP(纯IP)) return;
 
     const 响应 = await axios.get(
       `http://ip-api.com/json/${纯IP}?lang=zh-CN&fields=status,regionName,city,query`,
@@ -176,6 +195,11 @@ const 获取IP城市 = async (req, res) => {
     // 2. 本地IP直接返回（开发环境）
     if (!纯IP || 纯IP === '127.0.0.1' || 纯IP === '::1') {
       return res.json({ code: 1, data: { ip: 纯IP, province: '本地', city: '本地', full_city: '本地开发环境' } });
+    }
+
+    // 验证IP格式，防止SSRF攻击
+    if (!是有效IP(纯IP)) {
+      return res.json({ code: 0, message: 'IP格式无效' });
     }
 
     // 3. 调用 ip-api.com（后端代理，解决HTTPS混合内容问题）
