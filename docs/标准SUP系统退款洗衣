@@ -263,6 +263,487 @@ Content-Type：application/json;charset=utf-8
 appId	long	必须返回	阿奇索开放平台应用ID。
 
 
+
+获取商品分页列表
+请求方向：
+【91卡券平台】请求接入方
+请求URL：
+/agisoAcprSupplierApi/product/getList
+请求方式：
+POST
+Content-Type：application/json;charset=utf-8
+请求参数：
+参数名	必填	类型	说明
+userId	是	string	平台会员ID
+keyword	否	string	搜索关键词（商品名称或商品编号）
+注意：商品名称必须支持模糊搜索，商品编号可以不支持模糊搜索。
+productType	是	int	商品类型 0：全部; 1: 直充; 2: 卡密。
+pageIndex	是	int	当前页码。
+pageSize	是	int	每页条数。
+timestamp	是	long	10 位秒级 Unix 时间戳。用于过期验证。
+version	是	string	调用的接口版本
+sign	是	string	签名，如何验证请看签名计算规则
+请求示例：
+{
+    "userId": "1001",
+    "keyword": "test",
+    "productType": 0,
+    "pageIndex": 1,
+    "pageSize": 20,
+    "timestamp": 1686823688,
+    "version": "1.0",
+    "sign": "DD3AC95866E08BFCC28BF834AA71CC85"
+}
+MD5源串：
+rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7keyword=test&pageIndex=1&pageSize=20&productType=0&timestamp=1686823688&userId=1001&version=1.0rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7
+响应示例：
+{
+    "code": 200,
+    "message": "接口调用成功",
+    "data": {
+        "items": [
+            {
+                "productNo":"test01",
+                "productTitle":"联通话费50元",
+                "productType": 1,
+                "productCost": 49.0000,
+            },
+            {
+                "productNo":"test02",
+                "productTitle":"联通话费100元",
+                "productType": 1,
+                "productCost": 98.0000,
+            },
+            {
+                "productNo":"test03",
+                "productTitle":"爱奇艺视频会员（3天）",
+                "productType": 2,
+                "productCost": 8.8000,
+            }
+        ],
+        "hasNextPage": false
+    }
+}
+响应参数：
+参数名	类型	必须返回	说明
+items	Array	必须返回	商品信息数组。
+items[0].productNo	string	必须返回	接入方商品编号
+items[0].productTitle	string	必须返回	接入方商品名称。
+items[0].productType	int	必须返回	商品类型 1: 直充; 2: 卡密。
+items[0].productCost	decimal(14,4)	必须返回	商品成本单价。
+hasNextPage	bool	必须返回	是否有下一页。
+
+
+
+获取商品模版接口
+请求方向：
+【91卡券平台】请求接入方
+请求URL：
+/agisoAcprSupplierApi/product/getTemplate
+请求方式：
+POST
+Content-Type：application/json;charset=utf-8
+请求参数：
+参数名	必填	类型	说明
+userId	是	string	平台会员ID
+productNo	是	string	接入方商品编号
+timestamp	是	long	10 位秒级 Unix 时间戳。用于过期验证。
+version	是	string	调用的接口版本
+sign	是	string	签名，如何验证请看签名计算规则
+请求示例：
+{
+    "userId": "1001",
+    "productNo": "test01",
+    "timestamp": 1686823688,
+    "version": "1.0",
+    "sign": "19BEEC1A9E9BB11A382DFBC367DCE7AD"
+}
+MD5源串：
+rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7productNo=test01&timestamp=1686823688&userId=1001&version=1.0rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7
+响应示例：
+{
+    "code": 200,
+    "message": "接口调用成功",
+    "data": {
+        "apiType": 0,
+        "productTitle":"联通话费100元",
+        "productType": 0,
+        "productCost": 103.0000,
+        "attach": [
+            {
+                "type": 0,
+                "name": "gameName",
+                "title": "游戏名称",
+                "desc": "游戏名称",
+                "inputCheck": 0
+            },
+            {
+                "type": 2,
+                "name": "gameArea",
+                "title": "游戏区",
+                "desc": "游戏所在区",
+                "inputCheck": 0
+            },
+            {
+                "type": 3,
+                "name": "gameServer",
+                "title": "游戏服",
+                "desc": "游戏所在服",
+                "inputCheck": 0
+            },
+            {
+                "type": 1,
+                "name": "account",
+                "title": "充值账号",
+                "desc": "只支持手机号",
+                "inputCheck": 1
+            },
+            {
+                "type": 0,
+                "name": "type",
+                "title": "充值类型",
+                "desc": "充值类型",
+                "inputCheck": 0
+            },
+            {
+                "type": 4,
+                "name": "buyerIp",
+                "title": "买家Ip",
+                "desc": "买家下单真实Ip",
+                "inputCheck": 0
+            },
+            {
+                "type": 5,
+                "name": "buyerArea",
+                "title": "买家所在地区",
+                "desc": "买家下单所在地区",
+                "inputCheck": 0
+            }
+        ]
+    }
+}
+响应参数：
+参数名	类型	必须返回	说明
+apiType	int	必须返回	接口类型 1: 同步; 2: 异步。该值必须返回1或2。
+productTitle	string	可选	商品名称。
+productType	int	必须返回	商品类型 1: 直充; 2: 卡密。该值必须返回1或2。
+productCost	decimal(14,4)	必须返回	商品成本单价。
+attach	Array	可选	充值模版信息数组。接入方根据不同商品返回下单时所需字段，【91卡券】在下单时，会原字段名传输值。允许返回空数组。
+attach[0].type	int	必须返回	参数类型，详见：充值参数类型说明
+attach[0].name	string	必须返回	参数名称，和下单接口的请求参数名称对应。
+attach[0].title	string	必须返回	参数标题。用于展示给商家、买家协助其识别。
+attach[0].desc	string	可选	参数描述
+attach[0].inputCheck	int	可选	无需校验格式时，可直接返回 0。
+需要校验格式时，值为支持格式类型选项值，支持位运算，详见：充值账号格式类型说明。
+
+
+
+
+商品价格变动通知
+请求方向：
+接入方请求【91卡券平台】
+请求URL：
+通知地址：http://cb-acpr.agiso.com/SupplierProductNotify/{$货源Guid}
+注意：货源Guid参数的值，在调用订阅价格推送接口时有传给接入方
+请求方式：
+POST
+Content-Type: application/json;charset=utf-8
+请求参数：
+参数名	必填	类型	说明
+productNo	是	string	接入方商品编号
+productCost	是	decimal(14,4)	新价格
+priceVer	是	long	价格版本，可传价格变动的10位秒级Unix时间戳，我们会用于校验哪一次推送的价格是最新版本
+timestamp	是	long	10位秒级Unix时间戳。用于过期验证。
+sign	是	string	签名，如何生成请看签名计算规则
+请求示例：
+{
+    "supplierAccountGuid": "60c3a4532f457e06c45d73a60b15c8ec",
+    "productNo": "test01",
+    "productCost": "13.20",
+    "priceVer": 1687168097,
+    "timestamp": 1687168097,
+    "sign": "45E458E0F06B859218CFD9D3EE8EF0D9"
+}
+MD5源串：
+rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7priceVer=1687168097&productCost=13.20&productNo=test01&supplierAccountGuid=60c3a4532f457e06c45d73a60b15c8ec&timestamp=1687168097rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7
+响应示例：
+{
+    "code": 200,
+    "message": "请求成功",
+}
+响应参数：
+参数名	类型	说明
+code	int	响应代码，详见全局错误码
+message	string	响应信息
+
+
+
+
+订阅价格推送
+请求方向：
+【91卡券平台】请求接入方
+请求URL：
+/agisoAcprSupplierApi/product/subscribePriceNotify
+请求方式：
+POST
+Content-Type：application/json;charset=utf-8
+请求参数：
+参数名	必填	类型	说明
+userId	是	string	平台会员ID
+supplierAccountGuid	是	string	商家货源Guid
+productNo	是	string	接入方商品编号
+timestamp	是	long	10 位秒级 Unix 时间戳。用于过期验证。
+version	是	string	调用的接口版本
+sign	是	string	签名，如何验证请看接入方验签规则
+请求示例：
+{
+    "userId": "1001",
+    "productNo": "test01",
+    "supplierAccountGuid": "2fe15520c6ac45ff83a270aaef71a873",
+    "timestamp": 1686823688,
+    "version": "1.0",
+    "sign": "F381F7C01DB94B2ADECD5F776ECF1F99"
+}
+MD5源串：
+rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7productNo=test01&supplierAccountGuid=2fe15520c6ac45ff83a270aaef71a873&timestamp=1686823688&userId=1001&version=1.0rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7
+响应示例：
+{
+    "code": 200,
+    "message": "接口调用成功",
+    "data": null
+}
+
+
+
+
+取消订阅价格推送
+请求方向：
+【91卡券平台】请求接入方
+请求URL：
+/agisoAcprSupplierApi/product/cancelSubscribePriceNotify
+请求方式：
+POST
+Content-Type：application/json;charset=utf-8
+请求参数：
+参数名	必填	类型	说明
+userId	是	string	平台会员ID
+supplierAccountGuid	是	string	商家货源Guid
+productNo	是	string	接入方商品编号
+timestamp	是	long	10 位秒级 Unix 时间戳。用于过期验证。
+version	是	string	调用的接口版本
+sign	是	string	签名，如何验证请看签名计算规则
+请求示例：
+{
+    "userId": "1001",
+    "productNo": "test01",
+    "supplierAccountGuid": "2fe15520c6ac45ff83a270aaef71a873",
+    "timestamp": 1686823688,
+    "version": "1.0",
+    "sign": "F381F7C01DB94B2ADECD5F776ECF1F99"
+}
+MD5源串：
+rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7productNo=test01&supplierAccountGuid=2fe15520c6ac45ff83a270aaef71a873&timestamp=1686823688&userId=1001&version=1.0rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7
+响应示例：
+{
+    "code": 200,
+    "message": "接口调用成功",
+    "data": null
+}
+
+直充下单接口
+请求方向：
+【91卡券平台】请求接入方
+请求URL：
+/agisoAcprSupplierApi/order/createRecharge
+请求方式：
+POST
+Content-Type: application/json;charset=utf-8
+请求参数：
+参数名	必填	类型	说明
+userId	是	string	平台会员ID
+orderNo	是	string	商家订单号（唯一），用于下单时幂等处理。
+productNo	是	string	接入方商品编号
+buyNum	是	int	购买数量
+attach	是	string	直充模版信息json串
+maxAmount	否	string	商家可接受最大成本金额。接入方需验证该项，超出时请勿下单，并返回错误码 1220 。该验证用于防止商家亏损。
+注意：值为整单金额（而非单价）；值为空时无需校验金额。
+callbackUrl	否	string	回调地址，由【91卡券】提供，仅异步接口时会提供，同步接口不提供。
+timestamp	是	long	10 位秒级 Unix 时间戳。用于过期验证。
+version	是	string	调用的接口版本
+sign	是	string	签名，如何验证请看签名计算规则
+请求示例：
+{
+    "userId": "1001",
+    "orderNo": "2023061917481700001",
+    "productNo": "test01",
+    "buyNum": 1,
+    "attach": "{\"account\":\"13888888888\"}",
+    "maxAmount": "103.0000",
+    "timestamp": 1687168097,
+    "callbackUrl": "http://cb.acpr.agiso.com/SupplierOrderNotify/a003c4f09dff4ce787e379d199df1e01/b123c4f09dff4ce787e379d199df1e01",
+    "version": "1.0",
+    "sign": "75B47D522A3D0D859A164583442A2C40"
+}
+MD5源串：
+rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7attach={"account":"13888888888"}&buyNum=1&callbackUrl=http://cb.acpr.agiso.com/SupplierOrderNotify/a003c4f09dff4ce787e379d199df1e01/b123c4f09dff4ce787e379d199df1e01&maxAmount=103.0000&orderNo=2023061917481700001&productNo=test01&timestamp=1687168097&userId=1001&version=1.0rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7
+响应示例：
+{
+    "code": 200,
+    "message": "接口调用成功",
+    "data": {
+        "orderNo": "2023061917131110001",
+        "outTradeNo": "2023061917131201",
+        "orderStatus": 20,
+        "orderCost": 103.0000,
+    }
+}
+响应参数：
+参数名	类型	必须返回	说明
+orderNo	string	必须返回	商家订单号，来源【91卡券】下单时提交
+outTradeNo	string	成功时必须	平台订单号，一般为接入方生成
+orderStatus	int	成功时必须	订单状态
+10: 进行中
+20: 成功
+30: 失败
+注意：
+1. 同步商品的订单：
+视为下单立即就能知道成功或失败，所以只能返回20、30状态，若返回10进行中状态，可能会导致订单异常，系统不做兼容处理。
+2. 异步商品的订单：
+视为下单时在处理中，无法立即知道是否成功，所以只能返回10、30状态，若返回20成功状态，可能会导致订单异常，系统不做兼容处理。
+orderCost	decimal(14,4)	成功时必须	订单总成本，单位：元
+
+
+
+卡密下单接口
+请求方向：
+【91卡券平台】请求接入方
+请求URL：
+/agisoAcprSupplierApi/order/createPurchase
+请求方式：
+POST
+Content-Type: application/json;charset=utf-8
+请求参数：
+参数名	必填	类型	说明
+userId	是	string	平台会员ID
+orderNo	是	string	商家订单号（唯一），用于下单时幂等处理。
+productNo	是	string	接入方商品编号
+buyNum	是	int	购买数量
+maxAmount	否	string	商家可接受最大成本金额。接入方需验证该项，超出时请勿下单，并返回错误码 1220 。该验证用于防止商家亏损。
+注意：值为整单金额（而非单价）；值为空时无需校验金额。
+callbackUrl	否	string	回调地址，由【91卡券】提供，仅异步接口时会提供，同步接口不提供。
+timestamp	是	long	10 位秒级 Unix 时间戳。用于过期验证。
+version	是	string	调用的接口版本
+sign	是	string	签名，如何验证请看签名计算规则
+请求示例：
+{
+    "userId": "1001",
+    "orderNo": "2023061917481700001",
+    "productNo": "test01",
+    "buyNum": 1,
+    "maxAmount": "103.0000",
+    "timestamp": 1687168097,
+    "callbackUrl": "http://cb.acpr.agiso.com/SupplierOrderNotify/a003c4f09dff4ce787e379d199df1e01/b123c4f09dff4ce787e379d199df1e01",
+    "version": "1.0",
+    "sign": "583DDA7D796E946CFFA1D8135CD02A3C"
+}
+MD5源串：
+rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7buyNum=1&callbackUrl=http://cb.acpr.agiso.com/SupplierOrderNotify/a003c4f09dff4ce787e379d199df1e01/b123c4f09dff4ce787e379d199df1e01&maxAmount=103.0000&orderNo=2023061917481700001&productNo=test01&timestamp=1687168097&userId=1001&version=1.0rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7
+响应示例：
+{
+    "code": 200,
+    "message": "接口调用成功",
+    "data": {
+        "orderNo": "2023061917131110001",
+        "outTradeNo": "2023061917131201",
+        "orderStatus": 20,
+        "orderCost": 103.0000,
+        "cards": "34APdvSJhWfr5wnzE4YzxAsI0gfI6pI/Njrj1UQMHJrZ8Dq9EWsDnln0pp08gn4KES4iQu9/f0Y8UMN4dGdSK67oi0Bc12/V8hrNxqoC3Lk="
+    }
+}
+响应参数：
+参数名	类型	必须返回	说明
+orderNo	string	必须返回	商家订单号，来源【91卡券】下单时提交
+outTradeNo	string	成功时必须	平台订单号，一般为接入方生成
+orderStatus	int	成功时必须	订单状态
+10: 进行中
+20: 成功
+30: 失败
+注意：
+1. 同步商品的订单：
+视为下单立即就能知道成功或失败，所以只能返回20、30状态，若返回10进行中状态，可能会导致订单异常，系统不做兼容处理。
+2. 异步商品的订单：
+视为下单时在处理中，无法立即知道是否成功，所以只能返回10、30状态，若返回20成功状态，可能会导致订单异常，系统不做兼容处理。
+orderCost	decimal(14,4)	成功时必须	订单总成本，单位：元
+cards	string	成功时必须	卡密数据加密串，加密请看卡密加密说明
+cards[0].cardNo	string	成功时必须	卡号
+cards[0].cardPwd	string	可选	密码
+cards[0].expireTime	string	可选	卡券使用的有效期，支持 yyyy-MM-dd HH:mm:ss 和 10位秒级时间戳
+cards[0].jumpLink	string	可选	卡券跳转链接(仅用于抖店平台，”腾讯游戏商家”使用三方卡密可以上传兑换链接)
+
+
+
+订单查询接口
+请求方向：
+【91卡券平台】请求接入方
+请求URL：
+/agisoAcprSupplierApi/order/get
+请求方式：
+POST
+Content-Type: application/json;charset=utf-8
+请求参数：
+参数名	必填	类型	说明
+userId	是	string	平台会员ID
+orderNo	是	string	商家订单号
+timestamp	是	long	10 位秒级 Unix 时间戳。用于过期验证。
+version	是	string	调用的接口版本
+sign	是	string	签名，如何验证请看签名计算规则
+请求示例：
+{
+    "userId": "1001",
+    "orderNo": "2023061917481700001",
+    "timestamp": 1687168097,
+    "version": "1.0",
+    "sign": "830C00FD46CB3E5DF60390EBC6DC66A2"
+}
+MD5源串：
+rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7orderNo=2023061917481700001&timestamp=1687168097&userId=1001&version=1.0rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7
+响应示例：
+{
+    "code": 200,
+    "message": "接口调用成功",
+    "data": {
+        "orderNo": "2023061917131110001",
+        "outTradeNo": "2023061917131201",
+        "orderStatus": 20,
+        "failCode": 0,
+        "failReason": "",
+        "orderCost": 103.0000,
+        "cards": "34APdvSJhWfr5wnzE4YzxAsI0gfI6pI/Njrj1UQMHJrZ8Dq9EWsDnln0pp08gn4KES4iQu9/f0Y8UMN4dGdSK67oi0Bc12/V8hrNxqoC3Lk="
+    }
+}
+响应参数：
+参数名	类型	必须返回	说明
+orderNo	string	必须返回	商家订单号，来源【91卡券】下单时提交
+outTradeNo	string	必须返回	平台订单号，一般为接入方生成
+orderStatus	int	必须返回	订单状态
+10: 进行中
+20: 成功
+30: 失败
+failCode	int	失败时必须	失败代码，可以不返回该字段但不要返回null！详见全局错误码
+failReason	string	失败时必须	失败原因
+orderCost	decimal(14,4)	成功时必须	订单总成本，单位：元
+cards	string	卡券采购成功时必须	卡密数据加密串，加密请看卡密加密说明
+注意：直充商品该参数值为空
+cards[0].cardNo	string	卡券采购成功时必须	卡号
+cards[0].cardPwd	string	卡券采购成功时可选	密码
+cards[0].expireTime	string	卡券采购成功时可选	卡券使用有效期，支持 yyyy-MM-dd HH:mm:ss 或 10 位秒级 Unix 时间戳
+cards[0].jumpLink	string	卡券采购成功时可选	卡券跳转链接(仅用于抖店平台，”腾讯游戏商家”使用三方卡密可以上传兑换链接)
+
+
+
+
+
+
 订单回调通知
 请求方向：
 接入方请求【91卡券平台】
