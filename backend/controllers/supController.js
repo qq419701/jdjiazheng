@@ -294,21 +294,15 @@ const 卡密下单 = async (req, res) => {
     if (!商品) {
       return res.json({ code: 1100, message: '失败原因:商品不存在', data: null });
     }
-    const businessType = 商品.business_type;
-    const serviceType = 商品.service_type;
-    const serviceHours = 商品.service_hours;
-
     // 使用事务+原子更新防止并发竞争：
     // 直接用 UPDATE SET agiso_order_no=orderNo WHERE agiso_order_no IS NULL AND status=0
     // 只有一个请求能成功更新，其他请求得到 affectedRows=0
     let 目标卡密 = null;
     await 数据库连接.transaction(async (t) => {
-      // 先在事务内查找可用卡密（加行锁）
+      // 先在事务内查找可用卡密（加行锁），直接用商品ID关联精准匹配
       const 候选卡密 = await Card.findOne({
         where: {
-          business_type: businessType,
-          service_type: serviceType,
-          service_hours: serviceHours,
+          product_id: 商品.id,
           status: 0,
           agiso_order_no: null,
         },

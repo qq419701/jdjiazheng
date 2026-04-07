@@ -29,7 +29,7 @@ const 验证签名 = (请求参数, appSecret, 商户密钥) => {
 
   // 拼接 key=value&key=value 格式字符串
   const 查询字符串 = 参数键列表
-    .map(key => `${key}=${请求参数[key]}`)
+    .map(key => `${key}=${请求参数[key] ?? ''}`)
     .join('&');
 
   // 前后追加 AppSecret+商户密钥
