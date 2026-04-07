@@ -1,0 +1,402 @@
+注意事项（必读）
+1. 所有接口的请求方式为 POST，Content-Type 为 application/json;charset=utf-8
+2. 所有接口响应的 Content-Type 必须为 application/json;charset=utf-8，否则会导致验收不通过。
+3. 卡密信息必须采用 AES/ECB/PKCS7Padding/256位 进行加密，注意：密钥为开放平台的AppSecret（从open.agiso.com上查看）
+4. 除了获取应用ID之外的所有接口必须进行签名验证，系统会进行以下三种签名情况测试
+4.1 正常签名测试（正常参数）
+系统发出正常请求，要求完成验签正确。
+
+4.2 正常签名测试（带多余参数）
+系统发出请求时，增加多余系统参数，要求完成验签正确。
+确保签名逻辑非写死，防止后期系统迭代增加参数导致验签失败。
+
+4.3 非法签名测试
+系统发出非法请求，要求返回验签失败。注意：返回code=401
+
+5. 除了获取应用ID之外的所有接口必须验证Unix时间戳，建议5分钟之前的请求不处理
+
+全局错误码
+错误码	错误解释
+200	请求成功
+注意：请求成功仅代表接口通信成功，不代表充值成功或采购成功。
+401	签名错误
+403	访问IP不在IP白名单内
+408	时间戳过期
+1001	无效的平台会员ID
+1002	平台会员已被禁用
+1100	商品不存在
+1101	商品不属于该会员，或不对该会员开放
+1210	余额不足
+1220	超出订单金额限制
+1230	库存不足
+1240	充值账号错误
+1250	订单号重复
+注意：调用下单接口订单号重复时，请正常返回当前订单的 orderStatus。系统会根据订单状态进行不同处理。
+9999	其他错误（详见失败原因）
+
+充值参数类型说明
+类型值	类型名称
+0	其它
+1	充值账号
+2	游戏区
+3	游戏服
+4	买家IP
+5	买家所在地区
+
+充值账号格式类型说明
+类型值	类型名称
+1	手机号
+2	邮箱
+4	平台账号（支持所有格式）
+8	QQ账号
+16	微信账号
+注意：
+1、如果充值账号同时支持“手机号”和“邮箱”两种格式，那么通过位运算，“inputCheck”参数值应该返回 3。
+2、如果对充值账号没有格式要求，那么“inputCheck”参数值可以返回 4 或者 0
+
+签名计算规则
+简要描述：
+除sign字段外，所有参数按照字段名的ascii码从小到大排序后，使用QueryString的格式（即key1=value1&key2=value2…）拼接成字符串后，再在前后追加上 开放平台AppSecret + 商户密钥 的值，然后转换成32位大写的MD5字符串。
+注意事项：空值参数也要参与签名！空值参数也要参与签名！空值参数也要参与签名！
+假设 开放平台AppSecret 值为： rste57w8rsubsnxsb384ur3u9kn5fzhr（从open.agiso.com上查看）
+
+假设 商户ID 值为： 1001
+
+假设 商户密钥 值为： 0a091b3aa4324435aab703142518a8f7
+
+假设请求参数为：
+
+{
+    "userId":"1001",
+    "orderNo":"2023061917481700001",
+    "productNo":"test01",
+    "buyNum":1,
+    "attach":"{\"account\":\"13888888888\"}",
+    "maxAmount":""
+    "timestamp":1687168097,
+    "callbackUrl":"",
+    "version":"1.0",
+    "sign":"EF387ED4D401A275498A9FCC6C22116B"
+}
+验签步骤：
+
+转换成字符串如下：
+
+attach={"account":"13888888888"}&buyNum=1&callbackUrl=&maxAmount=&orderNo=2023061917481700001&productNo=test01&timestamp=1687168097&userId=1001&version=1.0
+前后追加上 开放平台AppSecret + 商户密钥 的MD5源串如下：
+
+rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7attach={"account":"13888888888"}&buyNum=1&callbackUrl=&maxAmount=&orderNo=2023061917481700001&productNo=test01&timestamp=1687168097&userId=1001&version=1.0rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7
+MD5后转成32位大写的签名值如下：
+
+EF387ED4D401A275498A9FCC6C22116B
+
+
+数据源接口返回示例
+响应示例：
+{
+    "code": 200,
+    "message": "接口调用成功",
+    "data": {
+        "items": [
+            {
+                "key": "王者荣耀",
+                "value": "0"
+            },
+            {
+                "key": "和平精英",
+                "value": "1"
+            }
+        ]
+    }
+}
+响应参数：
+参数名	类型	必须返回	说明
+items[0].key	string	必须返回	显示用的名称。
+items[0].value	string	必须返回	下单接口需要的值。
+卡密加密说明
+简要描述：
+AES/加密模式ECB/填充PKCS7Padding/数据块128位 注意：加密密钥为开放平台的AppSecret（从open.agiso.com上查看）
+假设cards为：
+
+[{"cardNo":"10001","cardPwd":"123456","expireTime":"2023-06-19 17:16:01"}]
+假设开放平台的appSecret为： 0a091b3aa4324435aab703142518a8f7（从open.agiso.com上查看）
+
+.NET加密示例：
+
+var encryptCards = AES.EncryptAes(cards, appSecret);
+
+//加密后的数据
+encryptCards = "34APdvSJhWfr5wnzE4YzxAsI0gfI6pI/Njrj1UQMHJrZ8Dq9EWsDnln0pp08gn4KES4iQu9/f0Y8UMN4dGdSK67oi0Bc12/V8hrNxqoC3Lk=";
+
+public class AES
+{
+    /// <summary>
+    /// 获取Aes32位密钥
+    /// </summary>
+    /// <param name="key">Aes密钥字符串</param>
+    /// <returns>Aes32位密钥</returns>
+    static byte[] GetAesKey(string key)
+    {
+        if (string.IsNullOrEmpty(key))
+        {
+            throw new ArgumentNullException("key", "Aes密钥不能为空");
+        }
+        if (key.Length != 32)
+        {
+            throw new ArgumentNullException("key", "Aes密钥长度必须是32个字符");
+        }
+        return Encoding.UTF8.GetBytes(key);
+    }
+
+
+    /// <summary>
+    /// Aes加密
+    /// </summary>
+    /// <param name="source">源字符串</param>
+    /// <param name="key">aes密钥</param>
+    /// <returns>加密后的字符串</returns>
+    public static string EncryptAes(string source, string key)
+    {
+        try
+        {
+            using (AesCryptoServiceProvider aesProvider = new AesCryptoServiceProvider())
+            {
+                aesProvider.Key = GetAesKey(key);
+                aesProvider.Mode = CipherMode.ECB;
+                aesProvider.Padding = PaddingMode.PKCS7;
+                using (ICryptoTransform cryptoTransform = aesProvider.CreateEncryptor())
+                {
+                    byte[] inputBuffers = Encoding.UTF8.GetBytes(source);
+                    byte[] results = cryptoTransform.TransformFinalBlock(inputBuffers, 0, inputBuffers.Length);
+                    return Convert.ToBase64String(results, 0, results.Length);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            return string.Empty;
+        }
+    }
+}
+Java示例
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import javax.crypto.Cipher;
+import javax.crypto.spec.SecretKeySpec;
+import java.security.Security;
+import java.util.Base64;
+
+public class Main {
+    static {
+        Security.addProvider(new BouncyCastleProvider());
+    }
+    /**
+     * AES/ECB/PKCS7Padding 加密
+     *
+     * @param plainText 明文字符串
+     * @param secretKey 密钥（32 字符）
+     * @return 加密后的 Base64 字符串
+     * @throws Exception 加密过程中可能抛出的异常
+     */
+    public static String encrypt(String plainText, String secretKey) throws Exception {
+        if (secretKey.length() != 32) {
+            throw new IllegalArgumentException("密钥长度必须为 32 个字符");
+        }
+        byte[]  keyBytes = secretKey.getBytes("UTF-8");
+        SecretKeySpec keySpec = new SecretKeySpec(keyBytes, "AES");
+
+        // 打印密钥信息
+        System.out.println("使用的密钥 (Base64): " + Base64.getEncoder().encodeToString(keyBytes));
+        System.out.println("密钥长度 (字节): " + keyBytes.length);
+
+        // 创建加密实例，使用 AES/ECB/PKCS7Padding 模式
+        Cipher cipher = Cipher.getInstance("AES/ECB/PKCS7Padding");
+        System.out.println("使用的加密提供者: " + cipher.getProvider());
+
+        // 初始化加密模式
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+
+        // 执行加密并返回 Base64 编码结果
+        byte[] encryptedBytes = cipher.doFinal(plainText.getBytes("UTF-8"));
+        return Base64.getEncoder().encodeToString(encryptedBytes);
+
+    }
+
+    public static void main(String[] args) throws Exception {
+        String plainText = "[{\"cardNo\":\"10001\",\"cardPwd\":\"123456\",\"expireTime\":\"2023-06-19 17:16:01\"}]";
+        String secretKey = "0a091b3aa4324435aab703142518a8f7";
+        String encrypted = encrypt(plainText, secretKey);
+        System.out.println("最终加密结果: " + encrypted);
+    }
+}
+
+
+常见问题
+1. 卡密信息解密失败
+检查接口调用私钥设置的是否正确
+检查加密模式是否正确AES/加密模式ECB/填充PKCS7Padding/数据块128位
+AES加解密在线测试
+
+
+获取应用ID
+请求方向：
+【91卡券平台】请求接入方
+请求URL：
+/agisoAcprSupplierApi/app/getAppId
+注意：匿名接口，不要进行任何验证
+请求方式：
+POST
+Content-Type：application/json;charset=utf-8
+请求参数：
+无
+请求示例：
+无
+响应示例：
+{
+    "code": 200,
+    "message": "接口调用成功",
+    "data": {
+        "appId": 2023022346389092418,
+    }
+}
+响应参数：
+参数名	类型	必须返回	说明
+appId	long	必须返回	阿奇索开放平台应用ID。
+
+
+订单回调通知
+请求方向：
+接入方请求【91卡券平台】
+请求URL：
+通知地址：由下单接口传值
+请求方式：
+POST
+Content-Type: application/json;charset=utf-8
+请求参数：
+参数名	必填	类型	说明
+orderNo	是	string	商家订单号，来源【91卡券】下单时提交
+outTradeNo	是	string	平台订单号。一般由接入方生成，便于商家查询。
+orderStatus	是	int	订单状态
+20: 成功
+30: 失败
+failCode	失败时必须	int	失败代码，详见全局错误码
+failReason	失败时必须	string	失败原因
+orderCost	成功时必须	decimal(14,4)	订单总成本，单位：元 注意：签名和传参时，要把末尾无效的零去除， 例如103.0000 实际在验签和传参时应该用103，末尾不需要补齐0
+cards	卡券采购成功时必须	string	卡密数据加密串，加密请看卡密加密说明
+注意：1、直充商品该参数值为空、2、计算签名时使用加密串
+cards[0].cardNo	卡券采购成功时必须	string	卡号
+cards[0].cardPwd	卡券采购成功时可选	string	密码
+cards[0].expireTime	卡券采购成功时可选	string	卡券使用有效期，支持 yyyy-MM-dd HH:mm:ss 或 10 位秒级时间戳
+cards[0].jumpLink	卡券采购成功时可选	string	卡券跳转链接(仅用于抖店平台，”腾讯游戏商家”使用三方卡密可以上传兑换链接)
+timestamp	是	long	10 位秒级 Unix 时间戳。用于过期验证。
+sign	是	string	签名，如何生成请看签名计算规则
+请求示例：
+{
+    "orderNo": "2023061917131110001",
+    "outTradeNo": "2023061917131201",
+    "orderStatus": 20,
+    "failCode": 0,
+    "failReason": "",
+    "orderCost": 103,
+    "cards": "34APdvSJhWfr5wnzE4YzxAsI0gfI6pI/Njrj1UQMHJrZ8Dq9EWsDnln0pp08gn4KES4iQu9/f0Y8UMN4dGdSK67oi0Bc12/V8hrNxqoC3Lk=",
+    "timestamp": 1687168097,
+    "sign": "0D9D2B27994F1BE02D277C14160ACD78"
+}
+MD5源串：
+rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7cards=34APdvSJhWfr5wnzE4YzxAsI0gfI6pI/Njrj1UQMHJrZ8Dq9EWsDnln0pp08gn4KES4iQu9/f0Y8UMN4dGdSK67oi0Bc12/V8hrNxqoC3Lk=&failCode=0&failReason=&orderCost=103&orderNo=2023061917131110001&orderStatus=20&outTradeNo=2023061917131201&timestamp=1687168097rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7
+响应示例：
+{
+    "code": 200,
+    "message": "请求成功",
+}
+响应参数：
+参数名	类型	说明
+code	int	响应代码，详见全局错误码
+message	string	响应信息
+
+撤销下单接口
+请求方向：
+【91卡券平台】请求接入方
+请求URL：
+/agisoAcprSupplierApi/order/cancelOrder
+请求方式：
+POST
+Content-Type: application/json;charset=utf-8
+请求参数：
+参数名	必填	类型	说明
+userId	是	string	平台会员ID
+orderNo	是	string	商家订单号
+outTradeNo	否	string	平台订单号，（直充或卡密）下单 时接入方返回的订单号
+timestamp	是	long	10 位秒级 Unix 时间戳。用于过期验证。
+version	是	string	调用的接口版本
+callbackUrl	否	string	撤单结果回调地址（仅异步场景），具体请看撤单回调通知
+sign	是	string	签名，如何验证请看签名计算规则
+请求示例：
+{
+    "userId": "1001",
+    "orderNo": "2023061917481700001",
+    "outTradeNo": "20456464321110001",
+    "timestamp": 1687168097,
+    "version": "1.0",
+    "callbackUrl": "http://cb.acpr.agiso.com/SupplierCancelNotify/a003c4f09dff4ce787e379d199df1e01/b123c4f09dff4ce787e379d199df1e01",
+    "sign": "a491392af205e6358bab30100ad0369a"
+}
+MD5源串：
+rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7callbackUrl=http://cb.acpr.agiso.com/SupplierCancelNotify/a003c4f09dff4ce787e379d199df1e01/b123c4f09dff4ce787e379d199df1e01&orderNo=2023061917481700001&outTradeNo=20456464321110001&timestamp=1687168097&userId=1001&version=1.0rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7
+响应示例：
+{
+    "code": 200,
+    "message": "接口调用成功",
+    "data":
+    {
+        "orderNo": "2023061917131110001",
+        "cancelStatus": 20,
+        "refuseReason": "已充值,无法撤单",
+        "refuseProof": "https://img.alicdn.com/imgextra/i2/1043191721/O1CN01sclKeg1OaGidL5EwD_!!1043191721.jpg"
+    }
+}
+响应参数：
+参数名	类型	必须返回	说明
+code	int	是	响应代码，详见全局错误码
+message	string	否	响应信息
+data	object	是	返回结果
+data.orderNo	string	是	订单号
+data.cancelStatus	int	是	撤单状态10:进行中 20:成功 30:失败
+data.refuseReason	string	否	拒绝撤单原因,撤单失败时返回
+data.refuseProof	string	是	拒绝撤单凭证,撤单失败时必传(可访问的图片链接,支持.jpg .png .gif 格式,大小限制:不超过127k)
+
+撤单回调通知
+请求方向：
+接入方请求【91卡券平台】
+请求URL：
+通知地址：由撤单接口传值
+请求方式：
+POST
+Content-Type: application/json;charset=utf-8
+请求参数：
+参数名	必填	类型	说明
+orderNo	是	string	订单号
+cancelStatus	是	int	撤单状态 20:成功 30:失败
+refuseReason	失败时必填	string	拒绝撤单原因,撤单失败时返回
+refuseProof	失败时必填	string	拒绝撤单凭证,撤单失败时必传(可访问的图片链接,支持.jpg .png .gif 格式,大小限制:不超过 127k)
+timestamp	是	long	10 位秒级 Unix 时间戳。用于过期验证。
+sign	是	string	签名，如何生成请看签名计算规则
+请求示例：
+{
+    "orderNo": "2023061917131110001",
+    "cancelStatus": 20,
+    "refuseReason": "拒绝原因",
+    "refuseProof": "拒绝凭证图片地址",
+    "timestamp": 1687168097,
+    "sign": "917E1DD879AA1C5F9FCFFAC0F76DDC3D"
+}
+MD5源串：
+rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7cancelStatus=20&orderNo=2023061917131110001&refuseProof=拒绝凭证图片地址&refuseReason=拒绝原因&timestamp=1687168097rste57w8rsubsnxsb384ur3u9kn5fzhr0a091b3aa4324435aab703142518a8f7
+响应示例：
+{
+    "code": 200,
+    "message": "请求成功",
+}
+响应参数：
+参数名	类型	说明
+code	int	响应代码，详见全局错误码
+message	string	响应信息
