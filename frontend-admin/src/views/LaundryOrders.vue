@@ -72,7 +72,7 @@
     <el-card class="搜索卡片">
       <el-form :inline="true" :model="搜索条件">
         <el-form-item label="关键词">
-          <el-input v-model="搜索条件.keyword" placeholder="订单号/姓名/手机/备注" clearable style="width: 200px" />
+          <el-input v-model="搜索条件.keyword" placeholder="订单号/姓名/手机/卡密码/备注" clearable style="width: 200px" />
         </el-form-item>
         <el-form-item label="城市">
           <el-input v-model="搜索条件.city" placeholder="城市" clearable style="width: 100px" />
@@ -85,6 +85,7 @@
             <el-option label="失败" value="3" />
             <el-option label="已取消" value="4" />
             <el-option label="已送达" value="6" />
+            <el-option label="退款处理中" value="8" />
           </el-select>
         </el-form-item>
         <el-form-item label="日期范围">
@@ -187,7 +188,7 @@
             <span v-else class="无值">-</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="380" fixed="right">
+        <el-table-column label="操作" width="440" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="查看详情(row.id)">详情</el-button>
             <el-button size="small" type="info" plain @click="打开备注弹窗(row)">备注</el-button>
@@ -208,6 +209,20 @@
               size="small" type="warning"
               @click="执行重置(row.id)"
             >重置</el-button>
+            <!-- 退款操作 -->
+            <el-button
+              v-if="row.status !== 4 && row.status !== 8"
+              size="small"
+              type="warning"
+              plain
+              @click="申请洗衣退款(row)"
+            >申请退款</el-button>
+            <el-button
+              v-if="row.status === 8"
+              size="small"
+              type="danger"
+              @click="执行确认洗衣退款完成(row)"
+            >确认退款完成</el-button>
             <el-button size="small" @click="复制订单信息(row)">复制</el-button>
           </template>
         </el-table-column>
@@ -473,6 +488,7 @@ import {
   重置洗衣订单API, 获取设置API, 获取洗衣预览卡密API,
   修改洗衣订单API, 获取洗衣时间段API, 查询洗衣物流API,
   导出洗衣订单API, 订单页搜索洗衣卡密API, 作废洗衣卡密API,
+  更新洗衣订单状态API, 申请洗衣退款API, 确认洗衣退款完成API,
 } from '../api/index'
 
 /**
@@ -862,6 +878,42 @@ const 执行重置 = async (id) => {
   }
 }
 
+// 申请洗衣退款（将订单状态改为8退款处理中）
+const 申请洗衣退款 = async (行) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认申请退款？订单状态将变为「退款处理中」，请手动处理退款事宜后再点击「确认退款完成」。`,
+      '申请退款',
+      { confirmButtonText: '确认申请退款', cancelButtonText: '取消', type: 'warning' }
+    )
+    const 结果 = await 申请洗衣退款API(行.id)
+    if (结果.code === 1) {
+      ElMessage.success('已申请退款，订单状态更新为退款处理中')
+      加载订单()
+    } else {
+      ElMessage.warning(结果.message || '操作失败')
+    }
+  } catch {}
+}
+
+// 确认洗衣退款完成（将订单状态改为4已取消，卡密状态改为2已失效）
+const 执行确认洗衣退款完成 = async (行) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认退款完成？操作后订单将变为「已取消」，关联卡密将被作废（不可逆）。`,
+      '确认退款完成',
+      { confirmButtonText: '确认退款完成', cancelButtonText: '取消', type: 'error' }
+    )
+    const 结果 = await 确认洗衣退款完成API(行.id)
+    if (结果.code === 1) {
+      ElMessage.success(结果.message)
+      加载订单()
+    } else {
+      ElMessage.warning(结果.message || '操作失败')
+    }
+  } catch {}
+}
+
 // 物流查询：调用鲸蚁API获取实时物流轨迹并弹窗展示
 const 打开物流弹窗 = async (订单) => {
   当前物流订单.value = 订单
@@ -982,12 +1034,12 @@ const 复制订单信息 = async (订单) => {
 
 // 状态文字/类型
 const 获取状态文字 = (status) => {
-  const 映射 = ['待处理', '下单中', '已下单', '失败', '已取消', '', '已送达']
-  return 映射[status] || `状态${status}`
+  const 映射 = { 0: '待处理', 1: '下单中', 2: '已下单', 3: '失败', 4: '已取消', 5: '', 6: '已送达', 8: '退款处理中' }
+  return 映射[status] !== undefined ? 映射[status] : `状态${status}`
 }
 const 获取状态类型 = (status) => {
-  const 映射 = ['warning', 'primary', 'success', 'danger', 'info', '', 'success']
-  return 映射[status] || ''
+  const 映射 = { 0: 'warning', 1: 'primary', 2: 'success', 3: 'danger', 4: 'info', 5: '', 6: 'success', 8: 'warning' }
+  return 映射[status] !== undefined ? 映射[status] : ''
 }
 const 获取洗衣状态类型 = (洗衣状态) => {
   const 映射 = {

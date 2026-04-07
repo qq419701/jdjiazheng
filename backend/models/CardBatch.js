@@ -51,6 +51,11 @@ const CardBatch = 数据库连接.define('CardBatch', {
     defaultValue: 'jiazheng',
     comment: '业务类型：jiazheng=京东家政 xiyifu=京东洗衣服',
   },
+  product_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: '关联商品ID',
+  },
 }, {
   tableName: 'card_batches',
   timestamps: false,

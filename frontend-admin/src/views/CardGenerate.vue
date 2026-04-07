@@ -9,21 +9,41 @@
         <el-card>
           <template #header><span>⚙️ 生成参数</span></template>
           <el-form :model="表单" label-width="100px">
+            <!-- 选择商品（优先方式） -->
+            <el-form-item label="选择商品">
+              <el-select
+                v-model="表单.product_id"
+                clearable
+                placeholder="选择商品（推荐）"
+                style="width: 100%"
+                @change="处理商品选择"
+              >
+                <el-option
+                  v-for="商品 in 商品列表"
+                  :key="商品.id"
+                  :label="`${商品.product_no} - ${商品.product_name}`"
+                  :value="商品.id"
+                />
+              </el-select>
+              <div class="字段说明">选择商品后自动填充业务类型、服务类型、时长（推荐使用）</div>
+            </el-form-item>
+
+            <!-- 选商品后只读展示，不选商品时可手动填写 -->
             <el-form-item label="业务类型">
-              <el-select v-model="表单.business_type" style="width: 100%">
+              <el-select v-model="表单.business_type" style="width: 100%" :disabled="!!表单.product_id">
                 <el-option label="京东家政" value="jiazheng" />
                 <el-option label="京东洗衣服" value="xiyifu" />
               </el-select>
-            </el-form-item>
-            <el-form-item label="服务分类">
-              <el-input v-model="表单.category" placeholder="如：日常保洁" />
+              <div v-if="表单.product_id" class="字段说明只读">由商品自动填充</div>
             </el-form-item>
             <el-form-item label="服务类型">
-              <el-input v-model="表单.service_type" placeholder="如：日常保洁" />
+              <el-input v-model="表单.service_type" placeholder="如：日常保洁" :readonly="!!表单.product_id" />
+              <div v-if="表单.product_id" class="字段说明只读">由商品自动填充</div>
             </el-form-item>
             <el-form-item label="服务时长">
-              <el-input-number v-model="表单.service_hours" :min="1" :max="24" />
+              <el-input-number v-model="表单.service_hours" :min="0" :max="24" :disabled="!!表单.product_id" />
               <span style="margin-left: 8px; color: #999">小时</span>
+              <div v-if="表单.product_id" class="字段说明只读">由商品自动填充</div>
             </el-form-item>
             <el-form-item label="生成数量">
               <el-input-number v-model="表单.count" :min="1" :max="1000" />
@@ -77,10 +97,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { 生成卡密API, 获取设置API } from '../api/index'
+import { 生成卡密API, 获取设置API, 获取商品列表API } from '../api/index'
 
 const route = useRoute()
 
@@ -115,8 +135,11 @@ const 生成中 = ref(false)
 const 生成结果 = ref({ codes: [], batch_no: '' })
 // 站点域名（从系统设置读取）
 const 站点域名 = ref('')
+// 商品列表
+const 商品列表 = ref([])
 
 const 表单 = ref({
+  product_id: null,
   category: '日常保洁',
   service_type: '日常保洁',
   service_hours: 2,
@@ -125,6 +148,18 @@ const 表单 = ref({
   expired_at: null,
   business_type: route.params.businessType || 'jiazheng',
 })
+
+// 处理商品选择：自动填充服务类型、时长、业务类型
+const 处理商品选择 = (商品ID) => {
+  if (!商品ID) return
+  const 选中商品 = 商品列表.value.find(c => c.id === 商品ID)
+  if (选中商品) {
+    表单.value.business_type = 选中商品.business_type
+    表单.value.service_type = 选中商品.service_type || ''
+    表单.value.service_hours = 选中商品.service_hours || 0
+    表单.value.category = 选中商品.service_type || '日常保洁'
+  }
+}
 
 // 计算预览内容（有域名显示完整链接，否则只显示卡密）
 const 预览内容 = computed(() => {
@@ -141,6 +176,16 @@ const 加载站点域名 = async () => {
     const 结果 = await 获取设置API()
     if (结果.code === 1) {
       站点域名.value = (结果.data.site_url || '').replace(/\/$/, '')
+    }
+  } catch {}
+}
+
+// 加载商品列表
+const 加载商品列表 = async () => {
+  try {
+    const 结果 = await 获取商品列表API({ status: 1 })
+    if (结果.code === 1) {
+      商品列表.value = 结果.data
     }
   } catch {}
 }
@@ -202,8 +247,11 @@ const 下载TXT = () => {
   ElMessage.success('下载成功')
 }
 
-// 页面加载时获取域名
-加载站点域名()
+// 页面加载时获取域名和商品列表
+onMounted(() => {
+  加载站点域名()
+  加载商品列表()
+})
 </script>
 
 <style scoped>
@@ -211,5 +259,15 @@ const 下载TXT = () => {
   font-size: 13px;
   color: #666;
   margin-bottom: 8px;
+}
+.字段说明 {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+}
+.字段说明只读 {
+  font-size: 12px;
+  color: #e6a23c;
+  margin-top: 4px;
 }
 </style>

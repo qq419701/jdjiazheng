@@ -6,6 +6,30 @@ const 数据库连接 = require('../config/database');
 const { Admin, TimeRule, Setting, Card } = require('../models');
 
 /**
+ * 执行字段迁移（如果字段不存在则添加）
+ */
+const 执行字段迁移 = async () => {
+  try {
+    const [结果] = await 数据库连接.query("SHOW COLUMNS FROM `cards` LIKE 'product_id'");
+    if (结果.length === 0) {
+      await 数据库连接.query("ALTER TABLE `cards` ADD COLUMN `product_id` INT NULL COMMENT '关联商品ID' AFTER `sup_product_no`");
+      console.log('✅ cards 表新增 product_id 字段');
+    }
+  } catch (e) {
+    console.log('ℹ️ cards.product_id 迁移跳过:', e.message);
+  }
+  try {
+    const [结果] = await 数据库连接.query("SHOW COLUMNS FROM `card_batches` LIKE 'product_id'");
+    if (结果.length === 0) {
+      await 数据库连接.query("ALTER TABLE `card_batches` ADD COLUMN `product_id` INT NULL COMMENT '关联商品ID'");
+      console.log('✅ card_batches 表新增 product_id 字段');
+    }
+  } catch (e) {
+    console.log('ℹ️ card_batches.product_id 迁移跳过:', e.message);
+  }
+};
+
+/**
  * 初始化数据库
  * 创建所有表并插入默认数据
  */
@@ -21,6 +45,9 @@ const 初始化数据库 = async () => {
     // 使用 force: false 避免删除现有数据，仅创建不存在的表
     await 数据库连接.sync({ alter: false });
     console.log('✅ 数据库表创建完成（如需更新表结构，请手动执行ALTER语句）');
+
+    // 执行字段迁移（新增 product_id 等字段）
+    await 执行字段迁移();
 
     // 创建默认管理员
     const 管理员数量 = await Admin.count();

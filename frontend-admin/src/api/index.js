@@ -131,3 +131,15 @@ export const 更新子账号API = (id, 数据) => 请求实例.put(`/sub-account
 export const 重置子账号密码API = (id, 数据) => 请求实例.put(`/sub-accounts/${id}/password`, 数据)
 export const 删除子账号API = (id) => 请求实例.delete(`/sub-accounts/${id}`)
 export const 修改自己密码API = (数据) => 请求实例.put('/sub-accounts/self/password', 数据)
+
+// ===== 商品管理（SUP商品管理）=====
+export const 获取商品列表API = (参数) => 请求实例.get('/products', { params: 参数 })
+export const 新增商品API = (数据) => 请求实例.post('/products', 数据)
+export const 更新商品API = (id, 数据) => 请求实例.put(`/products/${id}`, 数据)
+export const 删除商品API = (id) => 请求实例.delete(`/products/${id}`)
+
+// ===== 退款处理 =====
+export const 申请退款API = (id) => 请求实例.put(`/orders/${id}/status`, { status: 8 })
+export const 确认退款完成API = (id) => 请求实例.post(`/orders/${id}/confirm-refund`)
+export const 申请洗衣退款API = (id) => 请求实例.put(`/laundry-orders/${id}/status`, { status: 8 })
+export const 确认洗衣退款完成API = (id) => 请求实例.post(`/laundry-orders/${id}/confirm-refund`)

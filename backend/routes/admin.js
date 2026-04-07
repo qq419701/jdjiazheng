@@ -8,7 +8,7 @@ const fs = require('fs');
 const 配置 = require('../config/config');
 const { Admin, Order } = require('../models');
 const { 验证Token } = require('../middleware/auth');
-const { 获取订单列表, 获取订单详情, 更新订单状态, 触发自动下单, 重置订单, 更新订单备注, 导出订单 } = require('../controllers/orderController');
+const { 获取订单列表, 获取订单详情, 更新订单状态, 触发自动下单, 重置订单, 更新订单备注, 导出订单, 确认退款完成 } = require('../controllers/orderController');
 const { 获取卡密列表, 生成卡密, 导出卡密, 作废卡密, 删除卡密, 获取批次列表, 获取批次卡密, 删除批次 } = require('../controllers/cardController');
 const { 获取账号列表, 新增账号, 更新账号, 删除账号, 触发自动登录 } = require('../controllers/jdAccountController');
 const { 获取规则列表, 新增规则, 更新规则, 删除规则 } = require('../controllers/timeRuleController');
@@ -16,7 +16,8 @@ const { 获取所有设置, 批量更新设置 } = require('../controllers/setti
 const { 获取地区列表, 后台查询地区, 新增地区, 更新地区, 删除地区, 切换地区状态, 获取地区统计, 导入地区CSV } = require('../controllers/regionController');
 const multer = require('multer');
 const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
-const { 触发洗衣下单, 查询洗衣订单状态, 取消洗衣订单, 获取洗衣订单列表, 获取洗衣订单详情, 修改洗衣订单并同步鲸蚁, 测试洗衣API连接, 获取洗衣Token状态, 查询洗衣物流 } = require('../controllers/laundryController');
+const { 触发洗衣下单, 查询洗衣订单状态, 取消洗衣订单, 获取洗衣订单列表, 获取洗衣订单详情, 修改洗衣订单并同步鲸蚁, 测试洗衣API连接, 获取洗衣Token状态, 查询洗衣物流, 确认洗衣退款完成 } = require('../controllers/laundryController');
+const { 获取商品列表: 获取商品列表管理, 新增商品, 更新商品, 删除商品 } = require('../controllers/productController');
 
 // ===== 备注图片上传配置 =====
 // 图片保存到 backend/uploads/remarks/ 目录，通过 /uploads/remarks/ 静态路径访问
@@ -288,6 +289,7 @@ router.put('/orders/:id/status', 验证Token, 更新订单状态);
 router.put('/orders/:id/remark', 验证Token, 更新订单备注); // 快速更新备注接口
 router.post('/orders/:id/place-order', 验证Token, 触发自动下单);
 router.post('/orders/:id/reset', 验证Token, 重置订单);
+router.post('/orders/:id/confirm-refund', 验证Token, 确认退款完成);
 
 // 卡密管理（强制 business_type='jiazheng'，避免历史混入的洗衣卡密显示）
 router.get('/cards', 验证Token, async (req, res) => {
@@ -338,6 +340,12 @@ router.delete('/time-rules/:id', 验证Token, 删除规则);
 // 系统设置
 router.get('/settings', 验证Token, 获取所有设置);
 router.put('/settings', 验证Token, 批量更新设置);
+
+// ===== 商品管理（SUP商品管理）=====
+router.get('/products', 验证Token, 获取商品列表管理);
+router.post('/products', 验证Token, 新增商品);
+router.put('/products/:id', 验证Token, 更新商品);
+router.delete('/products/:id', 验证Token, 删除商品);
 
 // 地区管理（后台）
 router.get('/regions/stats', 验证Token, 获取地区统计);
@@ -417,6 +425,7 @@ router.put('/laundry-orders/:id', 验证Token, 修改洗衣订单并同步鲸蚁
 router.put('/laundry-orders/:id/status', 验证Token, 更新订单状态);
 router.put('/laundry-orders/:id/remark', 验证Token, 更新订单备注);
 router.post('/laundry-orders/:id/reset', 验证Token, 重置订单);
+router.post('/laundry-orders/:id/confirm-refund', 验证Token, 确认洗衣退款完成);
 
 // 触发洗衣下单（推送到鲸蚁API）
 router.post('/laundry-orders/:id/place-order', 验证Token, 触发洗衣下单);

@@ -74,6 +74,13 @@
           </el-menu-item>
         </el-menu-item-group>
 
+        <el-menu-item-group v-if="显示SUP分组" title="奇所SUP管理">
+          <el-menu-item v-if="authStore.有权限('products')" index="/admin/products">
+            <el-icon><Goods /></el-icon>
+            <span>商品管理</span>
+          </el-menu-item>
+        </el-menu-item-group>
+
         <el-menu-item-group v-if="显示系统分组" title="系统管理">
           <el-menu-item v-if="authStore.有权限('regions')" index="/admin/regions">
             <el-icon><MapLocation /></el-icon>
@@ -117,7 +124,7 @@
 import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
-import { DataAnalysis, List, Ticket, User, UserFilled, CreditCard, Clock, Setting, MapLocation } from '@element-plus/icons-vue'
+import { DataAnalysis, List, Ticket, User, UserFilled, CreditCard, Clock, Setting, MapLocation, Goods } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
@@ -134,6 +141,7 @@ const 当前页标题 = computed(() => route.meta?.标题 || '京东代下单系
 const 显示家政分组 = computed(() => ['orders', 'cards', 'jd_accounts', 'time_rules'].some(k => authStore.有权限(k)))
 const 显示洗衣分组 = computed(() => ['laundry_orders', 'laundry_cards', 'laundry_time_rules', 'laundry_settings'].some(k => authStore.有权限(k)))
 const 显示充值分组 = computed(() => ['topup_orders', 'topup_cards', 'topup_settings'].some(k => authStore.有权限(k)))
+const 显示SUP分组 = computed(() => ['products'].some(k => authStore.有权限(k)))
 const 显示系统分组 = computed(() => ['regions', 'settings', 'sub_accounts'].some(k => authStore.有权限(k)))
 
 // 退出登录
