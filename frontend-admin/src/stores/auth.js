@@ -56,5 +56,15 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem('admin_role')
       localStorage.removeItem('admin_permissions')
     },
+
+    // 仅刷新权限相关字段（不更新token），用于路由守卫实时同步权限
+    刷新权限(数据) {
+      this.nickname = 数据.nickname || this.nickname
+      this.role = 数据.role || this.role
+      this.permissions = 数据.permissions || []
+      localStorage.setItem('admin_nickname', 数据.nickname || this.nickname)
+      localStorage.setItem('admin_role', 数据.role || this.role)
+      localStorage.setItem('admin_permissions', JSON.stringify(数据.permissions || []))
+    },
   },
 })
