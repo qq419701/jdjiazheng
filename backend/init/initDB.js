@@ -169,6 +169,23 @@ const 初始化数据库 = async () => {
     }
     console.log('✅ 洗衣API默认配置初始化完成（共', 洗衣快递默认配置.length, '项）');
 
+    // 奇所SUP系统默认配置（标准SUP接口对接阿奇索开放平台）
+    const 奇所SUP默认配置 = [
+      { key_name: 'agiso_app_id',       key_value: '',  description: '奇所开放平台应用ID（在open.agiso.com创建应用后获取）' },
+      { key_name: 'agiso_app_secret',   key_value: '',  description: '奇所开放平台AppSecret（32位，用于签名验证和AES加密卡密）' },
+      { key_name: 'agiso_merchant_key', key_value: '',  description: '奇所商户密钥（用于签名计算）' },
+      { key_name: 'agiso_user_id',      key_value: '',  description: '奇所平台会员ID（校验下单方身份）' },
+      { key_name: 'agiso_sup_enabled',  key_value: '0', description: 'SUP接口总开关（0=关闭，1=开启）' },
+      { key_name: 'agiso_products',     key_value: '',  description: 'SUP商品列表配置（JSON数组，留空则自动从卡密表生成）' },
+    ];
+    for (const 配置项 of 奇所SUP默认配置) {
+      await Setting.findOrCreate({
+        where: { key_name: 配置项.key_name },
+        defaults: { ...配置项, updated_at: new Date() },
+      });
+    }
+    console.log('✅ 奇所SUP默认配置初始化完成（共', 奇所SUP默认配置.length, '项）');
+
     console.log('\n🎉 数据库初始化完成！');
     console.log('管理员账号：admin');
     console.log('管理员密码：可通过环境变量 ADMIN_DEFAULT_PASSWORD 设置（首次初始化时生效）');

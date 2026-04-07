@@ -99,7 +99,109 @@
         </el-form>
       </el-tab-pane>
 
-      <!-- ===== Tab 3：地区管理 ===== -->
+      <!-- ===== Tab 3：奇所SUP设置 ===== -->
+      <el-tab-pane label="🔗 奇所SUP设置" name="agiso_sup">
+        <el-form :model="设置表单" label-width="160px" style="max-width: 680px">
+
+          <el-form-item label="SUP接口总开关">
+            <el-switch
+              v-model="设置表单.agiso_sup_enabled"
+              active-value="1"
+              inactive-value="0"
+              active-text="开启"
+              inactive-text="关闭"
+            />
+            <div class="字段说明">开启后，奇所平台可调用本系统的标准SUP接口</div>
+          </el-form-item>
+
+          <el-form-item label="开放平台应用ID">
+            <el-input v-model="设置表单.agiso_app_id" placeholder="在 open.agiso.com 创建应用后获取" />
+            <div class="字段说明">在 open.agiso.com 创建应用后获取</div>
+          </el-form-item>
+
+          <el-form-item label="开放平台AppSecret">
+            <el-input
+              v-model="设置表单.agiso_app_secret"
+              type="password"
+              show-password
+              placeholder="32位密钥，用于签名验证和卡密AES加密"
+            />
+            <div class="字段说明">32位密钥，用于签名验证和卡密AES加密</div>
+          </el-form-item>
+
+          <el-form-item label="商户密钥">
+            <el-input
+              v-model="设置表单.agiso_merchant_key"
+              type="password"
+              show-password
+              placeholder="用于签名计算（MD5源串拼接）"
+            />
+            <div class="字段说明">用于签名计算（MD5源串拼接）</div>
+          </el-form-item>
+
+          <el-form-item label="平台会员ID">
+            <el-input v-model="设置表单.agiso_user_id" placeholder="下单方身份校验" />
+            <div class="字段说明">奇所分配的平台会员ID，用于校验下单方身份</div>
+          </el-form-item>
+
+          <el-form-item label="SUP商品配置">
+            <el-input
+              v-model="设置表单.agiso_products"
+              type="textarea"
+              :rows="6"
+              placeholder='留空则自动扫描卡密表生成商品列表，或填写JSON数组，例如：
+[{"productNo":"jiazheng_日常保洁_2h","productTitle":"日常保洁2小时卡","productCost":50,"businessType":"jiazheng"}]'
+            />
+            <div class="字段说明">JSON数组格式，每项含 productNo/productTitle/productCost/businessType 字段；留空则自动扫描卡密表生成商品列表</div>
+          </el-form-item>
+
+          <!-- 接口地址参考（只读展示） -->
+          <el-form-item label="接口地址参考">
+            <div class="接口地址展示">
+              <div class="接口地址行">
+                <span class="接口方法">POST</span>
+                <code>/agisoAcprSupplierApi/app/getAppId</code>
+                <span class="接口备注">获取应用ID（匿名）</span>
+              </div>
+              <div class="接口地址行">
+                <span class="接口方法">POST</span>
+                <code>/agisoAcprSupplierApi/product/getList</code>
+                <span class="接口备注">获取商品分页列表</span>
+              </div>
+              <div class="接口地址行">
+                <span class="接口方法">POST</span>
+                <code>/agisoAcprSupplierApi/product/getTemplate</code>
+                <span class="接口备注">获取商品模板</span>
+              </div>
+              <div class="接口地址行">
+                <span class="接口方法">POST</span>
+                <code>/agisoAcprSupplierApi/order/cardOrder</code>
+                <span class="接口备注">卡密下单（核心）</span>
+              </div>
+              <div class="接口地址行">
+                <span class="接口方法">POST</span>
+                <code>/agisoAcprSupplierApi/order/queryOrder</code>
+                <span class="接口备注">订单查询</span>
+              </div>
+              <div class="接口地址行">
+                <span class="接口方法">POST</span>
+                <code>/agisoAcprSupplierApi/order/cancelOrder</code>
+                <span class="接口备注">撤单（退款）</span>
+              </div>
+            </div>
+            <div class="字段说明">以上为奇所平台请求本系统的接口地址，在 open.agiso.com 填写供应商服务地址时使用</div>
+          </el-form-item>
+
+          <el-form-item>
+            <el-button type="primary" :loading="保存中" @click="保存设置('agiso_sup')">
+              💾 保存奇所SUP设置
+            </el-button>
+          </el-form-item>
+
+        </el-form>
+      </el-tab-pane>
+
+      <!-- ===== Tab 4：地区管理 ===== -->
       <el-tab-pane label="🗺️ 地区管理" name="regions">
         <el-alert
           title="地区数据已内置全国数据，如需自定义可前往地区管理页面手动添加或编辑。"
@@ -144,6 +246,13 @@ const 设置表单 = ref({
   express_api_key: '',
   express_api_secret: '',
   laundry_auto_order_enabled: '0',
+  // 奇所SUP设置
+  agiso_sup_enabled: '0',
+  agiso_app_id: '',
+  agiso_app_secret: '',
+  agiso_merchant_key: '',
+  agiso_user_id: '',
+  agiso_products: '',
 })
 
 const 加载设置 = async () => {
@@ -172,6 +281,13 @@ const 加载设置 = async () => {
         express_api_key: 数据.express_api_key || '',
         express_api_secret: 数据.express_api_secret || '',
         laundry_auto_order_enabled: 数据.laundry_auto_order_enabled || '0',
+        // 奇所SUP设置
+        agiso_sup_enabled: 数据.agiso_sup_enabled || '0',
+        agiso_app_id: 数据.agiso_app_id || '',
+        agiso_app_secret: 数据.agiso_app_secret || '',
+        agiso_merchant_key: 数据.agiso_merchant_key || '',
+        agiso_user_id: 数据.agiso_user_id || '',
+        agiso_products: 数据.agiso_products || '',
       }
     }
   } finally {
@@ -207,5 +323,50 @@ onMounted(() => 加载设置())
   margin: 16px 0 12px;
   padding-left: 8px;
   border-left: 3px solid #409eff;
+}
+
+/* 接口地址展示样式 */
+.接口地址展示 {
+  background: #f5f7fa;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 12px 16px;
+  width: 100%;
+}
+
+.接口地址行 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 13px;
+}
+
+.接口方法 {
+  background: #409eff;
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 3px;
+  min-width: 36px;
+  text-align: center;
+}
+
+.接口地址行 code {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: #303133;
+  background: #fff;
+  border: 1px solid #dcdfe6;
+  padding: 2px 6px;
+  border-radius: 3px;
+  flex: 1;
+}
+
+.接口备注 {
+  color: #909399;
+  font-size: 12px;
+  white-space: nowrap;
 }
 </style>
