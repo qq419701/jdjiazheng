@@ -134,8 +134,6 @@ const 获取商品列表 = async (req, res) => {
         { product_name: { [Op.like]: `%${keyword.trim()}%` } },
         { product_no: { [Op.like]: `%${keyword.trim()}%` } },
       ];
-      delete 查询条件.status;
-      查询条件[Op.and] = [{ status: 1 }];
     }
 
     const 全部商品 = await Product.findAll({
