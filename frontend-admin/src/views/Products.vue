@@ -26,13 +26,21 @@
       </div>
     </el-card>
 
-    <!-- 商品提示 -->
-    <el-alert
-      title="商品编号由系统自动分配（从1001开始递增），永久不变。将商品编号填入奇所（91卡券）后台关联一次即可，以后补货只需在「卡密管理」中选择该商品生成卡密，无需重新关联。"
-      type="info"
-      :closable="false"
-      style="margin-bottom: 12px"
-    />
+    <!-- 功能说明卡片 -->
+    <el-card style="margin-bottom: 16px; background: #f0f9ff; border-color: #bae6fd">
+      <div style="font-weight: 600; font-size: 15px; margin-bottom: 10px">
+        📦 商品管理 · 🔁 自动退款 · 🔗 奇所SUP货源接口 使用说明
+      </div>
+      <div style="line-height: 2; font-size: 13px; color: #374151">
+        <div>• <strong>商品编号永久不变</strong>：商品编号由系统从 1001 开始自动分配，与奇所（91卡券）关联一次后永久有效，无需重新配置</div>
+        <div>• <strong>卡密补货</strong>：在「家政卡密管理」或「洗衣卡密管理」中生成卡密时，选择对应商品即可补货，奇所会自动取卡，无需重新关联</div>
+        <div>• <strong>奇所SUP货源接口配置</strong>：前往
+          <el-link type="primary" @click="$router.push('/admin/settings#agiso_sup')">【系统设置 → 奇所SUP设置】</el-link>
+          填写 AppID、AppSecret、商户密钥、平台会员ID 等，开启后奇所可自动调用本系统接口取卡
+        </div>
+        <div>• <strong>自动退款流程</strong>：在订单列表页点击「申请退款」→「确认退款完成」，系统自动作废对应卡密；与奇所撤单流程对应</div>
+      </div>
+    </el-card>
 
     <!-- 商品表格 -->
     <el-card>
@@ -44,12 +52,6 @@
             <el-tag :type="row.business_type === 'xiyifu' ? 'primary' : 'success'" size="small">
               {{ row.business_type === 'xiyifu' ? '洗衣' : '家政' }}
             </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="service_type" label="服务类型" width="120" />
-        <el-table-column label="服务时长" width="100">
-          <template #default="{ row }">
-            {{ row.service_hours > 0 ? row.service_hours + ' 小时' : '-' }}
           </template>
         </el-table-column>
         <el-table-column label="成本价" width="100">
@@ -105,13 +107,6 @@
             <el-option label="洗衣（xiyifu）" value="xiyifu" />
           </el-select>
         </el-form-item>
-        <el-form-item label="服务类型">
-          <el-input v-model="表单.service_type" placeholder="如：日常保洁、任洗一件" />
-        </el-form-item>
-        <el-form-item label="服务时长">
-          <el-input-number v-model="表单.service_hours" :min="0" :max="24" />
-          <span style="margin-left: 8px; color: #999">小时（洗衣填 0）</span>
-        </el-form-item>
         <el-form-item label="成本价">
           <el-input-number v-model="表单.cost_price" :min="0" :precision="2" :step="1" />
           <span style="margin-left: 8px; color: #999">元</span>
@@ -158,8 +153,6 @@ const 初始表单 = () => ({
   product_no: '',
   product_name: '',
   business_type: 'jiazheng',
-  service_type: '',
-  service_hours: 0,
   cost_price: 0,
   remark: '',
   status: 1,
@@ -201,8 +194,6 @@ const 打开编辑弹窗 = (行) => {
     product_no: 行.product_no,
     product_name: 行.product_name,
     business_type: 行.business_type,
-    service_type: 行.service_type || '',
-    service_hours: 行.service_hours || 0,
     cost_price: parseFloat(行.cost_price) || 0,
     remark: 行.remark || '',
     status: 行.status,

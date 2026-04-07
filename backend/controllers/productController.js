@@ -39,7 +39,8 @@ const 获取商品列表 = async (req, res) => {
  */
 const 新增商品 = async (req, res) => {
   try {
-    const { product_name, business_type, service_type, service_hours, cost_price, status, remark } = req.body;
+    const { product_name, business_type, cost_price, status, remark } = req.body;
+    // 不读取 service_type 和 service_hours（已从产品维度移除）
 
     if (!product_name || !business_type) {
       return res.json({ code: 0, message: '商品名称和业务类型为必填项' });
@@ -61,8 +62,6 @@ const 新增商品 = async (req, res) => {
       product_no: 新编号,
       product_name,
       business_type,
-      service_type: service_type || '',
-      service_hours: parseInt(service_hours) || 0,
       cost_price: parseFloat(cost_price) || 0,
       status: status !== undefined ? parseInt(status) : 1,
       remark: remark || null,
@@ -85,13 +84,12 @@ const 更新商品 = async (req, res) => {
     const 商品 = await Product.findByPk(req.params.id);
     if (!商品) return res.json({ code: 0, message: '商品不存在' });
 
-    const { product_name, business_type, service_type, service_hours, cost_price, status, remark } = req.body;
+    const { product_name, business_type, cost_price, status, remark } = req.body;
+    // 不读取 service_type 和 service_hours（已从产品维度移除）
 
     const 更新数据 = {};
     if (product_name !== undefined) 更新数据.product_name = product_name;
     if (business_type !== undefined) 更新数据.business_type = business_type;
-    if (service_type !== undefined) 更新数据.service_type = service_type;
-    if (service_hours !== undefined) 更新数据.service_hours = parseInt(service_hours) || 0;
     if (cost_price !== undefined) 更新数据.cost_price = parseFloat(cost_price) || 0;
     if (status !== undefined) 更新数据.status = parseInt(status);
     if (remark !== undefined) 更新数据.remark = remark || null;

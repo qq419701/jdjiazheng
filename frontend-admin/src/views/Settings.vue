@@ -102,26 +102,6 @@
       <!-- ===== Tab 3：奇所SUP设置 ===== -->
       <el-tab-pane label="🔗 奇所SUP设置" name="agiso_sup">
 
-        <!-- 使用说明提示 -->
-        <el-alert
-          type="info"
-          :closable="false"
-          style="margin-bottom: 20px"
-        >
-          <template #title>
-            <span style="font-weight:600">📦 商品管理 · 🔁 自动退款 · 🔗 奇所SUP货源接口 说明</span>
-          </template>
-          <div style="margin-top: 8px; line-height: 1.8; font-size: 13px">
-            <div>• <strong>商品管理</strong>：请前往
-              <el-link type="primary" @click="$router.push('/admin/products')">【商品管理页面】</el-link>
-              创建商品，商品编号系统自动分配（如 1001），永久不变，与奇所关联一次即可
-            </div>
-            <div>• <strong>卡密补货</strong>：在「卡密管理」页生成卡密时选择对应商品，无需重新关联奇所</div>
-            <div>• <strong>奇所SUP货源接口</strong>：在下方填写奇所开放平台分配的 App ID、AppSecret 等，开启后奇所可调用本系统接口自动取卡</div>
-            <div>• <strong>自动退款</strong>：在订单列表页点击「申请退款」→「确认退款完成」，系统自动作废卡密；与奇所撤单流程对应</div>
-          </div>
-        </el-alert>
-
         <el-form :model="设置表单" label-width="160px" style="max-width: 680px">
 
           <el-form-item label="SUP接口总开关">
@@ -166,12 +146,11 @@
           </el-form-item>
 
           <el-form-item label="SUP商品配置">
-            <el-alert
-              title="商品管理已迁移至独立页面，请点击上方「商品管理页面」链接进行管理。此处配置已不再使用。"
-              type="warning"
-              :closable="false"
-              style="width: 100%"
-            />
+            <div style="font-size: 13px; color: #606266">
+              商品管理已独立为单独页面，请前往
+              <el-link type="primary" @click="$router.push('/admin/products')">【商品管理】</el-link>
+              页面进行商品的新增、编辑和管理。
+            </div>
           </el-form-item>
 
           <!-- 接口地址参考（只读展示） -->
@@ -194,8 +173,13 @@
               </div>
               <div class="接口地址行">
                 <span class="接口方法">POST</span>
+                <code>/agisoAcprSupplierApi/order/createPurchase</code>
+                <span class="接口备注">卡密下单（奇所标准路径，推荐）</span>
+              </div>
+              <div class="接口地址行">
+                <span class="接口方法">POST</span>
                 <code>/agisoAcprSupplierApi/order/cardOrder</code>
-                <span class="接口备注">卡密下单（核心）</span>
+                <span class="接口备注">卡密下单（兼容旧路径，两者功能相同）</span>
               </div>
               <div class="接口地址行">
                 <span class="接口方法">POST</span>
