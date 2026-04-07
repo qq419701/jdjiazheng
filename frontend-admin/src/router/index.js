@@ -137,6 +137,13 @@ const routes = [
         component: () => import('../views/SubAccounts.vue'),
         meta: { 标题: '子账号管理', 权限Key: 'sub_accounts' },
       },
+      // ===== 商品管理（SUP商品管理）=====
+      {
+        path: 'products',
+        name: 'Products',
+        component: () => import('../views/Products.vue'),
+        meta: { 标题: '商品管理', 权限Key: 'products' },
+      },
     ],
   },
   {

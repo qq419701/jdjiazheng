@@ -25,6 +25,7 @@ const 批量生成卡密 = async (参数) => {
     创建人ID = null,
     批次ID = null,
     业务类型 = 'jiazheng',
+    商品ID = null,
   } = 参数;
 
   // 限制单次最大生成数量
@@ -58,6 +59,7 @@ const 批量生成卡密 = async (参数) => {
         expired_at: 过期时间,
         created_at: new Date(),
         business_type: 业务类型,
+        product_id: 商品ID,
       });
       生成数量++;
     }

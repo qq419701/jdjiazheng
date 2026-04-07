@@ -1,6 +1,6 @@
 // 卡密控制器
 const { Op } = require('sequelize');
-const { Card, CardBatch } = require('../models');
+const { Card, CardBatch, Product } = require('../models');
 const { 批量生成卡密 } = require('../services/cardService');
 
 /**
@@ -50,12 +50,30 @@ const 生成卡密 = async (req, res) => {
     const {
       count = 1,
       category = '日常保洁',
-      service_type = '日常保洁',
-      service_hours = 2,
+      service_type,
+      service_hours,
       remark = '',
       expired_at = null,
-      business_type = 'jiazheng',
+      business_type,
+      product_id,
     } = req.body;
+
+    // 若传入 product_id，从商品表查询并自动填充服务信息
+    let 最终service_type = service_type || '日常保洁';
+    let 最终service_hours = service_hours !== undefined ? parseInt(service_hours) : 2;
+    let 最终business_type = business_type || 'jiazheng';
+    let 最终product_id = product_id ? parseInt(product_id) : null;
+
+    if (product_id) {
+      const 商品 = await Product.findByPk(parseInt(product_id));
+      if (!商品) {
+        return res.json({ code: 0, message: '指定商品不存在' });
+      }
+      最终service_type = 商品.service_type || 最终service_type;
+      最终service_hours = 商品.service_hours !== undefined ? 商品.service_hours : 最终service_hours;
+      最终business_type = 商品.business_type || 最终business_type;
+      最终product_id = 商品.id;
+    }
 
     if (count < 1 || count > 1000) {
       return res.json({ code: 0, message: '生成数量必须在1-1000之间' });
@@ -65,26 +83,28 @@ const 生成卡密 = async (req, res) => {
     const 批次号 = 'BATCH' + Date.now();
     const 批次 = await CardBatch.create({
       batch_no: 批次号,
-      category,
-      service_type,
-      service_hours: parseInt(service_hours),
+      category: category || 最终service_type,
+      service_type: 最终service_type,
+      service_hours: 最终service_hours,
       count: parseInt(count),
       remark,
       created_by: req.管理员?.id,
       created_at: new Date(),
-      business_type,
+      business_type: 最终business_type,
+      product_id: 最终product_id,
     });
 
     const 结果 = await 批量生成卡密({
       数量: parseInt(count),
-      分类: category,
-      服务类型: service_type,
-      服务时长: parseInt(service_hours),
+      分类: category || 最终service_type,
+      服务类型: 最终service_type,
+      服务时长: 最终service_hours,
       备注: remark,
       过期时间: expired_at ? new Date(expired_at) : null,
       创建人ID: req.管理员?.id,
       批次ID: 批次.id,
-      业务类型: business_type,
+      业务类型: 最终business_type,
+      商品ID: 最终product_id,
     });
 
     res.json({

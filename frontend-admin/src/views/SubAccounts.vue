@@ -158,6 +158,7 @@ const 权限模块标签 = {
   topup_orders: '充值订单',
   topup_cards: '充值卡密',
   topup_settings: '充值设置',
+  products: '奇所商品管理',
   regions: '地区管理',
   settings: '系统设置',
   sub_accounts: '子账号管理',

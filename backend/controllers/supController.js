@@ -3,10 +3,10 @@
 // 接口说明：
 //   - 本系统的商品全部是卡密类型（productType=2），不做直充
 //   - 同步发货模式：下单后直接返回卡密，不需要异步回调
-//   - 商品编号格式：{business_type}_{service_type}_{service_hours}h
+//   - 商品编号来自 Product 表的 product_no 字段
 
 const { Op } = require('sequelize');
-const { Card, Order, Setting } = require('../models');
+const { Card, Order, Setting, Product } = require('../models');
 const 数据库连接 = require('../config/database');
 const { 加密卡密 } = require('../services/agisoService');
 
@@ -114,8 +114,7 @@ const 获取应用ID = async (req, res) => {
  * 响应格式：{ code: 200, message: '接口调用成功', data: { items: [...], hasNextPage: false } }
  * 业务说明：
  *   - 本系统商品类型全部是卡密类型（productType=2）
- *   - 优先从 agiso_products 配置读取商品列表
- *   - 若配置为空则自动扫描Card表，按 business_type+service_type+service_hours 去重生成商品列表
+ *   - 从 Product 表查询 status=1（启用）的商品列表
  *   - 支持 keyword 模糊搜索商品名称
  *   - 支持分页（pageIndex从1开始）
  */
@@ -127,73 +126,45 @@ const 获取商品列表 = async (req, res) => {
       pageSize = 20,
     } = req.body;
 
-    // 读取配置
-    const 配置 = await 读取配置(['agiso_products', 'service_cost_price', 'laundry_product_price']);
-    const appSecret配置 = await Setting.findOne({ where: { key_name: 'agiso_app_secret' } });
-    const appSecret = appSecret配置 ? appSecret配置.key_value : '';
+    const 查询条件 = { status: 1 };
 
-    let 商品列表 = [];
-
-    // 优先从配置读取自定义商品列表
-    if (配置.agiso_products && 配置.agiso_products.trim()) {
-      try {
-        商品列表 = JSON.parse(配置.agiso_products);
-      } catch (解析错误) {
-        console.error('agiso_products配置JSON解析失败:', 解析错误);
-        商品列表 = [];
-      }
-    }
-
-    // 若商品列表为空，自动扫描Card表生成
-    if (!商品列表 || 商品列表.length === 0) {
-      // 查询Card表中所有未失效的卡密，按 business_type+service_type+service_hours 去重
-      const 卡密类型列表 = await Card.findAll({
-        attributes: ['business_type', 'service_type', 'service_hours'],
-        where: { status: { [Op.ne]: 2 } }, // 排除已失效
-        group: ['business_type', 'service_type', 'service_hours'],
-        raw: true,
-      });
-
-      // 计算各类型的成本价
-      const jiazheng成本价 = parseFloat(配置.service_cost_price || '50') || 50;
-      // 洗衣价格在Setting表中以分为单位存储，使用分转元常量换算
-      const xiyifu成本价 = (parseInt(配置.laundry_product_price || '0', 10) / 分转元) || 0;
-
-      商品列表 = 卡密类型列表.map(卡密类型 => {
-        const productNo = 生成商品编号(卡密类型.business_type, 卡密类型.service_type, 卡密类型.service_hours);
-        const 成本价 = 卡密类型.business_type === 'xiyifu' ? xiyifu成本价 : jiazheng成本价;
-        return {
-          productNo,
-          productTitle: `${卡密类型.service_type}${卡密类型.service_hours > 0 ? 卡密类型.service_hours + '小时' : ''}卡`,
-          productCost: 成本价,
-          businessType: 卡密类型.business_type,
-          productType: 2, // 卡密类型
-        };
-      });
-    }
-
-    // keyword 模糊搜索商品名称
-    let 过滤后列表 = 商品列表;
+    // keyword 模糊搜索商品名称或商品编号
     if (keyword && keyword.trim()) {
-      const 关键词 = keyword.trim().toLowerCase();
-      过滤后列表 = 商品列表.filter(商品 =>
-        (商品.productTitle || '').toLowerCase().includes(关键词) ||
-        (商品.productNo || '').toLowerCase().includes(关键词)
-      );
+      查询条件[Op.or] = [
+        { product_name: { [Op.like]: `%${keyword.trim()}%` } },
+        { product_no: { [Op.like]: `%${keyword.trim()}%` } },
+      ];
+      delete 查询条件.status;
+      查询条件[Op.and] = [{ status: 1 }];
     }
+
+    const 全部商品 = await Product.findAll({
+      where: 查询条件,
+      order: [['product_no', 'ASC']],
+    });
 
     // 分页处理
     const 当前页 = parseInt(pageIndex) || 1;
     const 每页数量 = parseInt(pageSize) || 20;
     const 起始位置 = (当前页 - 1) * 每页数量;
-    const 分页数据 = 过滤后列表.slice(起始位置, 起始位置 + 每页数量);
-    const hasNextPage = 起始位置 + 每页数量 < 过滤后列表.length;
+    const 分页数据 = 全部商品.slice(起始位置, 起始位置 + 每页数量);
+    const hasNextPage = 起始位置 + 每页数量 < 全部商品.length;
+
+    const 商品列表 = 分页数据.map(商品 => ({
+      productNo: 商品.product_no,
+      productTitle: 商品.product_name,
+      productCost: parseFloat(商品.cost_price) || 0,
+      productType: 2, // 卡密类型
+      businessType: 商品.business_type,
+      serviceType: 商品.service_type,
+      serviceHours: 商品.service_hours,
+    }));
 
     res.json({
       code: 200,
       message: '接口调用成功',
       data: {
-        items: 分页数据,
+        items: 商品列表,
         hasNextPage,
       },
     });
@@ -215,7 +186,7 @@ const 获取商品列表 = async (req, res) => {
  * 请求参数：userId, productNo, timestamp, version, sign
  * 响应格式：{ code: 200, message: '接口调用成功', data: { apiType: 1, productTitle: '...', productType: 2, productCost: xx, attach: [] } }
  * 业务说明：
- *   - 根据 productNo 查找对应商品
+ *   - 根据 productNo 从 Product 表查找对应商品
  *   - 本系统是卡密类型（apiType=1同步，productType=2卡密）
  *   - 卡密商品的attach数组返回空数组（不需要额外参数）
  */
@@ -227,47 +198,23 @@ const 获取商品模板 = async (req, res) => {
       return res.json({ code: 400, message: '商品编号不能为空' });
     }
 
-    // 解析商品编号获取业务类型和服务类型
-    const 商品信息 = 解析商品编号(productNo);
-    if (!商品信息) {
-      return res.json({ code: 404, message: '商品不存在' });
-    }
-
-    const { businessType, serviceType, serviceHours } = 商品信息;
-
-    // 检查该类型的卡密是否存在
-    const 卡密数量 = await Card.count({
-      where: {
-        business_type: businessType,
-        service_type: serviceType,
-        service_hours: serviceHours,
-        status: { [Op.ne]: 2 },
-      },
+    // 从 Product 表按 product_no 查询商品
+    const 商品 = await Product.findOne({
+      where: { product_no: productNo, status: 1 },
     });
 
-    if (卡密数量 === 0) {
-      return res.json({ code: 404, message: '商品不存在' });
+    if (!商品) {
+      return res.json({ code: 1100, message: '商品不存在' });
     }
-
-    // 读取成本价配置
-    const 配置 = await 读取配置(['service_cost_price', 'laundry_product_price']);
-    let 成本价 = 50;
-    if (businessType === 'xiyifu') {
-      成本价 = (parseInt(配置.laundry_product_price || '0', 10) / 分转元) || 0;
-    } else {
-      成本价 = parseFloat(配置.service_cost_price || '50') || 50;
-    }
-
-    const 商品标题 = `${serviceType}${serviceHours > 0 ? serviceHours + '小时' : ''}卡`;
 
     res.json({
       code: 200,
       message: '接口调用成功',
       data: {
         apiType: 1,        // 1=同步发货
-        productTitle: 商品标题,
+        productTitle: 商品.product_name,
         productType: 2,    // 2=卡密类型
-        productCost: 成本价,
+        productCost: parseFloat(商品.cost_price) || 0,
         attach: [],        // 卡密商品不需要额外参数
       },
     });
@@ -333,12 +280,16 @@ const 卡密下单 = async (req, res) => {
       });
     }
 
-    // 解析商品编号
-    const 商品信息 = 解析商品编号(productNo);
-    if (!商品信息) {
-      return res.json({ code: 404, message: '商品不存在' });
+    // 解析商品编号：从 Product 表查询
+    const 商品 = await Product.findOne({
+      where: { product_no: productNo, status: 1 },
+    });
+    if (!商品) {
+      return res.json({ code: 1100, message: '商品不存在' });
     }
-    const { businessType, serviceType, serviceHours } = 商品信息;
+    const businessType = 商品.business_type;
+    const serviceType = 商品.service_type;
+    const serviceHours = 商品.service_hours;
 
     // 使用事务+原子更新防止并发竞争：
     // 直接用 UPDATE SET agiso_order_no=orderNo WHERE agiso_order_no IS NULL AND status=0
@@ -366,6 +317,7 @@ const 卡密下单 = async (req, res) => {
         agiso_order_no: orderNo,
         sup_status: 1,  // 1=已发货
         sup_product_no: productNo,
+        product_id: 商品.id,
       }, { transaction: t });
 
       目标卡密 = 候选卡密;

@@ -71,8 +71,7 @@
     <el-card class="搜索卡片">
       <el-form :inline="true" :model="搜索条件">
         <el-form-item label="关键词">
-          <!-- placeholder 更新为包含"备注"的提示 -->
-          <el-input v-model="搜索条件.keyword" placeholder="订单号/姓名/手机号/备注" clearable style="width: 200px" />
+          <el-input v-model="搜索条件.keyword" placeholder="订单号/姓名/手机号/卡密码/备注" clearable style="width: 200px" />
         </el-form-item>
         <el-form-item label="城市">
           <el-input v-model="搜索条件.city" placeholder="城市" clearable style="width: 100px" />
@@ -87,6 +86,7 @@
             <el-option label="安排中" value="5" />
             <el-option label="预约完成" value="6" />
             <el-option label="预约失败" value="7" />
+            <el-option label="退款处理中" value="8" />
           </el-select>
         </el-form-item>
         <el-form-item label="日期范围">
@@ -197,7 +197,7 @@
             >查看原因</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="320" fixed="right">
+        <el-table-column label="操作" width="380" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="查看详情(row.id)">详情</el-button>
             <!-- 备注快速编辑按钮 -->
@@ -240,6 +240,20 @@
                 type="warning"
                 @click="执行重置订单(row.id)"
               >重置</el-button>
+              <!-- 退款操作 -->
+              <el-button
+                v-if="row.status !== 4 && row.status !== 8"
+                size="small"
+                type="warning"
+                plain
+                @click="申请退款(row)"
+              >申请退款</el-button>
+              <el-button
+                v-if="row.status === 8"
+                size="small"
+                type="danger"
+                @click="执行确认退款完成(row)"
+              >确认退款完成</el-button>
             </template>
             <!-- 洗衣服务操作（预留） -->
             <template v-else>
@@ -393,7 +407,7 @@ import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import { 获取订单列表API, 更新订单状态API, 触发自动下单API, 重置订单API, 更新订单备注API, 上传备注图片API, 获取设置API, 获取家政预览卡密API, 导出家政订单API, 订单页搜索家政卡密API, 作废卡密API } from '../api/index'
+import { 获取订单列表API, 更新订单状态API, 触发自动下单API, 重置订单API, 更新订单备注API, 上传备注图片API, 获取设置API, 获取家政预览卡密API, 导出家政订单API, 订单页搜索家政卡密API, 作废卡密API, 申请退款API, 确认退款完成API } from '../api/index'
 
 const router = useRouter()
 const route = useRoute()
@@ -553,15 +567,15 @@ const 当前复制行 = ref(null)
 const 复制选中字段 = ref(['姓名', '手机号', '地址'])
 const 复制字段列表 = ref([])
 
-// 获取状态样式（包含新增状态5安排中 6预约完成 7预约失败）
+// 获取状态样式（包含新增状态5安排中 6预约完成 7预约失败 8退款处理中）
 const 获取状态类型 = (status) => {
-  const 映射 = { 0: 'info', 1: 'primary', 2: 'success', 3: 'danger', 4: 'warning', 5: 'primary', 6: 'success', 7: 'danger' }
+  const 映射 = { 0: 'info', 1: 'primary', 2: 'success', 3: 'danger', 4: 'warning', 5: 'primary', 6: 'success', 7: 'danger', 8: 'warning' }
   return 映射[status] || 'info'
 }
 
 // 获取状态文字（包含新增状态）
 const 获取状态文字 = (status) => {
-  const 映射 = { 0: '待处理', 1: '下单中', 2: '已下单', 3: '失败', 4: '已取消', 5: '安排中', 6: '预约完成', 7: '预约失败' }
+  const 映射 = { 0: '待处理', 1: '下单中', 2: '已下单', 3: '失败', 4: '已取消', 5: '安排中', 6: '预约完成', 7: '预约失败', 8: '退款处理中' }
   return 映射[status] || '未知'
 }
 
@@ -734,6 +748,42 @@ const 执行重置订单 = async (id) => {
       加载订单()
     } else {
       ElMessage.warning(结果.message)
+    }
+  } catch {}
+}
+
+// 申请退款（将订单状态改为8退款处理中）
+const 申请退款 = async (行) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认申请退款？订单状态将变为「退款处理中」，请手动处理退款事宜后再点击「确认退款完成」。`,
+      '申请退款',
+      { confirmButtonText: '确认申请退款', cancelButtonText: '取消', type: 'warning' }
+    )
+    const 结果 = await 申请退款API(行.id)
+    if (结果.code === 1) {
+      ElMessage.success('已申请退款，订单状态更新为退款处理中')
+      加载订单()
+    } else {
+      ElMessage.warning(结果.message || '操作失败')
+    }
+  } catch {}
+}
+
+// 确认退款完成（将订单状态改为4已取消，卡密状态改为2已失效）
+const 执行确认退款完成 = async (行) => {
+  try {
+    await ElMessageBox.confirm(
+      `确认退款完成？操作后订单将变为「已取消」，关联卡密将被作废（不可逆）。`,
+      '确认退款完成',
+      { confirmButtonText: '确认退款完成', cancelButtonText: '取消', type: 'error' }
+    )
+    const 结果 = await 确认退款完成API(行.id)
+    if (结果.code === 1) {
+      ElMessage.success(结果.message)
+      加载订单()
+    } else {
+      ElMessage.warning(结果.message || '操作失败')
     }
   } catch {}
 }

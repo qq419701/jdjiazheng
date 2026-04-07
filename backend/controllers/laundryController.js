@@ -1,7 +1,7 @@
 // 洗衣服务管理控制器（后台管理接口）
 // 对接鲸蚁生活洗护API
 const { Op } = require('sequelize');
-const { Order, Setting } = require('../models');
+const { Order, Setting, Card } = require('../models');
 const { 推送预约单, 同步订单状态, 修改预约单 } = require('../services/laundryApiService');
 const { 安全解析JSON } = require('../utils/helpers');
 const { 执行洗衣下单内部 } = require('./laundryApiController');
@@ -21,6 +21,7 @@ const 获取洗衣订单列表 = async (req, res) => {
         { order_no: { [Op.like]: `%${keyword}%` } },
         { name: { [Op.like]: `%${keyword}%` } },
         { phone: { [Op.like]: `%${keyword}%` } },
+        { card_code: { [Op.like]: `%${keyword}%` } },
         { remark: { [Op.like]: `%${keyword}%` } },
       ];
     }
@@ -498,6 +499,53 @@ const 接收鲸蚁回调 = async (req, res) => {
   }
 };
 
+/**
+ * 确认洗衣退款完成
+ * POST /admin/api/laundry-orders/:id/confirm-refund
+ * 逻辑：将订单状态改为4（已取消），将关联卡密状态改为2（已失效）
+ */
+const 确认洗衣退款完成 = async (req, res) => {
+  try {
+    const 订单 = await Order.findOne({ where: { id: req.params.id, business_type: 'xiyifu' } });
+    if (!订单) {
+      return res.json({ code: 0, message: '洗衣订单不存在' });
+    }
+
+    if (订单.status !== 8) {
+      return res.json({ code: 0, message: '只有退款处理中的订单才能确认退款完成' });
+    }
+
+    // 通过 card_code 找到对应的卡密记录
+    let 卡密作废成功 = false;
+    if (订单.card_code) {
+      const 卡密 = await Card.findOne({ where: { code: 订单.card_code } });
+      if (卡密) {
+        await 卡密.update({ status: 2 });
+        卡密作废成功 = true;
+      }
+    }
+
+    // 记录操作日志
+    const 现有日志 = 安全解析JSON(订单.order_log, []);
+    现有日志.push({
+      时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+      操作: `管理员确认退款完成，卡密已作废`,
+      状态: 'info',
+    });
+
+    // 把订单状态改为4（已取消）
+    await 订单.update({
+      status: 4,
+      order_log: JSON.stringify(现有日志),
+    });
+
+    res.json({ code: 1, message: 卡密作废成功 ? '退款完成，卡密已作废' : '退款完成（未找到关联卡密）' });
+  } catch (错误) {
+    console.error('确认洗衣退款完成出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+};
+
 module.exports = {
   获取洗衣订单列表,
   获取洗衣订单详情,
@@ -509,4 +557,5 @@ module.exports = {
   测试洗衣API连接,
   获取洗衣Token状态,
   查询洗衣物流,
+  确认洗衣退款完成,
 };

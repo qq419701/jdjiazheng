@@ -85,6 +85,11 @@ const Card = 数据库连接.define('Card', {
     allowNull: true,
     comment: 'SUP商品编号（下单时的productNo）',
   },
+  product_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: '关联商品ID',
+  },
 }, {
   tableName: 'cards',
   timestamps: false,
