@@ -131,7 +131,7 @@ const Order = 数据库连接.define('Order', {
   business_type: {
     type: DataTypes.STRING(20),
     defaultValue: 'jiazheng',
-    comment: '业务类型：jiazheng=京东家政 xiyifu=京东洗衣服',
+    comment: '业务类型：jiazheng=京东家政 xiyifu=京东洗衣服 topup=会员充值',
   },
   laundry_order_id: {
     type: DataTypes.STRING(100),
@@ -230,6 +230,47 @@ const Order = 数据库连接.define('Order', {
     type: DataTypes.STRING(100),
     allowNull: true,
     comment: '快递API主动创建的快递单号（区别于鲸蚁回调写入的 express_order_id）',
+  },
+  // 充值专用字段（business_type='topup' 时使用）
+  topup_account: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: '用户填写的充值账号（手机号/微信号/QQ号/邮箱等）',
+  },
+  topup_account_type: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    comment: '充值账号类型（来自卡密配置）',
+  },
+  topup_member_name: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: '充值会员名称（来自卡密配置，如：优酷年卡）',
+  },
+  topup_arrival_time: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: '预计到账时间（来自卡密配置）',
+  },
+  topup_is_expired: {
+    type: DataTypes.TINYINT,
+    defaultValue: -1,
+    comment: '会员是否已到期：-1=未填写/不适用 0=未到期 1=已到期',
+  },
+  login_city: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: '用户登录城市（通过IP定位获取，如：广东省东莞市）',
+  },
+  login_province: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: '用户登录省份',
+  },
+  login_ip: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: '用户提交订单时的IP地址',
   },
 }, {
   tableName: 'orders',

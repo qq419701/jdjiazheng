@@ -1,0 +1,319 @@
+// 充值H5前端接口控制器
+// 提供给 frontend-cz（充值H5）调用的公开接口
+const axios = require('axios');
+const { Card, Order, Setting } = require('../models');
+const { 验证卡密有效性 } = require('../services/cardService');
+const { 安全解析JSON } = require('../utils/helpers');
+
+/**
+ * 生成充值订单号
+ * 格式：CZ + 年月日 + 6位随机数（如 CZ20260407123456）
+ */
+const 生成充值订单号 = () => {
+  const 日期 = new Date();
+  const 年 = 日期.getFullYear();
+  const 月 = String(日期.getMonth() + 1).padStart(2, '0');
+  const 日 = String(日期.getDate()).padStart(2, '0');
+  const 随机数 = String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
+  return `CZ${年}${月}${日}${随机数}`;
+};
+
+/**
+ * 验证充值账号格式
+ * 根据 topup_account_type 和数据库设置中的正则规则动态验证
+ * @param {string} 账号 - 用户输入的充值账号
+ * @param {string} 账号类型 - phone/wechat/qq/email/other
+ * @param {Object} 设置对象 - 数据库设置键值对
+ * @returns {Object} { 有效: boolean, 错误信息: string }
+ */
+const 验证充值账号格式 = (账号, 账号类型, 设置对象) => {
+  if (!账号 || !账号.trim()) {
+    return { 有效: false, 错误信息: '充值账号不能为空' };
+  }
+  const 账号值 = 账号.trim();
+
+  if (账号类型 === 'phone') {
+    // 从数据库读取正则，默认中国大陆手机号
+    const 正则字符串 = 设置对象.topup_phone_regex || '^1[3-9]\\d{9}$';
+    const 正则 = new RegExp(正则字符串);
+    if (!正则.test(账号值)) {
+      return { 有效: false, 错误信息: '请输入正确的手机号（11位数字）' };
+    }
+  } else if (账号类型 === 'wechat') {
+    const 正则字符串 = 设置对象.topup_wechat_regex || '^[a-zA-Z][a-zA-Z0-9_-]{5,19}$';
+    const 正则 = new RegExp(正则字符串);
+    if (!正则.test(账号值)) {
+      return { 有效: false, 错误信息: '请输入正确的微信号（6-20位字母/数字/下划线，以字母开头）' };
+    }
+  } else if (账号类型 === 'qq') {
+    const 正则字符串 = 设置对象.topup_qq_regex || '^[1-9]\\d{4,10}$';
+    const 正则 = new RegExp(正则字符串);
+    if (!正则.test(账号值)) {
+      return { 有效: false, 错误信息: '请输入正确的QQ号（5-11位数字）' };
+    }
+  } else if (账号类型 === 'email') {
+    const 邮箱正则 = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+    if (!邮箱正则.test(账号值)) {
+      return { 有效: false, 错误信息: '请输入正确的邮箱地址' };
+    }
+  } else {
+    // other 类型：验证长度
+    const 最小长度 = parseInt(设置对象.topup_custom_min_len) || 1;
+    const 最大长度 = parseInt(设置对象.topup_custom_max_len) || 50;
+    if (账号值.length < 最小长度 || 账号值.length > 最大长度) {
+      return { 有效: false, 错误信息: `账号长度需在 ${最小长度}-${最大长度} 字符之间` };
+    }
+  }
+
+  return { 有效: true, 错误信息: '' };
+};
+
+/**
+ * 异步查询IP城市并写入订单
+ * @param {number} 订单ID - 订单ID
+ * @param {string} IP地址 - 用户IP
+ */
+const 异步写入IP城市 = async (订单ID, IP地址) => {
+  try {
+    const 纯IP = IP地址.replace(/^::ffff:/, '');
+    if (!纯IP || 纯IP === '127.0.0.1' || 纯IP === '::1') return;
+
+    const 响应 = await axios.get(
+      `http://ip-api.com/json/${纯IP}?lang=zh-CN&fields=status,regionName,city,query`,
+      { timeout: 5000 }
+    );
+
+    if (响应.data?.status === 'success') {
+      await Order.update(
+        {
+          login_province: 响应.data.regionName || '',
+          login_city: `${响应.data.regionName || ''}${响应.data.city || ''}`,
+        },
+        { where: { id: 订单ID } }
+      );
+    }
+  } catch (错误) {
+    // 异步查询失败不影响主流程
+    console.error('[充值] 异步写入IP城市失败:', 错误.message);
+  }
+};
+
+/**
+ * 验证充值卡密
+ * GET /api/cz/verify-card/:code
+ * 验证成功返回卡密配置信息（会员名、账号类型、到账时间、是否显示到期选项等）
+ */
+const 验证充值卡密 = async (req, res) => {
+  try {
+    const { code } = req.params;
+    const 结果 = await 验证卡密有效性(code);
+
+    if (!结果.有效) {
+      if (结果.原因 === '卡密已被使用') {
+        return res.json({ code: 2, message: '卡密已被使用', data: { used: true, card_code: 结果.卡密?.code || '' } });
+      }
+      if (结果.原因 === '卡密已失效') {
+        return res.json({ code: 3, message: '卡密已作废', data: null });
+      }
+      return res.json({ code: 0, message: 结果.原因, data: null });
+    }
+
+    // 检查是充值卡密
+    if (结果.卡密.business_type !== 'topup') {
+      return res.json({ code: 0, message: '此卡密不适用于充值服务', data: null });
+    }
+
+    // 获取充值相关设置
+    const 设置列表 = await Setting.findAll();
+    const 设置对象 = {};
+    设置列表.forEach(s => { 设置对象[s.key_name] = s.key_value; });
+
+    const 卡密 = 结果.卡密;
+
+    return res.json({
+      code: 1,
+      message: '卡密有效',
+      data: {
+        card_code: 卡密.code,
+        topup_account_type: 卡密.topup_account_type || 'phone',
+        topup_account_label: 卡密.topup_account_label || '请输入手机号',
+        topup_member_name: 卡密.topup_member_name || '',
+        topup_member_icon: 卡密.topup_member_icon || '',
+        topup_arrival_time: 卡密.topup_arrival_time || '',
+        topup_show_expired: 卡密.topup_show_expired || 0,
+        topup_steps: 卡密.topup_steps || '',
+        // 从设置中读取前端展示配置
+        banner_url: 设置对象.topup_banner_url || '',
+        title: 设置对象.topup_title || '各类会员充值',
+        subtitle1: 设置对象.topup_subtitle1 || '专业充值  特惠价格  安全有保障',
+        subtitle2: 设置对象.topup_subtitle2 || '快速到账  全程客服  值得信赖',
+        notice: 设置对象.topup_notice || '',
+        service_content: 安全解析JSON(设置对象.topup_service_content, []),
+      },
+    });
+  } catch (错误) {
+    console.error('[充值] 验证卡密出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+};
+
+/**
+ * 获取IP归属城市（后端代理 ip-api.com，解决HTTPS混合内容问题）
+ * GET /api/cz/ip-city
+ * 从请求头获取真实IP，查询归属城市返回给前端
+ */
+const 获取IP城市 = async (req, res) => {
+  try {
+    // 1. 获取真实IP（支持 Nginx 反代）
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+      || req.headers['x-real-ip']
+      || req.connection?.remoteAddress
+      || req.ip || '';
+
+    // 清理IPv6前缀（::ffff:x.x.x.x → x.x.x.x）
+    const 纯IP = ip.replace(/^::ffff:/, '');
+
+    // 2. 本地IP直接返回（开发环境）
+    if (!纯IP || 纯IP === '127.0.0.1' || 纯IP === '::1') {
+      return res.json({ code: 1, data: { ip: 纯IP, province: '本地', city: '本地', full_city: '本地开发环境' } });
+    }
+
+    // 3. 调用 ip-api.com（后端代理，解决HTTPS混合内容问题）
+    const 响应 = await axios.get(
+      `http://ip-api.com/json/${纯IP}?lang=zh-CN&fields=status,message,regionName,city,query`,
+      { timeout: 5000 }
+    );
+
+    if (响应.data?.status === 'success') {
+      return res.json({
+        code: 1,
+        data: {
+          ip: 响应.data.query || 纯IP,
+          province: 响应.data.regionName || '',
+          city: 响应.data.city || '',
+          full_city: `${响应.data.regionName || ''}${响应.data.city || ''}`,
+        },
+      });
+    }
+
+    return res.json({ code: 0, message: 'IP定位失败' });
+  } catch (错误) {
+    console.error('[充值] IP定位出错:', 错误.message);
+    return res.json({ code: 0, message: 'IP定位服务暂不可用' });
+  }
+};
+
+/**
+ * 提交充值订单
+ * POST /api/cz/orders
+ * 收集：充值账号、会员是否到期（可选）、登录城市（IP自动获取）
+ */
+const 提交充值订单 = async (req, res) => {
+  try {
+    const {
+      card_code,
+      topup_account,
+      topup_is_expired,  // 可选：-1=不适用 0=未到期 1=已到期
+    } = req.body;
+
+    if (!card_code) {
+      return res.json({ code: 0, message: '卡密不能为空' });
+    }
+    if (!topup_account || !topup_account.trim()) {
+      return res.json({ code: 0, message: '充值账号不能为空' });
+    }
+
+    // 验证卡密（必须是充值卡密）
+    const 卡密验证结果 = await 验证卡密有效性(card_code);
+    if (!卡密验证结果.有效) {
+      if (卡密验证结果.原因 === '卡密已被使用') {
+        return res.json({ code: 2, message: '卡密已被使用' });
+      }
+      return res.json({ code: 0, message: `卡密无效：${卡密验证结果.原因}` });
+    }
+    const 卡密 = 卡密验证结果.卡密;
+    if (卡密.business_type !== 'topup') {
+      return res.json({ code: 0, message: '此卡密不适用于充值服务' });
+    }
+
+    // 获取设置（用于账号格式验证）
+    const 设置列表 = await Setting.findAll();
+    const 设置对象 = {};
+    设置列表.forEach(s => { 设置对象[s.key_name] = s.key_value; });
+
+    // 验证充值账号格式
+    const 账号验证结果 = 验证充值账号格式(topup_account.trim(), 卡密.topup_account_type || 'other', 设置对象);
+    if (!账号验证结果.有效) {
+      return res.json({ code: 0, message: 账号验证结果.错误信息 });
+    }
+
+    // 如果设置了显示到期选项，验证用户是否已选择
+    if (卡密.topup_show_expired === 1 && (topup_is_expired === undefined || topup_is_expired === null || topup_is_expired === '')) {
+      return res.json({ code: 0, message: '请选择会员是否已到期' });
+    }
+
+    // 获取用户IP
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim()
+      || req.headers['x-real-ip']
+      || req.connection?.remoteAddress
+      || req.ip || '';
+    const 纯IP = ip.replace(/^::ffff:/, '');
+
+    // 生成充值订单号
+    const 订单号 = 生成充值订单号();
+
+    // 解析到期状态
+    let 到期状态 = -1;
+    if (topup_is_expired !== undefined && topup_is_expired !== null && topup_is_expired !== '') {
+      到期状态 = parseInt(topup_is_expired);
+      if (isNaN(到期状态)) 到期状态 = -1;
+    }
+
+    // 创建订单（充值订单不需要姓名/地址等字段，使用最小必填）
+    const 新订单 = await Order.create({
+      order_no: 订单号,
+      card_code: 卡密.code,
+      name: '充值用户',     // 充值不需要真实姓名
+      phone: topup_account.trim().startsWith('1') && /^\d{11}$/.test(topup_account.trim()) ? topup_account.trim() : '00000000000',
+      business_type: 'topup',
+      status: 0,           // 待处理
+      topup_account: topup_account.trim(),
+      topup_account_type: 卡密.topup_account_type || '',
+      topup_member_name: 卡密.topup_member_name || '',
+      topup_arrival_time: 卡密.topup_arrival_time || '',
+      topup_is_expired: 到期状态,
+      login_ip: 纯IP || '',
+      created_at: new Date(),
+      order_log: JSON.stringify([{
+        时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+        操作: '客户提交充值订单',
+        状态: 'success',
+      }]),
+    });
+
+    // 标记卡密为已使用
+    await 卡密.update({ status: 1, used_by_order: 新订单.id });
+
+    // 异步查询IP城市（不阻塞订单创建，后台写入）
+    if (纯IP && 纯IP !== '127.0.0.1' && 纯IP !== '::1') {
+      setImmediate(() => 异步写入IP城市(新订单.id, 纯IP));
+    }
+
+    return res.json({
+      code: 1,
+      message: '充值订单提交成功',
+      data: {
+        order_no: 订单号,
+        topup_account: topup_account.trim(),
+        topup_member_name: 卡密.topup_member_name || '',
+        topup_arrival_time: 卡密.topup_arrival_time || '',
+        topup_account_type: 卡密.topup_account_type || '',
+      },
+    });
+  } catch (错误) {
+    console.error('[充值] 提交充值订单出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+};
+
+module.exports = { 验证充值卡密, 获取IP城市, 提交充值订单 };

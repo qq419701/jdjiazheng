@@ -80,6 +80,8 @@ const 页面限流 = rateLimit({
 app.use('/admin', express.static(path.join(__dirname, 'public/admin')));
 // 洗衣H5静态文件（/xi 路径）
 app.use('/xi', express.static(path.join(__dirname, 'public/xi')));
+// 充值H5静态文件（/cz 路径）
+app.use('/cz', express.static(path.join(__dirname, 'public/cz')));
 // 备注图片上传目录（/uploads/remarks/ 路径，供前端直接访问）
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // 前端H5静态文件（/ 根路径）
@@ -104,6 +106,9 @@ app.use('/api/verify-card', 卡密限流);
 app.use('/api/orders', 订单限流);
 app.use('/api/xi/verify-card', 卡密限流);
 app.use('/api/xi/orders', 订单限流);
+// 充值H5接口限流
+app.use('/api/cz/verify-card', 卡密限流);
+app.use('/api/cz/orders', 订单限流);
 app.use('/api', apiRouter);
 
 // ===== 前端路由处理（SPA支持）===== 
@@ -115,6 +120,11 @@ app.get('/admin/*', 页面限流, (req, res) => {
 // 洗衣H5路由兜底（/xi/* 返回洗衣H5首页）
 app.get('/xi/*', 页面限流, (req, res) => {
   res.sendFile(path.join(__dirname, 'public/xi/index.html'));
+});
+
+// 充值H5路由兜底（/cz/* 返回充值H5首页）
+app.get('/cz/*', 页面限流, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/cz/index.html'));
 });
 
 // H5前端路由兜底（所有非 /api /admin 路径均返回H5首页）

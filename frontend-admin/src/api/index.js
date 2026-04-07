@@ -143,3 +143,23 @@ export const 申请退款API = (id) => 请求实例.put(`/orders/${id}/status`, 
 export const 确认退款完成API = (id) => 请求实例.post(`/orders/${id}/confirm-refund`)
 export const 申请洗衣退款API = (id) => 请求实例.put(`/laundry-orders/${id}/status`, { status: 8 })
 export const 确认洗衣退款完成API = (id) => 请求实例.post(`/laundry-orders/${id}/confirm-refund`)
+
+// ===== 充值订单管理 =====
+export const 获取充值订单列表API = (参数) => 请求实例.get('/topup-orders', { params: 参数 })
+export const 获取充值订单详情API = (id) => 请求实例.get(`/topup-orders/${id}`)
+export const 更新充值订单状态API = (id, 数据) => 请求实例.put(`/topup-orders/${id}/status`, 数据)
+export const 更新充值订单备注API = (id, 数据) => 请求实例.put(`/topup-orders/${id}/remark`, 数据)
+export const 导出充值订单API = (参数) => 请求实例.get('/topup-orders/export', { params: 参数, responseType: 'blob' })
+export const 申请充值退款API = (id) => 请求实例.put(`/topup-orders/${id}/status`, { status: 8 })
+export const 确认充值退款完成API = (id) => 请求实例.post(`/topup-orders/${id}/confirm-refund`)
+export const 订单页搜索充值卡密API = (keyword) => 请求实例.get('/topup-orders/search-card', { params: { keyword } })
+
+// ===== 充值卡密管理 =====
+export const 获取充值卡密列表API = (参数) => 请求实例.get('/topup-cards', { params: 参数 })
+export const 生成充值卡密API = (数据) => 请求实例.post('/topup-cards/generate', 数据)
+export const 删除充值卡密API = (id) => 请求实例.delete(`/topup-cards/${id}`)
+export const 作废充值卡密API = (id) => 请求实例.put(`/topup-cards/${id}/invalidate`)
+export const 获取充值批次列表API = () => 请求实例.get('/topup-card-batches')
+export const 获取充值批次卡密API = (id) => 请求实例.get(`/topup-card-batches/${id}/cards`)
+export const 删除充值批次API = (id) => 请求实例.delete(`/topup-card-batches/${id}`)
+export const 获取充值预览卡密API = () => 请求实例.get('/topup-cards/preview-card')
