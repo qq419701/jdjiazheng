@@ -32,6 +32,7 @@ router.post('/agisoAcprSupplierApi/product/getTemplate', 验证奇所签名, 获
 
 // 卡密下单（核心接口）
 router.post('/agisoAcprSupplierApi/order/cardOrder', 验证奇所签名, 卡密下单);
+router.post('/agisoAcprSupplierApi/order/createPurchase', 验证奇所签名, 卡密下单);
 
 // 订单查询
 router.post('/agisoAcprSupplierApi/order/queryOrder', 验证奇所签名, 查询订单);
