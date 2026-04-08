@@ -676,7 +676,7 @@ const 提交充值订单 = async () => {
 }
 
 .详情值灰色 {
-  font-size: 11px;
+  font-size: 12px;
   color: #999;
   font-family: monospace;
 }

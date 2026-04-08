@@ -110,7 +110,7 @@ const 查询IP城市数据 = async (纯IP) => {
   // 主接口：太平洋PConline（国内稳定，无需Key，无频率限制）
   try {
     const 响应 = await axios.get(
-      `https://whois.pconline.com.cn/ipJson.jsp?ip=${纯IP}&json=true`,
+      `https://whois.pconline.com.cn/ipJson.jsp?ip=${encodeURIComponent(纯IP)}&json=true`,
       { timeout: 4000 }
     );
     if (响应.data && 响应.data.pro) {
@@ -127,7 +127,7 @@ const 查询IP城市数据 = async (纯IP) => {
   // 备用接口：vore.top（国内托管，无需Key）
   try {
     const 响应2 = await axios.get(
-      `https://api.vore.top/api/IPdata?ip=${纯IP}`,
+      `https://api.vore.top/api/IPdata?ip=${encodeURIComponent(纯IP)}`,
       { timeout: 4000 }
     );
     if (响应2.data?.code === 200 && 响应2.data?.ipdata) {
@@ -261,7 +261,7 @@ const 获取IP城市 = async (req, res) => {
     // 3. 主接口：太平洋PConline（国内稳定，无需Key，无频率限制）
     try {
       const 响应 = await axios.get(
-        `https://whois.pconline.com.cn/ipJson.jsp?ip=${纯IP}&json=true`,
+        `https://whois.pconline.com.cn/ipJson.jsp?ip=${encodeURIComponent(纯IP)}&json=true`,
         { timeout: 4000 }
       );
       if (响应.data && 响应.data.pro) {
@@ -282,7 +282,7 @@ const 获取IP城市 = async (req, res) => {
     // 4. 备用接口：vore.top（国内托管，无需Key）
     try {
       const 响应2 = await axios.get(
-        `https://api.vore.top/api/IPdata?ip=${纯IP}`,
+        `https://api.vore.top/api/IPdata?ip=${encodeURIComponent(纯IP)}`,
         { timeout: 4000 }
       );
       if (响应2.data?.code === 200 && 响应2.data?.ipdata) {
