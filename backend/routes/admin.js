@@ -792,6 +792,8 @@ router.post('/topup-cards/generate', 验证Token, async (req, res) => {
       topup_arrival_time = '',
       topup_show_expired = 0,
       topup_steps = '',
+      topup_account_regex = '',
+      topup_account_error_msg = '',
     } = req.body;
 
     const { CardBatch, Card } = require('../models');
@@ -818,6 +820,8 @@ router.post('/topup-cards/generate', 验证Token, async (req, res) => {
       topup_arrival_time,
       topup_show_expired: parseInt(topup_show_expired) || 0,
       topup_steps,
+      topup_account_regex: topup_account_regex || null,
+      topup_account_error_msg: topup_account_error_msg || null,
     });
 
     // 获取已有卡密集合，避免重复
@@ -852,6 +856,8 @@ router.post('/topup-cards/generate', 验证Token, async (req, res) => {
           topup_arrival_time,
           topup_show_expired: parseInt(topup_show_expired) || 0,
           topup_steps,
+          topup_account_regex: topup_account_regex || null,
+          topup_account_error_msg: topup_account_error_msg || null,
         });
         生成数量++;
       }

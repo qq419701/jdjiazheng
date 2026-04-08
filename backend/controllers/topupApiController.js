@@ -24,13 +24,27 @@ const 生成充值订单号 = () => {
  * @param {string} 账号 - 用户输入的充值账号
  * @param {string} 账号类型 - phone/wechat/qq/email/other
  * @param {Object} 设置对象 - 数据库设置键值对
+ * @param {Object} 卡密级设置 - 卡密级自定义正则（可选，优先级高于全局设置）
  * @returns {Object} { 有效: boolean, 错误信息: string }
  */
-const 验证充值账号格式 = (账号, 账号类型, 设置对象) => {
+const 验证充值账号格式 = (账号, 账号类型, 设置对象, 卡密级设置 = {}) => {
   if (!账号 || !账号.trim()) {
     return { 有效: false, 错误信息: '充值账号不能为空' };
   }
   const 账号值 = 账号.trim();
+
+  // 卡密级自定义正则（优先级最高）
+  if (卡密级设置.topup_account_regex) {
+    try {
+      const 正则 = new RegExp(卡密级设置.topup_account_regex);
+      if (!正则.test(账号值)) {
+        return { 有效: false, 错误信息: 卡密级设置.topup_account_error_msg || '账号格式不正确' };
+      }
+      return { 有效: true, 错误信息: '' };
+    } catch {
+      // 正则无效，忽略卡密级设置，继续走默认验证
+    }
+  }
 
   if (账号类型 === 'phone') {
     // 从数据库读取正则，默认中国大陆手机号
@@ -40,10 +54,11 @@ const 验证充值账号格式 = (账号, 账号类型, 设置对象) => {
       return { 有效: false, 错误信息: '请输入正确的手机号（11位数字）' };
     }
   } else if (账号类型 === 'wechat') {
-    const 正则字符串 = 设置对象.topup_wechat_regex || '^[a-zA-Z][a-zA-Z0-9_-]{5,19}$';
+    // 支持数字开头（兼容手机号绑定的微信登录）
+    const 正则字符串 = 设置对象.topup_wechat_regex || '^[a-zA-Z0-9][a-zA-Z0-9_-]{5,19}$';
     const 正则 = new RegExp(正则字符串);
     if (!正则.test(账号值)) {
-      return { 有效: false, 错误信息: '请输入正确的微信号（6-20位字母/数字/下划线，以字母开头）' };
+      return { 有效: false, 错误信息: '请输入正确的微信号（6-20位字母/数字/下划线，兼容手机号绑定）' };
     }
   } else if (账号类型 === 'qq') {
     const 正则字符串 = 设置对象.topup_qq_regex || '^[1-9]\\d{4,10}$';
@@ -52,7 +67,8 @@ const 验证充值账号格式 = (账号, 账号类型, 设置对象) => {
       return { 有效: false, 错误信息: '请输入正确的QQ号（5-11位数字）' };
     }
   } else if (账号类型 === 'email') {
-    const 邮箱正则 = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+    const 邮箱正则字符串 = 设置对象.topup_email_regex || '^[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}$';
+    const 邮箱正则 = new RegExp(邮箱正则字符串);
     if (!邮箱正则.test(账号值)) {
       return { 有效: false, 错误信息: '请输入正确的邮箱地址' };
     }
@@ -86,6 +102,50 @@ const 是有效IP = (ip) => {
 }
 
 /**
+ * 查询IP城市（主接口：太平洋PConline，备用：vore.top）
+ * @param {string} 纯IP - 已清洗的IPv4地址
+ * @returns {Object|null} { province, city, full_city } 或 null（查询失败）
+ */
+const 查询IP城市数据 = async (纯IP) => {
+  // 主接口：太平洋PConline（国内稳定，无需Key，无频率限制）
+  try {
+    const 响应 = await axios.get(
+      `https://whois.pconline.com.cn/ipJson.jsp?ip=${encodeURIComponent(纯IP)}&json=true`,
+      { timeout: 4000 }
+    );
+    if (响应.data && 响应.data.pro) {
+      return {
+        province: 响应.data.pro || '',
+        city: 响应.data.city || '',
+        full_city: `${响应.data.pro || ''}${响应.data.city || ''}`,
+      };
+    }
+  } catch (e) {
+    console.warn('[充值] 太平洋IP定位失败，切换备用接口:', e.message);
+  }
+
+  // 备用接口：vore.top（国内托管，无需Key）
+  try {
+    const 响应2 = await axios.get(
+      `https://api.vore.top/api/IPdata?ip=${encodeURIComponent(纯IP)}`,
+      { timeout: 4000 }
+    );
+    if (响应2.data?.code === 200 && 响应2.data?.ipdata) {
+      const d = 响应2.data.ipdata;
+      return {
+        province: d.info1 || '',
+        city: d.info2 || '',
+        full_city: `${d.info1 || ''}${d.info2 || ''}`,
+      };
+    }
+  } catch (e) {
+    console.warn('[充值] vore.top IP定位也失败:', e.message);
+  }
+
+  return null;
+};
+
+/**
  * 异步查询IP城市并写入订单
  * @param {number} 订单ID - 订单ID
  * @param {string} IP地址 - 用户IP
@@ -97,16 +157,12 @@ const 异步写入IP城市 = async (订单ID, IP地址) => {
     // 验证IP格式，防止SSRF攻击
     if (!是有效IP(纯IP)) return;
 
-    const 响应 = await axios.get(
-      `http://ip-api.com/json/${纯IP}?lang=zh-CN&fields=status,regionName,city,query`,
-      { timeout: 5000 }
-    );
-
-    if (响应.data?.status === 'success') {
+    const 城市数据 = await 查询IP城市数据(纯IP);
+    if (城市数据) {
       await Order.update(
         {
-          login_province: 响应.data.regionName || '',
-          login_city: `${响应.data.regionName || ''}${响应.data.city || ''}`,
+          login_province: 城市数据.province,
+          login_city: 城市数据.full_city,
         },
         { where: { id: 订单ID } }
       );
@@ -177,9 +233,9 @@ const 验证充值卡密 = async (req, res) => {
 };
 
 /**
- * 获取IP归属城市（后端代理 ip-api.com，解决HTTPS混合内容问题）
+ * 获取IP归属城市（后端代理，解决HTTPS混合内容问题）
  * GET /api/cz/ip-city
- * 从请求头获取真实IP，查询归属城市返回给前端
+ * 主接口：太平洋PConline，备用：vore.top，都失败才返回失败
  */
 const 获取IP城市 = async (req, res) => {
   try {
@@ -202,25 +258,50 @@ const 获取IP城市 = async (req, res) => {
       return res.json({ code: 0, message: 'IP格式无效' });
     }
 
-    // 3. 调用 ip-api.com（后端代理，解决HTTPS混合内容问题）
-    const 响应 = await axios.get(
-      `http://ip-api.com/json/${纯IP}?lang=zh-CN&fields=status,message,regionName,city,query`,
-      { timeout: 5000 }
-    );
-
-    if (响应.data?.status === 'success') {
-      return res.json({
-        code: 1,
-        data: {
-          ip: 响应.data.query || 纯IP,
-          province: 响应.data.regionName || '',
-          city: 响应.data.city || '',
-          full_city: `${响应.data.regionName || ''}${响应.data.city || ''}`,
-        },
-      });
+    // 3. 主接口：太平洋PConline（国内稳定，无需Key，无频率限制）
+    try {
+      const 响应 = await axios.get(
+        `https://whois.pconline.com.cn/ipJson.jsp?ip=${encodeURIComponent(纯IP)}&json=true`,
+        { timeout: 4000 }
+      );
+      if (响应.data && 响应.data.pro) {
+        return res.json({
+          code: 1,
+          data: {
+            ip: 纯IP,
+            province: 响应.data.pro || '',
+            city: 响应.data.city || '',
+            full_city: `${响应.data.pro || ''}${响应.data.city || ''}`,
+          },
+        });
+      }
+    } catch (e) {
+      console.warn('[充值] 太平洋IP定位失败，切换备用接口:', e.message);
     }
 
-    return res.json({ code: 0, message: 'IP定位失败' });
+    // 4. 备用接口：vore.top（国内托管，无需Key）
+    try {
+      const 响应2 = await axios.get(
+        `https://api.vore.top/api/IPdata?ip=${encodeURIComponent(纯IP)}`,
+        { timeout: 4000 }
+      );
+      if (响应2.data?.code === 200 && 响应2.data?.ipdata) {
+        const d = 响应2.data.ipdata;
+        return res.json({
+          code: 1,
+          data: {
+            ip: 纯IP,
+            province: d.info1 || '',
+            city: d.info2 || '',
+            full_city: `${d.info1 || ''}${d.info2 || ''}`,
+          },
+        });
+      }
+    } catch (e) {
+      console.warn('[充值] vore.top IP定位也失败:', e.message);
+    }
+
+    return res.json({ code: 0, message: 'IP定位服务暂不可用' });
   } catch (错误) {
     console.error('[充值] IP定位出错:', 错误.message);
     return res.json({ code: 0, message: 'IP定位服务暂不可用' });
@@ -265,8 +346,13 @@ const 提交充值订单 = async (req, res) => {
     const 设置对象 = {};
     设置列表.forEach(s => { 设置对象[s.key_name] = s.key_value; });
 
-    // 验证充值账号格式
-    const 账号验证结果 = 验证充值账号格式(topup_account.trim(), 卡密.topup_account_type || 'other', 设置对象);
+    // 验证充值账号格式（优先使用卡密级自定义正则）
+    const 账号验证结果 = 验证充值账号格式(
+      topup_account.trim(),
+      卡密.topup_account_type || 'other',
+      设置对象,
+      { topup_account_regex: 卡密.topup_account_regex, topup_account_error_msg: 卡密.topup_account_error_msg }
+    );
     if (!账号验证结果.有效) {
       return res.json({ code: 0, message: 账号验证结果.错误信息 });
     }
