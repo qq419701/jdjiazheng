@@ -49,7 +49,43 @@ const CardBatch = 数据库连接.define('CardBatch', {
   business_type: {
     type: DataTypes.STRING(20),
     defaultValue: 'jiazheng',
-    comment: '业务类型：jiazheng=京东家政 xiyifu=京东洗衣服',
+    comment: '业务类型：jiazheng=京东家政 xiyifu=京东洗衣服 topup=会员充值',
+  },
+  // 充值专用字段（business_type='topup' 时使用）
+  topup_account_type: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    comment: '充值账号类型',
+  },
+  topup_account_label: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: '账号输入标签',
+  },
+  topup_member_name: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: '充值会员名称',
+  },
+  topup_member_icon: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    comment: '会员图标URL',
+  },
+  topup_arrival_time: {
+    type: DataTypes.STRING(50),
+    allowNull: true,
+    comment: '预计到账时间',
+  },
+  topup_show_expired: {
+    type: DataTypes.TINYINT,
+    defaultValue: 0,
+    comment: '是否显示到期选项',
+  },
+  topup_steps: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: '充值步骤说明',
   },
   product_id: {
     type: DataTypes.INTEGER,

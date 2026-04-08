@@ -673,4 +673,255 @@ router.delete('/sub-accounts/:id', 验证Token, 仅超管, async (req, res) => {
   }
 });
 
+// ===== 充值订单管理 =====
+
+// 导出充值订单CSV（必须在 /:id 之前注册）
+router.get('/topup-orders/export', 验证Token, async (req, res) => {
+  req.query.business_type = 'topup';
+  return 导出订单(req, res);
+});
+
+// 充值订单页搜索卡密（按卡密码查找，用于卡密作废功能；必须在 /:id 之前注册）
+router.get('/topup-orders/search-card', 验证Token, async (req, res) => {
+  try {
+    const { Op } = require('sequelize');
+    const { Card } = require('../models');
+    const keyword = (req.query.keyword || '').trim();
+    if (!keyword) return res.json({ code: 0, message: '请输入卡密码' });
+
+    const 卡密列表 = await Card.findAll({
+      where: {
+        business_type: 'topup',
+        code: { [Op.like]: `%${keyword}%` },
+      },
+      order: [['created_at', 'DESC']],
+      limit: 20,
+    });
+
+    const 结果 = await Promise.all(卡密列表.map(async (卡密) => {
+      let order_no = null;
+      try {
+        const 订单 = await Order.findOne({
+          where: { card_code: 卡密.code },
+          order: [['created_at', 'DESC']],
+          attributes: ['order_no'],
+        });
+        if (订单) order_no = 订单.order_no;
+      } catch {}
+      return {
+        id: 卡密.id,
+        code: 卡密.code,
+        status: 卡密.status,
+        topup_member_name: 卡密.topup_member_name,
+        created_at: 卡密.created_at,
+        order_no,
+      };
+    }));
+
+    res.json({ code: 1, message: '获取成功', data: 结果 });
+  } catch (错误) {
+    console.error('[充值] 搜索充值卡密出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+// 充值订单列表（强制 business_type='topup'）
+router.get('/topup-orders', 验证Token, async (req, res) => {
+  req.query.business_type = 'topup';
+  return 获取订单列表(req, res);
+});
+
+// 充值订单详情
+router.get('/topup-orders/:id', 验证Token, 获取订单详情);
+
+// 更新充值订单状态
+router.put('/topup-orders/:id/status', 验证Token, 更新订单状态);
+
+// 更新充值订单备注
+router.put('/topup-orders/:id/remark', 验证Token, 更新订单备注);
+
+// 申请退款（status=8 退款处理中）
+router.post('/topup-orders/:id/confirm-refund', 验证Token, async (req, res) => {
+  // 充值退款完成：订单状态改为已取消(4)，卡密状态改为已失效(2)
+  try {
+    const 订单 = await Order.findOne({ where: { id: req.params.id, business_type: 'topup' } });
+    if (!订单) return res.json({ code: 0, message: '充值订单不存在' });
+
+    // 作废对应卡密
+    if (订单.card_code) {
+      const { Card } = require('../models');
+      await Card.update({ status: 2 }, { where: { code: 订单.card_code } });
+    }
+
+    // 更新订单状态为已取消
+    const { 安全解析JSON } = require('../utils/helpers');
+    const 现有日志 = 安全解析JSON(订单.order_log, []);
+    现有日志.push({
+      时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+      操作: '退款完成，卡密已作废',
+      状态: 'success',
+    });
+    await 订单.update({ status: 4, order_log: JSON.stringify(现有日志) });
+
+    res.json({ code: 1, message: '退款完成，卡密已作废' });
+  } catch (错误) {
+    console.error('[充值] 确认退款出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+// ===== 充值卡密管理 =====
+
+// 充值卡密列表（强制 business_type='topup'）
+router.get('/topup-cards', 验证Token, async (req, res) => {
+  req.query.business_type = 'topup';
+  return 获取卡密列表(req, res);
+});
+
+// 生成充值卡密（包含所有充值配置信息）
+router.post('/topup-cards/generate', 验证Token, async (req, res) => {
+  try {
+    const {
+      count = 1,
+      remark = '',
+      expired_at = null,
+      topup_account_type = 'phone',
+      topup_account_label = '请输入手机号',
+      topup_member_name = '',
+      topup_member_icon = '',
+      topup_arrival_time = '',
+      topup_show_expired = 0,
+      topup_steps = '',
+    } = req.body;
+
+    const { CardBatch, Card } = require('../models');
+    const { 生成卡密: 生成卡密码 } = require('../utils/helpers');
+
+    // 限制数量
+    const 实际数量 = Math.min(parseInt(count) || 1, 1000);
+
+    // 生成批次号（时间戳+随机数，防止并发时碰撞）
+    const 批次号 = `CZB${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+
+    // 创建批次（存储充值配置）
+    const 批次 = await CardBatch.create({
+      batch_no: 批次号,
+      count: 实际数量,
+      remark: remark || '',
+      business_type: 'topup',
+      created_by: req.管理员?.id || null,
+      created_at: new Date(),
+      topup_account_type,
+      topup_account_label,
+      topup_member_name,
+      topup_member_icon,
+      topup_arrival_time,
+      topup_show_expired: parseInt(topup_show_expired) || 0,
+      topup_steps,
+    });
+
+    // 获取已有卡密集合，避免重复
+    const 现有卡密 = await Card.findAll({ attributes: ['code'] });
+    const 已有卡密集合 = new Set(现有卡密.map(c => c.code));
+
+    const 新卡密列表 = [];
+    let 生成数量 = 0;
+    let 尝试次数 = 0;
+    const 最大尝试 = 实际数量 * 10;
+
+    while (生成数量 < 实际数量 && 尝试次数 < 最大尝试) {
+      尝试次数++;
+      const 新卡密码 = 生成卡密码(16);
+      if (!已有卡密集合.has(新卡密码)) {
+        已有卡密集合.add(新卡密码);
+        新卡密列表.push({
+          code: 新卡密码,
+          category: '会员充值',
+          service_type: topup_member_name || '会员充值',
+          remark: remark || '',
+          status: 0,
+          created_by: req.管理员?.id || null,
+          batch_id: 批次.id,
+          expired_at: expired_at || null,
+          created_at: new Date(),
+          business_type: 'topup',
+          topup_account_type,
+          topup_account_label,
+          topup_member_name,
+          topup_member_icon,
+          topup_arrival_time,
+          topup_show_expired: parseInt(topup_show_expired) || 0,
+          topup_steps,
+        });
+        生成数量++;
+      }
+    }
+
+    const 插入结果 = await Card.bulkCreate(新卡密列表);
+    const 卡密列表 = 插入结果.map(c => c.code);
+
+    res.json({
+      code: 1,
+      message: `成功生成 ${卡密列表.length} 个充值卡密`,
+      data: {
+        batch_no: 批次号,
+        batch_id: 批次.id,
+        codes: 卡密列表,
+        count: 卡密列表.length,
+      },
+    });
+  } catch (错误) {
+    console.error('[充值] 生成充值卡密出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+// 获取充值预览卡密（用于后台预览充值前端）
+router.get('/topup-cards/preview-card', 验证Token, async (req, res) => {
+  try {
+    const { Card } = require('../models');
+    const 卡密 = await Card.findOne({
+      where: { status: 0, business_type: 'topup' },
+      order: [['created_at', 'DESC']],
+    });
+    if (!卡密) return res.json({ code: 0, message: '暂无可用充值卡密，请先生成卡密', data: null });
+    res.json({ code: 1, message: 'ok', data: { code: 卡密.code } });
+  } catch (错误) {
+    console.error('[充值] 获取充值预览卡密出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+// 删除充值卡密
+router.delete('/topup-cards/:id', 验证Token, 删除卡密);
+
+// 作废充值卡密（将未使用的充值卡密标记为已失效，不可逆操作）
+router.put('/topup-cards/:id/invalidate', 验证Token, 作废卡密);
+
+// 充值卡密批次列表（只返回充值批次）
+router.get('/topup-card-batches', 验证Token, async (req, res) => {
+  const { CardBatch, Card } = require('../models');
+  try {
+    const 批次列表 = await CardBatch.findAll({
+      where: { business_type: 'topup' },
+      order: [['created_at', 'DESC']],
+    });
+    const 批次数据 = await Promise.all(批次列表.map(async (批次) => {
+      const [实际数量, 已用数量, 未用数量] = await Promise.all([
+        Card.count({ where: { batch_id: 批次.id } }),
+        Card.count({ where: { batch_id: 批次.id, status: 1 } }),
+        Card.count({ where: { batch_id: 批次.id, status: 0 } }),
+      ]);
+      return { ...批次.toJSON(), actual_count: 实际数量, used_count: 已用数量, unused_count: 未用数量 };
+    }));
+    res.json({ code: 1, message: '获取成功', data: 批次数据 });
+  } catch (e) {
+    console.error('[充值] 获取充值批次出错:', e);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+router.get('/topup-card-batches/:id/cards', 验证Token, 获取批次卡密);
+router.delete('/topup-card-batches/:id', 验证Token, 删除批次);
+
 module.exports = router;

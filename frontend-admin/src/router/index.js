@@ -113,6 +113,13 @@ const routes = [
       },
       // ===== 充值业务（预留占位页面）=====
       {
+        // 充值卡密生成页（必须在 topup-cards 之前注册，防止被拦截）
+        path: 'topup-cards/generate',
+        name: 'TopupCardGenerate',
+        component: () => import('../views/TopupCardGenerate.vue'),
+        meta: { 标题: '生成充值卡密', 权限Key: 'topup_cards' },
+      },
+      {
         path: 'topup-orders',
         name: 'TopupOrders',
         component: () => import('../views/TopupOrders.vue'),
