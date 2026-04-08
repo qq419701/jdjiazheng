@@ -30,7 +30,7 @@ router.post('/agisoAcprSupplierApi/product/getTemplate', 验证奇所签名, 获
 
 // ===== 订单API =====
 
-// 卡密下单（核心接口）
+// 卡密下单（核心接口）- 同时注册两个路径兼容奇所标准
 router.post('/agisoAcprSupplierApi/order/cardOrder', 验证奇所签名, 卡密下单);
 router.post('/agisoAcprSupplierApi/order/createPurchase', 验证奇所签名, 卡密下单);
 
