@@ -40,8 +40,13 @@ const 获取订单列表 = async (req, res) => {
     }
 
     // 城市筛选
+    // 充值订单（business_type='topup'）的城市存储在 login_city 字段，其他订单在 city 字段
     if (city) {
-      条件.city = { [Op.like]: `%${city}%` };
+      if (business_type === 'topup') {
+        条件.login_city = { [Op.like]: `%${city}%` };
+      } else {
+        条件.city = { [Op.like]: `%${city}%` };
+      }
     }
 
     // 业务类型筛选

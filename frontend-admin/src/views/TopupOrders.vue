@@ -369,11 +369,11 @@ const 加载订单 = async () => {
     const 结果 = await 获取充值订单列表API(参数)
     if (结果.code === 1) {
       // 对包含order_log的数据进行解析
-      订单列表.value = (结果.data.rows || []).map(订单 => ({
+      订单列表.value = (结果.data.list || 结果.data.rows || []).map(订单 => ({
         ...订单,
         order_log: 安全解析JSON(订单.order_log, []),
       }))
-      总数.value = 结果.data.count || 0
+      总数.value = 结果.data.total || 结果.data.count || 0
     }
   } catch {
     ElMessage.error('加载订单失败')
