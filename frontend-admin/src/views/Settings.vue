@@ -370,7 +370,7 @@ const 设置表单 = ref({
   jz_popup1_btn_text: '我知道了',
   jz_popup1_btn_color: '#e54635',
   jz_popup1_btn_size: 'large',
-  jz_popup1_auto_close: '0',
+  jz_popup1_auto_close: 0,
   // 家政弹窗2配置
   jz_popup2_enabled: '0',
   jz_popup2_title: '退改签须知',
@@ -382,7 +382,7 @@ const 设置表单 = ref({
   jz_popup2_btn_text: '我已知晓',
   jz_popup2_btn_color: '#e54635',
   jz_popup2_btn_size: 'large',
-  jz_popup2_auto_close: '0',
+  jz_popup2_auto_close: 0,
 })
 
 const 加载设置 = async () => {
@@ -429,7 +429,7 @@ const 加载设置 = async () => {
         jz_popup1_btn_text: 数据.jz_popup1_btn_text || '我知道了',
         jz_popup1_btn_color: 数据.jz_popup1_btn_color || '#e54635',
         jz_popup1_btn_size: 数据.jz_popup1_btn_size || 'large',
-        jz_popup1_auto_close: 数据.jz_popup1_auto_close || '0',
+        jz_popup1_auto_close: parseInt(数据.jz_popup1_auto_close) || 0,
         // 家政弹窗2配置
         jz_popup2_enabled: 数据.jz_popup2_enabled || '0',
         jz_popup2_title: 数据.jz_popup2_title || '退改签须知',
@@ -441,7 +441,7 @@ const 加载设置 = async () => {
         jz_popup2_btn_text: 数据.jz_popup2_btn_text || '我已知晓',
         jz_popup2_btn_color: 数据.jz_popup2_btn_color || '#e54635',
         jz_popup2_btn_size: 数据.jz_popup2_btn_size || 'large',
-        jz_popup2_auto_close: 数据.jz_popup2_auto_close || '0',
+        jz_popup2_auto_close: parseInt(数据.jz_popup2_auto_close) || 0,
       }
     }
   } finally {

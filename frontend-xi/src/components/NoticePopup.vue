@@ -30,7 +30,7 @@
           <button
             class="确认按钮"
             :class="`按钮尺寸_${btnSize}`"
-            :style="{ background: `linear-gradient(135deg, ${btnColor}, ${btnColorLight})` }"
+            :style="{ background: `linear-gradient(135deg, ${btnColor}, ${btnColor})` }"
             @click="handleClose"
           >
             {{ 按钮显示文字 }}
@@ -69,10 +69,7 @@ const 内容行列表 = computed(() => {
   return props.content.split('\n').filter(行 => 行.trim())
 })
 
-// 按钮颜色加亮（用于渐变右侧颜色）
-const btnColorLight = computed(() => {
-  return props.btnColor
-})
+
 
 const 按钮显示文字 = computed(() => {
   if (倒计时剩余.value > 0) {

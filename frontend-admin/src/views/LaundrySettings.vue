@@ -297,7 +297,7 @@ const 设置表单 = ref({
   xi_popup1_btn_text: '我知道了',
   xi_popup1_btn_color: '#1989fa',
   xi_popup1_btn_size: 'large',
-  xi_popup1_auto_close: '0',
+  xi_popup1_auto_close: 0,
   // 洗衣弹窗2配置
   xi_popup2_enabled: '0',
   xi_popup2_title: '取件时间说明',
@@ -309,7 +309,7 @@ const 设置表单 = ref({
   xi_popup2_btn_text: '我知道了',
   xi_popup2_btn_color: '#1989fa',
   xi_popup2_btn_size: 'large',
-  xi_popup2_auto_close: '0',
+  xi_popup2_auto_close: 0,
 })
 
 // 回调地址（自动拼接 site_url + /api/laundry/callback）
@@ -372,7 +372,7 @@ const 加载设置 = async () => {
         xi_popup1_btn_text: 数据.xi_popup1_btn_text || '我知道了',
         xi_popup1_btn_color: 数据.xi_popup1_btn_color || '#1989fa',
         xi_popup1_btn_size: 数据.xi_popup1_btn_size || 'large',
-        xi_popup1_auto_close: 数据.xi_popup1_auto_close || '0',
+        xi_popup1_auto_close: parseInt(数据.xi_popup1_auto_close) || 0,
         // 洗衣弹窗2配置
         xi_popup2_enabled: 数据.xi_popup2_enabled || '0',
         xi_popup2_title: 数据.xi_popup2_title || '取件时间说明',
@@ -384,7 +384,7 @@ const 加载设置 = async () => {
         xi_popup2_btn_text: 数据.xi_popup2_btn_text || '我知道了',
         xi_popup2_btn_color: 数据.xi_popup2_btn_color || '#1989fa',
         xi_popup2_btn_size: 数据.xi_popup2_btn_size || 'large',
-        xi_popup2_auto_close: 数据.xi_popup2_auto_close || '0',
+        xi_popup2_auto_close: parseInt(数据.xi_popup2_auto_close) || 0,
       }
     }
   } finally {

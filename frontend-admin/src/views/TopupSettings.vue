@@ -244,7 +244,7 @@ const 基本设置 = ref({
   cz_popup1_btn_text: '我知道了',
   cz_popup1_btn_color: '#667eea',
   cz_popup1_btn_size: 'large',
-  cz_popup1_auto_close: '0',
+  cz_popup1_auto_close: 0,
   // 充值弹窗2配置
   cz_popup2_enabled: '0',
   cz_popup2_title: '账号确认',
@@ -256,7 +256,7 @@ const 基本设置 = ref({
   cz_popup2_btn_text: '我已确认',
   cz_popup2_btn_color: '#667eea',
   cz_popup2_btn_size: 'large',
-  cz_popup2_auto_close: '0',
+  cz_popup2_auto_close: 0,
 })
 
 // 验证设置
@@ -301,7 +301,7 @@ onMounted(async () => {
       基本设置.value.cz_popup1_btn_text = 数据.cz_popup1_btn_text || '我知道了'
       基本设置.value.cz_popup1_btn_color = 数据.cz_popup1_btn_color || '#667eea'
       基本设置.value.cz_popup1_btn_size = 数据.cz_popup1_btn_size || 'large'
-      基本设置.value.cz_popup1_auto_close = 数据.cz_popup1_auto_close || '0'
+      基本设置.value.cz_popup1_auto_close = parseInt(数据.cz_popup1_auto_close) || 0
       // 充值弹窗2配置
       基本设置.value.cz_popup2_enabled = 数据.cz_popup2_enabled || '0'
       基本设置.value.cz_popup2_title = 数据.cz_popup2_title || '账号确认'
@@ -313,7 +313,7 @@ onMounted(async () => {
       基本设置.value.cz_popup2_btn_text = 数据.cz_popup2_btn_text || '我已确认'
       基本设置.value.cz_popup2_btn_color = 数据.cz_popup2_btn_color || '#667eea'
       基本设置.value.cz_popup2_btn_size = 数据.cz_popup2_btn_size || 'large'
-      基本设置.value.cz_popup2_auto_close = 数据.cz_popup2_auto_close || '0'
+      基本设置.value.cz_popup2_auto_close = parseInt(数据.cz_popup2_auto_close) || 0
       // 验证设置
       验证设置.value.topup_phone_regex = 数据.topup_phone_regex || '^1[3-9]\\d{9}$'
       验证设置.value.topup_wechat_regex = 数据.topup_wechat_regex || '^[a-zA-Z0-9][a-zA-Z0-9_-]{5,19}$'
