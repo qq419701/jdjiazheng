@@ -106,6 +106,16 @@ const Card = 数据库连接.define('Card', {
     allowNull: true,
     comment: '充值步骤说明，如：①填写充值账号 ②等待客服联系 ③充值成功（显示在前端）',
   },
+  topup_account_regex: {
+    type: DataTypes.STRING(200),
+    allowNull: true,
+    comment: '批次级自定义账号验证正则（覆盖全局设置正则，为空则使用全局）',
+  },
+  topup_account_error_msg: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: '自定义验证失败提示语（如：请输入正确的游戏账号）',
+  },
   agiso_order_no: {
     type: DataTypes.STRING(64),
     allowNull: true,

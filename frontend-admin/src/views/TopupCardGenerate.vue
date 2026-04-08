@@ -55,6 +55,20 @@
           <div class="字段说明">开启后，充值H5会显示"会员是否已到期"的是/否单选（某些充值不需要此选项）</div>
         </el-form-item>
 
+        <!-- 高级：自定义验证（可选） -->
+        <el-divider content-position="left">
+          <span style="font-size:12px; color:#999">高级：自定义验证（可选）</span>
+        </el-divider>
+
+        <el-form-item label="自定义验证正则">
+          <el-input v-model="表单.topup_account_regex" placeholder="留空则使用全局验证规则（适用于other类型或特殊需求）" style="width: 380px" />
+          <div class="字段说明">仅在账号类型为"自定义"或需要覆盖默认验证时填写。如：^[a-zA-Z0-9]{6,20}$</div>
+        </el-form-item>
+
+        <el-form-item label="验证失败提示语">
+          <el-input v-model="表单.topup_account_error_msg" placeholder="如：请输入正确的游戏账号（6-20位字母数字）" style="width: 380px" />
+        </el-form-item>
+
         <!-- 充值步骤说明 -->
         <el-form-item label="充值步骤说明">
           <el-input v-model="表单.topup_steps" placeholder="如：①填写充值账号 ②接听客服电话 ③充值成功" style="width: 400px" />
@@ -137,6 +151,8 @@ const 表单 = ref({
   topup_arrival_time: '1-6小时',
   topup_show_expired: 0,
   topup_steps: '①填写充值账号 ②接听人工客服电话 ③充值成功',
+  topup_account_regex: '',
+  topup_account_error_msg: '',
   remark: '',
   expired_at: null,
 })
@@ -158,6 +174,8 @@ const 自动填充账号标签 = (类型) => {
 const 运营说明文字 = computed(() => {
   if (!生成结果.value) return ''
   const t = 表单.value
+  const 自定义验证行 = t.topup_account_regex ? `\n🔧 自定义验证正则：${t.topup_account_regex}` : ''
+  const 验证提示行 = t.topup_account_error_msg ? `\n💬 验证提示：${t.topup_account_error_msg}` : ''
   return `
 ═══════ 运营使用说明 ═══════
 🔗 充值链接格式：${站点域名.value || '域名'}/cz/卡密码
@@ -166,7 +184,7 @@ const 运营说明文字 = computed(() => {
 📝 前端输入提示：${t.topup_account_label}
 ⏱  预计到账时间：${t.topup_arrival_time || '（未设置）'}
 🔍 是否显示到期选项：${t.topup_show_expired ? '是' : '否'}
-📋 充值步骤：${t.topup_steps || '（未设置）'}
+📋 充值步骤：${t.topup_steps || '（未设置）'}${自定义验证行}${验证提示行}
 ════════════════════════════`
 })
 

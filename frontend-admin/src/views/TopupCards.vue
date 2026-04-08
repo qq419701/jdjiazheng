@@ -51,11 +51,12 @@
           <el-table-column label="生成时间" width="150">
             <template #default="{ row }">{{ 格式化北京时间(row.created_at) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="380" fixed="right">
+          <el-table-column label="操作" width="430" fixed="right">
             <template #default="{ row }">
               <el-button size="small" @click="打开批次卡密详情(row)">查看卡密</el-button>
               <el-button size="small" type="primary" @click="复制批次完整链接(row)">复制完整链接</el-button>
               <el-button size="small" type="info" @click="复制批次仅卡密(row)">复制仅卡密</el-button>
+              <el-button size="small" type="success" @click="导出批次TXT(row)">导出TXT</el-button>
               <el-button size="small" type="danger" @click="删除批次(row.id, row.used_count)">删除批次</el-button>
             </template>
           </el-table-column>
@@ -238,7 +239,10 @@ const 加载卡密 = async () => {
   try {
     const 参数 = { keyword: 搜索.value.keyword, status: 搜索.value.status, batch_id: 搜索.value.batch_id, limit: 200 }
     const 结果 = await 获取充值卡密列表API(参数)
-    if (结果.code === 1) 卡密列表.value = 结果.data?.rows || 结果.data || []
+    if (结果.code === 1) {
+      // 兼容两种返回格式：数组 或 { rows, list }
+      卡密列表.value = Array.isArray(结果.data) ? 结果.data : (结果.data?.rows || 结果.data?.list || [])
+    }
   } catch { ElMessage.error('加载卡密失败') } finally { 卡密加载中.value = false }
 }
 
@@ -262,6 +266,10 @@ const 打开批次卡密详情 = async (批次) => {
 
 // 复制
 const 复制单个链接 = (code) => {
+  if (!站点域名.value) {
+    ElMessage.warning('请先在系统设置中配置站点域名')
+    return
+  }
   const 链接 = `${站点域名.value}/cz/${code}`
   navigator.clipboard.writeText(链接).then(() => ElMessage.success('复制成功')).catch(() => ElMessage.error('复制失败'))
 }
@@ -288,6 +296,28 @@ const 复制批次仅卡密 = async (批次) => {
   }
   const 只卡密 = 卡密列表数据.map(c => c.code).join('\n')
   navigator.clipboard.writeText(只卡密).then(() => ElMessage.success(`已复制 ${卡密列表数据.length} 个卡密`)).catch(() => ElMessage.error('复制失败'))
+}
+
+// 导出批次TXT
+const 导出批次TXT = async (批次) => {
+  let 卡密列表数据 = 批次卡密详情列表.value
+  if (!卡密列表数据.length || 当前批次.value?.id !== 批次.id) {
+    try {
+      const 结果 = await 获取充值批次卡密API(批次.id)
+      if (结果.code === 1) 卡密列表数据 = 结果.data || []
+    } catch {}
+  }
+  const 内容 = 站点域名.value
+    ? 卡密列表数据.map(c => `${站点域名.value}/cz/${c.code}`).join('\n')
+    : 卡密列表数据.map(c => c.code).join('\n')
+  const blob = new Blob([内容], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `${批次.batch_no}.txt`
+  a.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success(`已导出 ${卡密列表数据.length} 个${站点域名.value ? '链接' : '卡密'}`)
 }
 
 // 删除批次

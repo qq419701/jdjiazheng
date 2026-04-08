@@ -40,12 +40,16 @@
             <div class="字段说明">中国大陆手机号验证正则</div>
           </el-form-item>
           <el-form-item label="微信号验证正则">
-            <el-input v-model="验证设置.topup_wechat_regex" placeholder="默认：^[a-zA-Z][a-zA-Z0-9_-]{5,19}$" />
-            <div class="字段说明">微信号验证正则（6-20位字母数字下划线，以字母开头）</div>
+            <el-input v-model="验证设置.topup_wechat_regex" placeholder="默认：^[a-zA-Z0-9][a-zA-Z0-9_-]{5,19}$" />
+            <div class="字段说明">微信号验证正则（6-20位，支持字母/数字/下划线，兼容手机号绑定登录）</div>
           </el-form-item>
           <el-form-item label="QQ号验证正则">
             <el-input v-model="验证设置.topup_qq_regex" placeholder="默认：^[1-9]\d{4,10}$" />
             <div class="字段说明">QQ号验证正则（5-11位数字）</div>
+          </el-form-item>
+          <el-form-item label="邮箱验证正则">
+            <el-input v-model="验证设置.topup_email_regex" placeholder="默认：^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$" />
+            <div class="字段说明">标准邮箱格式验证</div>
           </el-form-item>
           <el-form-item label="自定义最小长度">
             <el-input-number v-model="验证设置.topup_custom_min_len" :min="1" :max="50" style="width:120px" />
@@ -80,9 +84,19 @@
           <el-form-item label="弹窗取消按钮">
             <el-input v-model="定位设置.topup_location_cancel" placeholder="暂不授权" style="width:200px" />
           </el-form-item>
-          <el-form-item label="IP定位API地址">
-            <el-input v-model="定位设置.topup_ip_api" placeholder="http://ip-api.com/json/{ip}?lang=zh-CN&fields=status,regionName,city,query" />
-            <div class="字段说明">使用 ip-api.com 免费API，无需注册，每分钟45次免费额度，个人项目完全够用</div>
+          <el-form-item label="IP定位接口">
+            <el-select v-model="定位设置.topup_ip_provider" style="width: 300px">
+              <el-option label="🥇 太平洋优先（推荐，国内最稳）" value="pconline_first" />
+              <el-option label="🥈 vore.top优先" value="vore_first" />
+              <el-option label="仅太平洋" value="pconline_only" />
+              <el-option label="仅vore.top" value="vore_only" />
+            </el-select>
+            <div class="字段说明">
+              两个接口均免费、无需注册、无Key：<br>
+              • <b>太平洋</b>：whois.pconline.com.cn — 国内最稳定，无频率限制<br>
+              • <b>vore.top</b>：api.vore.top — 国内服务器，无频率限制<br>
+              默认"太平洋优先"：先请求太平洋，失败自动切换vore.top
+            </div>
           </el-form-item>
           <el-form-item>
             <el-button type="primary" :loading="保存中" @click="保存定位设置">保存定位设置</el-button>
@@ -121,8 +135,9 @@ const 基本设置 = ref({
 // 验证设置
 const 验证设置 = ref({
   topup_phone_regex: '^1[3-9]\\d{9}$',
-  topup_wechat_regex: '^[a-zA-Z][a-zA-Z0-9_-]{5,19}$',
+  topup_wechat_regex: '^[a-zA-Z0-9][a-zA-Z0-9_-]{5,19}$',
   topup_qq_regex: '^[1-9]\\d{4,10}$',
+  topup_email_regex: '',
   topup_custom_min_len: 1,
   topup_custom_max_len: 50,
 })
@@ -133,7 +148,7 @@ const 定位设置 = ref({
   topup_location_tip: '为了更好地为您提供充值服务，需要获取您的所在城市',
   topup_location_confirm: '允许获取位置',
   topup_location_cancel: '暂不授权',
-  topup_ip_api: 'http://ip-api.com/json/{ip}?lang=zh-CN&fields=status,regionName,city,query',
+  topup_ip_provider: 'pconline_first',
 })
 
 onMounted(async () => {
@@ -150,8 +165,9 @@ onMounted(async () => {
       基本设置.value.topup_service_content = 数据.topup_service_content || ''
       // 验证设置
       验证设置.value.topup_phone_regex = 数据.topup_phone_regex || '^1[3-9]\\d{9}$'
-      验证设置.value.topup_wechat_regex = 数据.topup_wechat_regex || '^[a-zA-Z][a-zA-Z0-9_-]{5,19}$'
+      验证设置.value.topup_wechat_regex = 数据.topup_wechat_regex || '^[a-zA-Z0-9][a-zA-Z0-9_-]{5,19}$'
       验证设置.value.topup_qq_regex = 数据.topup_qq_regex || '^[1-9]\\d{4,10}$'
+      验证设置.value.topup_email_regex = 数据.topup_email_regex || ''
       验证设置.value.topup_custom_min_len = parseInt(数据.topup_custom_min_len) || 1
       验证设置.value.topup_custom_max_len = parseInt(数据.topup_custom_max_len) || 50
       // 定位设置
@@ -159,7 +175,7 @@ onMounted(async () => {
       定位设置.value.topup_location_tip = 数据.topup_location_tip || '为了更好地为您提供充值服务，需要获取您的所在城市'
       定位设置.value.topup_location_confirm = 数据.topup_location_confirm || '允许获取位置'
       定位设置.value.topup_location_cancel = 数据.topup_location_cancel || '暂不授权'
-      定位设置.value.topup_ip_api = 数据.topup_ip_api || 'http://ip-api.com/json/{ip}?lang=zh-CN&fields=status,regionName,city,query'
+      定位设置.value.topup_ip_provider = 数据.topup_ip_provider || 'pconline_first'
     }
   } catch { ElMessage.error('加载设置失败') }
 })
@@ -195,8 +211,9 @@ const 保存验证设置 = async () => {
 
 const 恢复默认验证规则 = () => {
   验证设置.value.topup_phone_regex = '^1[3-9]\\d{9}$'
-  验证设置.value.topup_wechat_regex = '^[a-zA-Z][a-zA-Z0-9_-]{5,19}$'
+  验证设置.value.topup_wechat_regex = '^[a-zA-Z0-9][a-zA-Z0-9_-]{5,19}$'
   验证设置.value.topup_qq_regex = '^[1-9]\\d{4,10}$'
+  验证设置.value.topup_email_regex = ''
   验证设置.value.topup_custom_min_len = 1
   验证设置.value.topup_custom_max_len = 50
   ElMessage.info('已恢复默认验证规则，请保存')

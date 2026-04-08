@@ -87,6 +87,16 @@ const CardBatch = 数据库连接.define('CardBatch', {
     allowNull: true,
     comment: '充值步骤说明',
   },
+  topup_account_regex: {
+    type: DataTypes.STRING(200),
+    allowNull: true,
+    comment: '批次级自定义账号验证正则（覆盖全局设置正则，为空则使用全局）',
+  },
+  topup_account_error_msg: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: '自定义验证失败提示语（如：请输入正确的游戏账号）',
+  },
   product_id: {
     type: DataTypes.INTEGER,
     allowNull: true,

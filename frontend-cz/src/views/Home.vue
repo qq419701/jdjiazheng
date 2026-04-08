@@ -10,6 +10,14 @@
     <div v-else-if="卡密有效">
       <!-- 顶部渐变Banner -->
       <div class="顶部Banner">
+        <!-- 城市定位胶囊（右上角） -->
+        <div class="城市胶囊" @click="打开城市弹窗">
+          <span>📍</span>
+          <span class="城市胶囊文字" :class="{ '城市加载中': 充值Store.城市加载状态 === 'loading' }">
+            {{ 充值Store.城市加载状态 === 'loading' ? '定位中...' : (充值Store.登录城市 || '获取城市') }}
+          </span>
+          <span style="opacity:0.7">↻</span>
+        </div>
         <div class="Banner内容">
           <div class="Banner图标区">
             <span class="主图标">💎</span>
@@ -28,9 +36,13 @@
       <div class="内容区">
         <!-- 账号输入卡片 -->
         <div class="信息卡片">
+          <!-- 账号类型标签 -->
+          <div class="账号类型标签">
+            <span class="账号图标">{{ 获取账号图标() }}</span>
+            <span class="账号类型文字">{{ 充值Store.账号类型中文 || '充值账号' }}</span>
+          </div>
           <!-- 充值账号输入 -->
           <div class="输入行">
-            <span class="账号图标">{{ 获取账号图标() }}</span>
             <input
               v-model="充值账号输入"
               :placeholder="充值Store.账号标签"
@@ -45,42 +57,31 @@
           </div>
           <!-- 账号错误提示 -->
           <div v-if="账号错误提示" class="错误提示">{{ 账号错误提示 }}</div>
-
-          <div class="卡片分隔线"></div>
-
-          <!-- 城市显示行 -->
-          <div class="城市行" @click="打开城市弹窗">
-            <span class="城市图标">📍</span>
-            <span class="城市文字" :class="{ '城市加载中': 充值Store.城市加载状态 === 'loading' }">
-              {{ 充值Store.城市显示 }}
-            </span>
-            <span class="城市刷新图标">↻</span>
-          </div>
         </div>
 
         <!-- 服务详情卡片 -->
         <div class="信息卡片">
           <!-- 预计到账时间 -->
           <div v-if="充值Store.到账时间" class="详情行">
-            <span class="详情标签">预计到账时间</span>
+            <span class="详情标签">⏱ 预计到账时间</span>
             <span class="详情值">{{ 充值Store.到账时间 }}</span>
           </div>
 
           <!-- 充值会员 -->
           <div v-if="充值Store.会员名称" class="详情行">
-            <span class="详情标签">充值会员</span>
+            <span class="详情标签">💎 充值会员</span>
             <span class="详情值">{{ 充值Store.会员名称 }}</span>
           </div>
 
-          <!-- 兑换码 -->
+          <!-- 兑换码（可点击复制） -->
           <div class="详情行">
             <span class="详情标签">兑换码</span>
-            <span class="详情值灰色">{{ 充值Store.卡密 }}</span>
+            <span class="详情值灰色 可复制" @click="复制卡密" :title="'点击复制'">{{ 充值Store.卡密 }}</span>
           </div>
 
           <!-- 会员是否到期（topup_show_expired=1 才显示） -->
           <div v-if="充值Store.显示到期选项 === 1" class="详情行 到期选择行">
-            <span class="详情标签">会员是否到期</span>
+            <span class="详情标签">您当前的{{ 充值Store.会员名称 || '会员' }}是否已到期？</span>
             <div class="单选组">
               <label class="单选项" :class="{ '已选': 是否到期选择 === 1 }" @click="是否到期选择 = 1">
                 <span class="单选圆" :class="{ '已选': 是否到期选择 === 1 }"></span>
@@ -98,7 +99,11 @@
 
         <!-- 充值步骤引导卡片 -->
         <div v-if="充值Store.充值步骤" class="步骤卡片">
-          <span class="步骤文字">充值步骤：{{ 充值Store.充值步骤 }}</span>
+          <div class="步骤标题">📋 充值步骤</div>
+          <div v-for="(步骤, 索引) in 解析步骤列表" :key="索引" class="步骤项">
+            <span class="步骤序号">{{ 索引 + 1 }}</span>
+            <span class="步骤文字">{{ 步骤 }}</span>
+          </div>
         </div>
 
         <!-- 服务内容宫格 -->
@@ -210,6 +215,17 @@ const 须知列表 = computed(() => {
   return 充值Store.下单须知.split('\n').filter(s => s.trim())
 })
 
+// 解析步骤列表（支持①②③符号分行）
+const 解析步骤列表 = computed(() => {
+  if (!充值Store.充值步骤) return []
+  // 先尝试按①②③等序号分割
+  const 步骤文本 = 充值Store.充值步骤
+  const 分割结果 = 步骤文本.split(/(?=[①②③④⑤⑥⑦⑧⑨⑩])/).filter(s => s.trim())
+  if (分割结果.length > 1) return 分割结果.map(s => s.replace(/^[①②③④⑤⑥⑦⑧⑨⑩]\s*/, '').trim())
+  // 否则按换行分割
+  return 步骤文本.split('\n').filter(s => s.trim())
+})
+
 // 宫格渐变色列表
 const 渐变色列表 = [
   'linear-gradient(135deg, #667eea, #764ba2)',
@@ -316,6 +332,14 @@ const 确认手动城市 = () => {
   显示手动输入.value = false
 }
 
+// 复制卡密到剪贴板
+const 复制卡密 = () => {
+  if (!充值Store.卡密) return
+  navigator.clipboard.writeText(充值Store.卡密)
+    .then(() => showToast('兑换码已复制'))
+    .catch(() => {})
+}
+
 // 验证充值账号格式（前端验证）
 const 验证账号格式 = (账号) => {
   if (!账号 || !账号.trim()) {
@@ -329,8 +353,9 @@ const 验证账号格式 = (账号) => {
       return { 有效: false, 错误: '请输入正确的手机号（11位数字）' }
     }
   } else if (类型 === 'wechat') {
-    if (!/^[a-zA-Z][a-zA-Z0-9_-]{5,19}$/.test(值)) {
-      return { 有效: false, 错误: '请输入正确的微信号（6-20位字母/数字/下划线，以字母开头）' }
+    // 支持数字开头（兼容手机号绑定的微信登录）
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{5,19}$/.test(值)) {
+      return { 有效: false, 错误: '请输入正确的微信号（6-20位字母/数字/下划线，兼容手机号绑定）' }
     }
   } else if (类型 === 'qq') {
     if (!/^[1-9]\d{4,10}$/.test(值)) {
@@ -427,6 +452,36 @@ const 提交充值订单 = async () => {
   overflow: hidden;
 }
 
+/* 城市胶囊（右上角绝对定位） */
+.城市胶囊 {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255,255,255,0.22);
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 20px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #fff;
+  backdrop-filter: blur(4px);
+}
+
+.城市胶囊文字 {
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.城市胶囊文字.城市加载中 {
+  opacity: 0.6;
+}
+
 .Banner内容 {
   position: relative;
   z-index: 2;
@@ -492,7 +547,28 @@ const 提交充值订单 = async () => {
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+/* 账号类型标签行 */
+.账号类型标签 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.账号图标 {
+  font-size: 18px;
+}
+
+.账号类型文字 {
+  font-size: 13px;
+  color: #667eea;
+  font-weight: 600;
+  background: rgba(102,126,234,0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
 }
 
 /* 输入行 */
@@ -500,11 +576,6 @@ const 提交充值订单 = async () => {
   display: flex;
   align-items: center;
   gap: 10px;
-}
-
-.账号图标 {
-  font-size: 22px;
-  flex-shrink: 0;
 }
 
 .账号输入框 {
@@ -605,9 +676,14 @@ const 提交充值订单 = async () => {
 }
 
 .详情值灰色 {
-  font-size: 13px;
+  font-size: 11px;
   color: #999;
   font-family: monospace;
+}
+
+.可复制 {
+  cursor: pointer;
+  text-decoration: underline dotted #ccc;
 }
 
 /* 到期选择 */
@@ -652,16 +728,47 @@ const 提交充值订单 = async () => {
 
 /* 步骤卡片 */
 .步骤卡片 {
-  background: linear-gradient(135deg, #e8f4fd, #dbeafe);
+  background: #fff;
   border-radius: 12px;
-  padding: 12px 16px;
+  padding: 14px 16px;
   margin-bottom: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  border-left: 4px solid #667eea;
+}
+
+.步骤标题 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.步骤项 {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 5px 0;
+}
+
+.步骤序号 {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .步骤文字 {
   font-size: 13px;
-  color: #3b82f6;
+  color: #444;
   line-height: 1.6;
+  flex: 1;
 }
 
 /* 服务内容 */
@@ -692,13 +799,13 @@ const 提交充值订单 = async () => {
 }
 
 .宫格图标 {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 20px;
   margin-bottom: 6px;
   box-shadow: 0 3px 8px rgba(0,0,0,0.12);
 }
