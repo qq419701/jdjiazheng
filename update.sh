@@ -3,11 +3,13 @@
 #  京东代下单系统 — 一键拉取更新 + 重新构建 + 重启
 #  使用方式：
 #    chmod +x update.sh   （首次执行前赋予可执行权限）
-#    ./update.sh          （全量更新：后端+两套前端+后台管理）
+#    ./update.sh          （全量更新：后端+三套前端+后台管理）
 #    ./update.sh backend  （仅重启后端）
 #    ./update.sh h5       （仅重建家政H5）
 #    ./update.sh xi       （仅重建洗衣H5）
+#    ./update.sh cz       （仅重建充值H5）
 #    ./update.sh admin    （仅重建后台管理）
+#    ./update.sh frontend （重建全部前端，不重启后端）
 # ============================================================
 
 set -e   # 任意命令失败立即退出
@@ -108,6 +110,24 @@ update_xi() {
   log_ok "洗衣H5构建完成 → dist/"
 }
 
+# ─────────────────────── 充值H5前端 ───────────────────────
+update_cz() {
+  log_section "💎 充值H5前端（frontend-cz）— 构建"
+  if [ ! -d "$PROJECT_DIR/frontend-cz" ]; then
+    log_warn "目录 frontend-cz 不存在，跳过"
+    return
+  fi
+  cd "$PROJECT_DIR/frontend-cz"
+
+  log_info "安装充值H5依赖..."
+  npm install
+  log_ok "依赖安装完成"
+
+  log_info "构建充值H5（npm run build）..."
+  npm run build
+  log_ok "充值H5构建完成 → backend/public/cz/"
+}
+
 # ─────────────────────── 后台管理 ───────────────────────
 update_admin() {
   log_section "🖥️  后台管理（frontend-admin）— 构建"
@@ -148,43 +168,56 @@ main() {
 
   case "$MODE" in
     all)
+      # 全量更新：拉代码 + 后端 + 三套前端 + 后台管理
       pull_code
       update_backend
       update_h5
       update_xi
+      update_cz
       update_admin
       show_status
-      ;;
+      ;;  
     backend)
+      # 仅重启后端服务（不构建前端）
       update_backend
       show_status
       ;;
     h5)
+      # 仅重建家政H5前端
       pull_code
       update_h5
-      ;; 
+      ;;
     xi)
+      # 仅重建洗衣H5前端
       pull_code
       update_xi
       ;;
+    cz)
+      # 仅重建充值H5前端
+      pull_code
+      update_cz
+      ;;
     admin)
+      # 仅重建后台管理
       pull_code
       update_admin
       ;;
     frontend)
-      # 同时更新两套前端 + 后台，不重启后端
+      # 同时更新三套前端 + 后台，不重启后端
       pull_code
       update_h5
       update_xi
+      update_cz
       update_admin
       ;;
     *)
-      echo "用法: $0 [all|backend|h5|xi|admin|frontend]"
+      echo "用法: $0 [all|backend|h5|xi|cz|admin|frontend]"
       echo ""
-      echo "  all       全量更新（默认）：拉代码+后端+两套前端+后台管理"
+      echo "  all       全量更新（默认）：拉代码+后端+三套前端+后台管理"
       echo "  backend   仅重启后端服务（不构建前端）"
       echo "  h5        仅重建家政H5前端"
       echo "  xi        仅重建洗衣H5前端"
+      echo "  cz        仅重建充值H5前端"
       echo "  admin     仅重建后台管理"
       echo "  frontend  重建全部前端（不重启后端）"
       exit 1
