@@ -94,11 +94,19 @@
         <el-table-column label="创建时间" width="145">
           <template #default="{ row }">{{ 格式化北京时间(row.created_at) }}</template>
         </el-table-column>
-        <el-table-column label="充值账号" width="130">
+        <el-table-column label="充值账号" width="160">
           <template #default="{ row }">
-            <el-tooltip v-if="row.topup_account" :content="row.topup_account" placement="top">
-              <span class="账号脱敏">{{ 脱敏账号(row.topup_account, row.topup_account_type) }}</span>
-            </el-tooltip>
+            <div v-if="row.topup_account" style="display:flex;align-items:center;gap:2px">
+              <span style="font-family:monospace;font-size:13px">
+                {{ 账号显示状态[row.id] ? row.topup_account : 脱敏账号(row.topup_account, row.topup_account_type) }}
+              </span>
+              <el-button link size="small" style="color:#aaa;padding:0 2px;min-height:auto" title="显示/隐藏完整账号" @click="切换账号显示(row.id)">
+                {{ 账号显示状态[row.id] ? '🙈' : '👁' }}
+              </el-button>
+              <el-button link size="small" style="color:#409eff;padding:0 2px;min-height:auto" title="复制充值账号" @click="复制充值账号(row)">
+                📋
+              </el-button>
+            </div>
             <span v-else class="无值">-</span>
           </template>
         </el-table-column>
@@ -164,7 +172,15 @@
             <el-button v-if="row.status === 0" size="small" type="success" plain @click="标记完成(row)">标记完成</el-button>
             <el-button v-if="row.status !== 4 && row.status !== 8" size="small" type="warning" plain @click="申请退款(row)">申请退款</el-button>
             <el-button v-if="row.status === 8" size="small" type="danger" @click="确认退款完成(row)">确认退款完成</el-button>
-            <el-button size="small" @click="复制订单信息(row)">复制</el-button>
+            <el-dropdown @command="(cmd) => 处理复制命令(cmd, row)" trigger="click">
+              <el-button size="small">复制 <el-icon><ArrowDown /></el-icon></el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item command="account">📋 仅复制充值账号</el-dropdown-item>
+                  <el-dropdown-item command="full">📋 复制完整订单信息</el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
           </template>
         </el-table-column>
       </el-table>
@@ -211,7 +227,10 @@
         <el-descriptions :column="2" border>
           <el-descriptions-item label="订单号">{{ 当前详情.order_no }}</el-descriptions-item>
           <el-descriptions-item label="卡密">{{ 当前详情.card_code }}</el-descriptions-item>
-          <el-descriptions-item label="充值账号">{{ 当前详情.topup_account || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="充值账号">
+            {{ 当前详情.topup_account || '-' }}
+            <el-button v-if="当前详情.topup_account" link size="small" style="margin-left:6px;color:#409eff" @click="复制到剪贴板(当前详情.topup_account, '账号已复制')">📋 复制</el-button>
+          </el-descriptions-item>
           <el-descriptions-item label="账号类型">{{ 账号类型中文(当前详情.topup_account_type) }}</el-descriptions-item>
           <el-descriptions-item label="充值会员">{{ 当前详情.topup_member_name || '-' }}</el-descriptions-item>
           <el-descriptions-item label="预计到账时间">{{ 当前详情.topup_arrival_time || '-' }}</el-descriptions-item>
@@ -253,6 +272,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { ArrowDown } from '@element-plus/icons-vue'
 import {
   获取充值订单列表API, 获取充值订单详情API,
   更新充值订单备注API, 上传备注图片API, 导出充值订单API,
@@ -260,6 +280,31 @@ import {
   订单页搜索充值卡密API, 作废充值卡密API,
   更新充值订单状态API, 申请充值退款API, 确认充值退款完成API,
 } from '../api/index'
+
+// 带降级的复制函数（解决非HTTPS环境clipboard被拒绝的问题）
+const 复制到剪贴板 = (文本, 提示 = '复制成功') => {
+  const doFallback = () => {
+    const textarea = document.createElement('textarea')
+    textarea.value = 文本
+    textarea.style.cssText = 'position:fixed;opacity:0;top:-9999px;left:-9999px'
+    document.body.appendChild(textarea)
+    textarea.focus()
+    textarea.select()
+    let ok = false
+    try { ok = document.execCommand('copy') } catch {}
+    document.body.removeChild(textarea)
+    if (ok) ElMessage.success(提示)
+    else ElMessage.error('复制失败，请手动复制')
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(文本).then(
+      () => ElMessage.success(提示),
+      () => doFallback()
+    )
+  } else {
+    doFallback()
+  }
+}
 
 // 格式化北京时间 YYYY-MM-DD HH:mm
 const 格式化北京时间 = (isoStr) => {
@@ -422,7 +467,7 @@ const 打开充值前端 = async () => {
 }
 
 const 复制预览链接 = () => {
-  navigator.clipboard.writeText(预览链接.value).then(() => ElMessage.success('复制成功')).catch(() => ElMessage.error('复制失败'))
+  复制到剪贴板(预览链接.value)
 }
 
 const 搜索卡密 = async () => {
@@ -583,10 +628,34 @@ const 导出订单 = async () => {
   } catch { ElMessage.error('导出失败') } finally { 导出中.value = false }
 }
 
-// 复制订单信息
-const 复制订单信息 = (行) => {
-  const 文本 = `充值订单：${行.order_no}\n充值账号：${行.topup_account || '-'}\n充值会员：${行.topup_member_name || '-'}\n预计到账：${行.topup_arrival_time || '-'}\n状态：${获取状态文字(行.status)}`
-  navigator.clipboard.writeText(文本).then(() => ElMessage.success('已复制订单信息')).catch(() => ElMessage.error('复制失败'))
+// 账号显示状态（行级别）
+const 账号显示状态 = ref({}) // { [orderId]: true = 显示完整, false/undefined = 脱敏 }
+
+const 切换账号显示 = (id) => {
+  账号显示状态.value[id] = !账号显示状态.value[id]
+}
+
+const 复制充值账号 = (行) => {
+  if (!行.topup_account) { ElMessage.warning('无充值账号'); return }
+  复制到剪贴板(行.topup_account, `账号「${行.topup_account}」已复制`)
+}
+
+// 复制下拉菜单命令处理
+const 处理复制命令 = (命令, 行) => {
+  if (命令 === 'account') {
+    复制充值账号(行)
+  } else if (命令 === 'full') {
+    const 文本 = [
+      `充值账号：${行.topup_account || '-'}`,
+      `账号类型：${账号类型中文(行.topup_account_type)}`,
+      `充值会员：${行.topup_member_name || '-'}`,
+      `预计到账：${行.topup_arrival_time || '-'}`,
+      `登录城市：${行.login_city || '-'}`,
+      `卡密：${行.card_code || '-'}`,
+      `订单号：${行.order_no || '-'}`,
+    ].join('\n')
+    复制到剪贴板(文本, '订单信息已复制')
+  }
 }
 </script>
 

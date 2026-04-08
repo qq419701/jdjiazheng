@@ -176,6 +176,31 @@ import {
   获取设置API,
 } from '../api/index'
 
+// 带降级的复制函数（解决非HTTPS环境clipboard被拒绝的问题）
+const 复制到剪贴板 = (文本, 提示 = '复制成功') => {
+  const doFallback = () => {
+    const textarea = document.createElement('textarea')
+    textarea.value = 文本
+    textarea.style.cssText = 'position:fixed;opacity:0;top:-9999px;left:-9999px'
+    document.body.appendChild(textarea)
+    textarea.focus()
+    textarea.select()
+    let ok = false
+    try { ok = document.execCommand('copy') } catch {}
+    document.body.removeChild(textarea)
+    if (ok) ElMessage.success(提示)
+    else ElMessage.error('复制失败，请手动复制')
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(文本).then(
+      () => ElMessage.success(提示),
+      () => doFallback()
+    )
+  } else {
+    doFallback()
+  }
+}
+
 // 格式化北京时间
 const 格式化北京时间 = (isoStr) => {
   if (!isoStr) return '-'
@@ -274,7 +299,7 @@ const 复制单个链接 = (code) => {
     return
   }
   const 链接 = `${站点域名.value}/cz/${code}`
-  navigator.clipboard.writeText(链接).then(() => ElMessage.success('复制成功')).catch(() => ElMessage.error('复制失败'))
+  复制到剪贴板(链接)
 }
 
 const 复制批次完整链接 = async (批次) => {
@@ -288,7 +313,7 @@ const 复制批次完整链接 = async (批次) => {
     } catch {}
   }
   const 链接列表 = 卡密列表数据.map(c => `${站点域名.value}/cz/${c.code}`).join('\n')
-  navigator.clipboard.writeText(链接列表).then(() => ElMessage.success(`已复制 ${卡密列表数据.length} 个链接`)).catch(() => ElMessage.error('复制失败'))
+  复制到剪贴板(链接列表, `已复制 ${卡密列表数据.length} 个链接`)
 }
 
 const 复制批次仅卡密 = async (批次) => {
@@ -302,7 +327,7 @@ const 复制批次仅卡密 = async (批次) => {
     } catch {}
   }
   const 只卡密 = 卡密列表数据.map(c => c.code).join('\n')
-  navigator.clipboard.writeText(只卡密).then(() => ElMessage.success(`已复制 ${卡密列表数据.length} 个卡密`)).catch(() => ElMessage.error('复制失败'))
+  复制到剪贴板(只卡密, `已复制 ${卡密列表数据.length} 个卡密`)
 }
 
 // 导出批次TXT
