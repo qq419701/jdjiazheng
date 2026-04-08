@@ -24,7 +24,7 @@ const Product = 数据库连接.define('Product', {
     type: DataTypes.STRING(20),
     allowNull: false,
     defaultValue: 'jiazheng',
-    comment: '业务类型：jiazheng=家政 xiyifu=洗衣',
+    comment: '业务类型：jiazheng=家政 xiyifu=洗衣 topup=充值',
   },
   service_type: {
     type: DataTypes.STRING(50),

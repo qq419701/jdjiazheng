@@ -9,6 +9,7 @@
             <el-select v-model="搜索条件.business_type" clearable placeholder="全部" style="width: 120px">
               <el-option label="家政" value="jiazheng" />
               <el-option label="洗衣" value="xiyifu" />
+              <el-option label="充值（topup）" value="topup" />
             </el-select>
           </el-form-item>
           <el-form-item label="状态">
@@ -49,8 +50,8 @@
         <el-table-column prop="product_name" label="商品名称" min-width="160" />
         <el-table-column label="业务类型" width="100">
           <template #default="{ row }">
-            <el-tag :type="row.business_type === 'xiyifu' ? 'primary' : 'success'" size="small">
-              {{ row.business_type === 'xiyifu' ? '洗衣' : '家政' }}
+            <el-tag :type="row.business_type === 'xiyifu' ? 'primary' : row.business_type === 'topup' ? 'warning' : 'success'" size="small">
+              {{ row.business_type === 'xiyifu' ? '洗衣' : row.business_type === 'topup' ? '充值' : '家政' }}
             </el-tag>
           </template>
         </el-table-column>
@@ -105,6 +106,7 @@
           <el-select v-model="表单.business_type" style="width: 100%">
             <el-option label="家政（jiazheng）" value="jiazheng" />
             <el-option label="洗衣（xiyifu）" value="xiyifu" />
+            <el-option label="充值（topup）" value="topup" />
           </el-select>
         </el-form-item>
         <el-form-item label="成本价">

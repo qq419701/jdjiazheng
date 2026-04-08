@@ -151,6 +151,13 @@ const routes = [
         component: () => import('../views/Products.vue'),
         meta: { 标题: '商品管理', 权限Key: 'products' },
       },
+      // ===== 统一卡密中心 =====
+      {
+        path: 'card-center',
+        name: 'UnifiedCardCenter',
+        component: () => import('../views/UnifiedCardCenter.vue'),
+        meta: { 标题: '统一卡密中心', 权限Key: 'card_center' },
+      },
     ],
   },
   {

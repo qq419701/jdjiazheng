@@ -163,3 +163,8 @@ export const 获取充值批次列表API = () => 请求实例.get('/topup-card-b
 export const 获取充值批次卡密API = (id) => 请求实例.get(`/topup-card-batches/${id}/cards`)
 export const 删除充值批次API = (id) => 请求实例.delete(`/topup-card-batches/${id}`)
 export const 获取充值预览卡密API = () => 请求实例.get('/topup-cards/preview-card')
+
+// ===== 统一卡密中心 =====
+export const 统一获取卡密列表API = (参数) => 请求实例.get('/unified-cards', { params: 参数 })
+export const 统一获取批次列表API = (参数) => 请求实例.get('/unified-batches', { params: 参数 })
+export const 统一获取卡密统计API = () => 请求实例.get('/unified-stats')
