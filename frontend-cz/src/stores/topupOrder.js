@@ -31,6 +31,31 @@ export const useTopupOrderStore = defineStore('topupOrder', {
     // 订单结果（提交成功后保存）
     订单号: '',
     提交成功数据: null,
+
+    // 弹窗1配置（首页弹窗）
+    cz_popup1_enabled: '0',
+    cz_popup1_title: '安全提醒',
+    cz_popup1_content: '务必确保充值账号准确，虚拟商品充错账号不支持退换货。',
+    cz_popup1_icon: '⚠️',
+    cz_popup1_title_color: '#667eea',
+    cz_popup1_content_color: '#333333',
+    cz_popup1_btn_text: '我知道了',
+    cz_popup1_btn_color: '#667eea',
+    cz_popup1_btn_size: 'large',
+    cz_popup1_auto_close: '0',
+    cz_popup1_bg_color: '#ffffff',
+    // 弹窗2配置（账号验证通过后弹窗）
+    cz_popup2_enabled: '0',
+    cz_popup2_title: '账号确认',
+    cz_popup2_content: '请再次确认您的充值账号是否正确，虚拟商品一旦充值成功无法退款。',
+    cz_popup2_icon: '🔒',
+    cz_popup2_title_color: '#667eea',
+    cz_popup2_content_color: '#333333',
+    cz_popup2_btn_text: '我已确认',
+    cz_popup2_btn_color: '#667eea',
+    cz_popup2_btn_size: 'large',
+    cz_popup2_auto_close: '0',
+    cz_popup2_bg_color: '#ffffff',
   }),
 
   getters: {
@@ -71,6 +96,30 @@ export const useTopupOrderStore = defineStore('topupOrder', {
       this.副标题2 = 信息.subtitle2 || '快速到账  全程客服  值得信赖'
       this.下单须知 = 信息.notice || ''
       this.服务内容列表 = 信息.service_content || []
+      // 读取弹窗配置
+      const pc = 信息.popup_config || {}
+      this.cz_popup1_enabled = pc.cz_popup1_enabled || '0'
+      this.cz_popup1_title = pc.cz_popup1_title || '安全提醒'
+      this.cz_popup1_content = pc.cz_popup1_content || '务必确保充值账号准确，虚拟商品充错账号不支持退换货。'
+      this.cz_popup1_icon = pc.cz_popup1_icon || '⚠️'
+      this.cz_popup1_title_color = pc.cz_popup1_title_color || '#667eea'
+      this.cz_popup1_content_color = pc.cz_popup1_content_color || '#333333'
+      this.cz_popup1_btn_text = pc.cz_popup1_btn_text || '我知道了'
+      this.cz_popup1_btn_color = pc.cz_popup1_btn_color || '#667eea'
+      this.cz_popup1_btn_size = pc.cz_popup1_btn_size || 'large'
+      this.cz_popup1_auto_close = pc.cz_popup1_auto_close || '0'
+      this.cz_popup1_bg_color = pc.cz_popup1_bg_color || '#ffffff'
+      this.cz_popup2_enabled = pc.cz_popup2_enabled || '0'
+      this.cz_popup2_title = pc.cz_popup2_title || '账号确认'
+      this.cz_popup2_content = pc.cz_popup2_content || '请再次确认您的充值账号是否正确，虚拟商品一旦充值成功无法退款。'
+      this.cz_popup2_icon = pc.cz_popup2_icon || '🔒'
+      this.cz_popup2_title_color = pc.cz_popup2_title_color || '#667eea'
+      this.cz_popup2_content_color = pc.cz_popup2_content_color || '#333333'
+      this.cz_popup2_btn_text = pc.cz_popup2_btn_text || '我已确认'
+      this.cz_popup2_btn_color = pc.cz_popup2_btn_color || '#667eea'
+      this.cz_popup2_btn_size = pc.cz_popup2_btn_size || 'large'
+      this.cz_popup2_auto_close = pc.cz_popup2_auto_close || '0'
+      this.cz_popup2_bg_color = pc.cz_popup2_bg_color || '#ffffff'
     },
 
     // 设置登录城市

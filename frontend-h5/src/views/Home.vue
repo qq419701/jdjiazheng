@@ -113,6 +113,37 @@
       @关闭="显示时间选择 = false"
       @确认选择="处理时间选择"
     />
+
+    <NoticePopup
+      :show="显示弹窗1"
+      :title="订单Store.jz_popup1_title"
+      :content="订单Store.jz_popup1_content"
+      :icon-emoji="订单Store.jz_popup1_icon"
+      :bg-color="订单Store.jz_popup1_bg_color"
+      :title-color="订单Store.jz_popup1_title_color"
+      :content-color="订单Store.jz_popup1_content_color"
+      :btn-text="订单Store.jz_popup1_btn_text"
+      :btn-color="订单Store.jz_popup1_btn_color"
+      :btn-size="订单Store.jz_popup1_btn_size"
+      :auto-close-seconds="parseInt(订单Store.jz_popup1_auto_close) || 0"
+      :mask-closable="true"
+      @close="显示弹窗1 = false"
+    />
+    <NoticePopup
+      :show="显示弹窗2"
+      :title="订单Store.jz_popup2_title"
+      :content="订单Store.jz_popup2_content"
+      :icon-emoji="订单Store.jz_popup2_icon"
+      :bg-color="订单Store.jz_popup2_bg_color"
+      :title-color="订单Store.jz_popup2_title_color"
+      :content-color="订单Store.jz_popup2_content_color"
+      :btn-text="订单Store.jz_popup2_btn_text"
+      :btn-color="订单Store.jz_popup2_btn_color"
+      :btn-size="订单Store.jz_popup2_btn_size"
+      :auto-close-seconds="parseInt(订单Store.jz_popup2_auto_close) || 0"
+      :mask-closable="true"
+      @close="显示弹窗2 = false"
+    />
   </div>
 
   <!-- 加载中 -->
@@ -135,6 +166,7 @@ import ServiceContent from '../components/ServiceContent.vue'
 import Notice from '../components/Notice.vue'
 import TimeSlot from './TimeSlot.vue'
 import Invalid from './Invalid.vue'
+import NoticePopup from '../components/NoticePopup.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -145,6 +177,8 @@ const 加载中 = ref(true)
 const 卡密有效 = ref(false)
 const 显示时间选择 = ref(false)
 const banner图URL = ref('')
+const 显示弹窗1 = ref(false)
+const 显示弹窗2 = ref(false)
 
 // 页面初始化：验证卡密
 onMounted(async () => {
@@ -160,6 +194,12 @@ onMounted(async () => {
       卡密有效.value = true
       订单Store.设置卡密信息(结果.data)
       banner图URL.value = 结果.data.banner_url || ''
+      // 弹窗1：首页弹窗（每次会话只弹一次）
+      const popup1Key = `jz_popup1_shown_${卡密码}`
+      if (订单Store.jz_popup1_enabled === '1' && !sessionStorage.getItem(popup1Key)) {
+        setTimeout(() => { 显示弹窗1.value = true }, 500)
+        sessionStorage.setItem(popup1Key, '1')
+      }
     } else if (结果.code === 2) {
       router.replace({ name: 'Invalid', query: { used: '1' } })
       return
@@ -204,6 +244,9 @@ const 处理时间选择 = ({ 日期, 时间段, 多选时间列表 }) => {
     showToast('已选择：' + 日期 + ' ' + 时间段)
   }
   显示时间选择.value = false
+  if (订单Store.jz_popup2_enabled === '1') {
+    显示弹窗2.value = true
+  }
 }
 
 // 按钮三态计算

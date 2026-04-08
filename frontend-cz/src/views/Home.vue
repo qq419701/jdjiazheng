@@ -51,7 +51,7 @@
               :type="充值Store.账号类型 === 'phone' || 充值Store.账号类型 === 'qq' ? 'tel' : 'text'"
               :inputmode="充值Store.账号类型 === 'phone' || 充值Store.账号类型 === 'qq' ? 'numeric' : 'text'"
               @blur="触发账号验证"
-              @input="账号错误提示 = ''"
+              @input="重置账号状态"
             />
             <span v-if="账号验证通过" class="验证成功图标">✓</span>
           </div>
@@ -180,6 +180,37 @@
         <van-button type="primary" block @click="确认手动城市">确认</van-button>
       </div>
     </van-popup>
+
+    <NoticePopup
+      :show="显示弹窗1"
+      :title="充值Store.cz_popup1_title"
+      :content="充值Store.cz_popup1_content"
+      :icon-emoji="充值Store.cz_popup1_icon"
+      :bg-color="充值Store.cz_popup1_bg_color"
+      :title-color="充值Store.cz_popup1_title_color"
+      :content-color="充值Store.cz_popup1_content_color"
+      :btn-text="充值Store.cz_popup1_btn_text"
+      :btn-color="充值Store.cz_popup1_btn_color"
+      :btn-size="充值Store.cz_popup1_btn_size"
+      :auto-close-seconds="parseInt(充值Store.cz_popup1_auto_close) || 0"
+      :mask-closable="true"
+      @close="显示弹窗1 = false"
+    />
+    <NoticePopup
+      :show="显示弹窗2"
+      :title="充值Store.cz_popup2_title"
+      :content="充值Store.cz_popup2_content"
+      :icon-emoji="充值Store.cz_popup2_icon"
+      :bg-color="充值Store.cz_popup2_bg_color"
+      :title-color="充值Store.cz_popup2_title_color"
+      :content-color="充值Store.cz_popup2_content_color"
+      :btn-text="充值Store.cz_popup2_btn_text"
+      :btn-color="充值Store.cz_popup2_btn_color"
+      :btn-size="充值Store.cz_popup2_btn_size"
+      :auto-close-seconds="parseInt(充值Store.cz_popup2_auto_close) || 0"
+      :mask-closable="true"
+      @close="显示弹窗2 = false"
+    />
   </div>
 </template>
 
@@ -189,6 +220,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { useTopupOrderStore } from '../stores/topupOrder'
 import { 验证充值卡密API, 获取IP城市API, 提交充值订单API } from '../api/index'
+import NoticePopup from '../components/NoticePopup.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -208,6 +240,9 @@ const 显示城市弹窗 = ref(false)
 const 显示手动输入 = ref(false)
 const 手动城市输入 = ref('')
 const IP定位中 = ref(false)
+const 显示弹窗1 = ref(false)
+const 显示弹窗2 = ref(false)
+const popup2已弹过 = ref(false)
 
 // 须知列表（换行分隔）
 const 须知列表 = computed(() => {
@@ -279,6 +314,12 @@ onMounted(async () => {
     // 设置卡密信息
     充值Store.设置卡密信息(结果.data)
     卡密有效.value = true
+    // 弹窗1：首页弹窗（每次会话只弹一次）
+    const popup1Key = `cz_popup1_shown_${code}`
+    if (充值Store.cz_popup1_enabled === '1' && !sessionStorage.getItem(popup1Key)) {
+      setTimeout(() => { 显示弹窗1.value = true }, 500)
+      sessionStorage.setItem(popup1Key, '1')
+    }
   } catch (错误) {
     console.error('[充值] 验证卡密失败:', 错误)
     router.replace('/invalid')
@@ -378,7 +419,18 @@ const 触发账号验证 = () => {
   } else {
     账号错误提示.value = ''
     账号验证通过.value = true
+    // 账号验证通过后弹出弹窗2（只弹一次）
+    if (充值Store.cz_popup2_enabled === '1' && !popup2已弹过.value) {
+      popup2已弹过.value = true
+      显示弹窗2.value = true
+    }
   }
+}
+
+// 重置账号状态（输入时调用）
+const 重置账号状态 = () => {
+  账号错误提示.value = ''
+  popup2已弹过.value = false
 }
 
 // 提交充值订单

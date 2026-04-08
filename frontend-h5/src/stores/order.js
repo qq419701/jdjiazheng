@@ -36,6 +36,31 @@ export const useOrderStore = defineStore('order', {
     // 订单结果
     订单号: '',
     预约成功: false,
+
+    // 弹窗1配置（首页弹窗）
+    jz_popup1_enabled: '0',
+    jz_popup1_title: '温馨提醒',
+    jz_popup1_content: '您所在的城市，阿姨接单繁忙，会有一定概率无阿姨接单的情况。',
+    jz_popup1_icon: '⚠️',
+    jz_popup1_title_color: '#e54635',
+    jz_popup1_content_color: '#333333',
+    jz_popup1_btn_text: '我知道了',
+    jz_popup1_btn_color: '#e54635',
+    jz_popup1_btn_size: 'large',
+    jz_popup1_auto_close: '0',
+    jz_popup1_bg_color: '#ffffff',
+    // 弹窗2配置（选时间后弹窗）
+    jz_popup2_enabled: '0',
+    jz_popup2_title: '退改签须知',
+    jz_popup2_content: '一旦预约成功，退改签将收取50元的手续费，请确认后再提交。',
+    jz_popup2_icon: '📋',
+    jz_popup2_title_color: '#e54635',
+    jz_popup2_content_color: '#333333',
+    jz_popup2_btn_text: '我已知晓',
+    jz_popup2_btn_color: '#e54635',
+    jz_popup2_btn_size: 'large',
+    jz_popup2_auto_close: '0',
+    jz_popup2_bg_color: '#ffffff',
   }),
 
   getters: {
@@ -80,6 +105,30 @@ export const useOrderStore = defineStore('order', {
       this.多选时间最多 = parseInt(信息.multi_time_max_count) || 3
       this.多选时间最少 = parseInt(信息.multi_time_min_count) || 1
       this.多选时间提示 = 信息.multi_time_tip || ''
+      // 读取弹窗配置
+      const pc = 信息.popup_config || {}
+      this.jz_popup1_enabled = pc.jz_popup1_enabled || '0'
+      this.jz_popup1_title = pc.jz_popup1_title || '温馨提醒'
+      this.jz_popup1_content = pc.jz_popup1_content || '您所在的城市，阿姨接单繁忙，会有一定概率无阿姨接单的情况。'
+      this.jz_popup1_icon = pc.jz_popup1_icon || '⚠️'
+      this.jz_popup1_title_color = pc.jz_popup1_title_color || '#e54635'
+      this.jz_popup1_content_color = pc.jz_popup1_content_color || '#333333'
+      this.jz_popup1_btn_text = pc.jz_popup1_btn_text || '我知道了'
+      this.jz_popup1_btn_color = pc.jz_popup1_btn_color || '#e54635'
+      this.jz_popup1_btn_size = pc.jz_popup1_btn_size || 'large'
+      this.jz_popup1_auto_close = pc.jz_popup1_auto_close || '0'
+      this.jz_popup1_bg_color = pc.jz_popup1_bg_color || '#ffffff'
+      this.jz_popup2_enabled = pc.jz_popup2_enabled || '0'
+      this.jz_popup2_title = pc.jz_popup2_title || '退改签须知'
+      this.jz_popup2_content = pc.jz_popup2_content || '一旦预约成功，退改签将收取50元的手续费，请确认后再提交。'
+      this.jz_popup2_icon = pc.jz_popup2_icon || '📋'
+      this.jz_popup2_title_color = pc.jz_popup2_title_color || '#e54635'
+      this.jz_popup2_content_color = pc.jz_popup2_content_color || '#333333'
+      this.jz_popup2_btn_text = pc.jz_popup2_btn_text || '我已知晓'
+      this.jz_popup2_btn_color = pc.jz_popup2_btn_color || '#e54635'
+      this.jz_popup2_btn_size = pc.jz_popup2_btn_size || 'large'
+      this.jz_popup2_auto_close = pc.jz_popup2_auto_close || '0'
+      this.jz_popup2_bg_color = pc.jz_popup2_bg_color || '#ffffff'
     },
 
     // 保存地址信息（包含街道字段）
