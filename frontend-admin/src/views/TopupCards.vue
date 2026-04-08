@@ -260,7 +260,10 @@ const 打开批次卡密详情 = async (批次) => {
   批次详情加载中.value = true
   try {
     const 结果 = await 获取充值批次卡密API(批次.id)
-    if (结果.code === 1) 批次卡密详情列表.value = 结果.data || []
+    if (结果.code === 1) {
+      // 后端返回 { 批次: ..., 卡密列表: [...] }，兼容直接数组
+      批次卡密详情列表.value = 结果.data?.卡密列表 || (Array.isArray(结果.data) ? 结果.data : [])
+    }
   } catch { ElMessage.error('加载卡密详情失败') } finally { 批次详情加载中.value = false }
 }
 
@@ -279,7 +282,9 @@ const 复制批次完整链接 = async (批次) => {
   if (!卡密列表数据.length || 当前批次.value?.id !== 批次.id) {
     try {
       const 结果 = await 获取充值批次卡密API(批次.id)
-      if (结果.code === 1) 卡密列表数据 = 结果.data || []
+      if (结果.code === 1) {
+        卡密列表数据 = 结果.data?.卡密列表 || (Array.isArray(结果.data) ? 结果.data : [])
+      }
     } catch {}
   }
   const 链接列表 = 卡密列表数据.map(c => `${站点域名.value}/cz/${c.code}`).join('\n')
@@ -291,7 +296,9 @@ const 复制批次仅卡密 = async (批次) => {
   if (!卡密列表数据.length || 当前批次.value?.id !== 批次.id) {
     try {
       const 结果 = await 获取充值批次卡密API(批次.id)
-      if (结果.code === 1) 卡密列表数据 = 结果.data || []
+      if (结果.code === 1) {
+        卡密列表数据 = 结果.data?.卡密列表 || (Array.isArray(结果.data) ? 结果.data : [])
+      }
     } catch {}
   }
   const 只卡密 = 卡密列表数据.map(c => c.code).join('\n')
@@ -304,7 +311,9 @@ const 导出批次TXT = async (批次) => {
   if (!卡密列表数据.length || 当前批次.value?.id !== 批次.id) {
     try {
       const 结果 = await 获取充值批次卡密API(批次.id)
-      if (结果.code === 1) 卡密列表数据 = 结果.data || []
+      if (结果.code === 1) {
+        卡密列表数据 = 结果.data?.卡密列表 || (Array.isArray(结果.data) ? 结果.data : [])
+      }
     } catch {}
   }
   const 内容 = 站点域名.value

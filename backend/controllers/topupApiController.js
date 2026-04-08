@@ -103,28 +103,33 @@ const 是有效IP = (ip) => {
 
 /**
  * 查询IP城市（主接口：太平洋PConline，备用：vore.top）
+ * 注意：pconline 返回 GBK 编码，使用 Node.js 内置 TextDecoder 解码
  * @param {string} 纯IP - 已清洗的IPv4地址
  * @returns {Object|null} { province, city, full_city } 或 null（查询失败）
  */
 const 查询IP城市数据 = async (纯IP) => {
-  // 主接口：太平洋PConline（国内稳定，无需Key，无频率限制）
+  // 主接口：太平洋PConline（国内稳定，无需Key）
+  // 该接口返回 GBK 编码，必须以 arraybuffer 方式读取后用 TextDecoder('gbk') 解码
   try {
     const 响应 = await axios.get(
       `https://whois.pconline.com.cn/ipJson.jsp?ip=${encodeURIComponent(纯IP)}&json=true`,
-      { timeout: 4000 }
+      { responseType: 'arraybuffer', timeout: 4000 }
     );
-    if (响应.data && 响应.data.pro) {
+    const decoder = new TextDecoder('gbk');
+    const decoded = decoder.decode(Buffer.from(响应.data));
+    const data = JSON.parse(decoded);
+    if (data && data.pro) {
       return {
-        province: 响应.data.pro || '',
-        city: 响应.data.city || '',
-        full_city: `${响应.data.pro || ''}${响应.data.city || ''}`,
+        province: data.pro || '',
+        city: data.city || '',
+        full_city: `${data.pro || ''}${data.city || ''}`,
       };
     }
   } catch (e) {
     console.warn('[充值] 太平洋IP定位失败，切换备用接口:', e.message);
   }
 
-  // 备用接口：vore.top（国内托管，无需Key）
+  // 备用接口：vore.top（国内托管，无需Key，UTF-8编码）
   try {
     const 响应2 = await axios.get(
       `https://api.vore.top/api/IPdata?ip=${encodeURIComponent(纯IP)}`,
@@ -258,20 +263,24 @@ const 获取IP城市 = async (req, res) => {
       return res.json({ code: 0, message: 'IP格式无效' });
     }
 
-    // 3. 主接口：太平洋PConline（国内稳定，无需Key，无频率限制）
+    // 3. 主接口：太平洋PConline（国内稳定，无需Key）
+    // 该接口返回 GBK 编码，使用 responseType:'arraybuffer' + TextDecoder('gbk') 解码防止乱码
     try {
       const 响应 = await axios.get(
         `https://whois.pconline.com.cn/ipJson.jsp?ip=${encodeURIComponent(纯IP)}&json=true`,
-        { timeout: 4000 }
+        { responseType: 'arraybuffer', timeout: 4000 }
       );
-      if (响应.data && 响应.data.pro) {
+      const decoder = new TextDecoder('gbk');
+      const decoded = decoder.decode(Buffer.from(响应.data));
+      const data = JSON.parse(decoded);
+      if (data && data.pro) {
         return res.json({
           code: 1,
           data: {
             ip: 纯IP,
-            province: 响应.data.pro || '',
-            city: 响应.data.city || '',
-            full_city: `${响应.data.pro || ''}${响应.data.city || ''}`,
+            province: data.pro || '',
+            city: data.city || '',
+            full_city: `${data.pro || ''}${data.city || ''}`,
           },
         });
       }
