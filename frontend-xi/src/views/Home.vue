@@ -154,6 +154,37 @@
         </div>
       </div>
     </van-popup>
+
+    <NoticePopup
+      :show="显示弹窗1"
+      :title="洗衣Store.xi_popup1_title"
+      :content="洗衣Store.xi_popup1_content"
+      :icon-emoji="洗衣Store.xi_popup1_icon"
+      :bg-color="洗衣Store.xi_popup1_bg_color"
+      :title-color="洗衣Store.xi_popup1_title_color"
+      :content-color="洗衣Store.xi_popup1_content_color"
+      :btn-text="洗衣Store.xi_popup1_btn_text"
+      :btn-color="洗衣Store.xi_popup1_btn_color"
+      :btn-size="洗衣Store.xi_popup1_btn_size"
+      :auto-close-seconds="parseInt(洗衣Store.xi_popup1_auto_close) || 0"
+      :mask-closable="true"
+      @close="显示弹窗1 = false"
+    />
+    <NoticePopup
+      :show="显示弹窗2"
+      :title="洗衣Store.xi_popup2_title"
+      :content="洗衣Store.xi_popup2_content"
+      :icon-emoji="洗衣Store.xi_popup2_icon"
+      :bg-color="洗衣Store.xi_popup2_bg_color"
+      :title-color="洗衣Store.xi_popup2_title_color"
+      :content-color="洗衣Store.xi_popup2_content_color"
+      :btn-text="洗衣Store.xi_popup2_btn_text"
+      :btn-color="洗衣Store.xi_popup2_btn_color"
+      :btn-size="洗衣Store.xi_popup2_btn_size"
+      :auto-close-seconds="parseInt(洗衣Store.xi_popup2_auto_close) || 0"
+      :mask-closable="true"
+      @close="显示弹窗2 = false"
+    />
   </div>
 
   <!-- 加载中 -->
@@ -176,6 +207,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { useLaundryOrderStore } from '../stores/laundryOrder'
 import { 验证洗衣卡密API, 获取洗衣时间表API } from '../api/index'
+import NoticePopup from '../components/NoticePopup.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -188,6 +220,8 @@ const 显示时间选择 = ref(false)
 const 选中日期 = ref('')
 const 选中时间段 = ref(null)
 const 时间段列表 = ref([])
+const 显示弹窗1 = ref(false)
+const 显示弹窗2 = ref(false)
 
 // 生成未来14天日期列表
 const 可选日期列表 = computed(() => {
@@ -226,6 +260,12 @@ onMounted(async () => {
       卡密有效.value = true
       洗衣Store.设置卡密信息(结果.data)
       banner图URL.value = 结果.data.banner_url || ''
+      // 弹窗1：首页弹窗（每次会话只弹一次）
+      const popup1Key = `xi_popup1_shown_${卡密码}`
+      if (洗衣Store.xi_popup1_enabled === '1' && !sessionStorage.getItem(popup1Key)) {
+        setTimeout(() => { 显示弹窗1.value = true }, 500)
+        sessionStorage.setItem(popup1Key, '1')
+      }
     } else if (结果.code === 2) {
       router.replace({ name: 'Invalid', query: { used: '1', code: 卡密码 } })
       return
@@ -282,6 +322,9 @@ const 确认时间选择 = () => {
   )
   显示时间选择.value = false
   showToast('已选择：' + 选中日期.value + ' ' + 选中时间段.value.label)
+  if (洗衣Store.xi_popup2_enabled === '1') {
+    显示弹窗2.value = true
+  }
 }
 
 // 按钮计算

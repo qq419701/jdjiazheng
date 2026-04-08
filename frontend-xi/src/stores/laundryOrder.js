@@ -38,6 +38,31 @@ export const useLaundryOrderStore = defineStore('laundryOrder', {
 
     // 订单结果
     订单号: '',
+
+    // 弹窗1配置（首页弹窗）
+    xi_popup1_enabled: '0',
+    xi_popup1_title: '温馨提醒',
+    xi_popup1_content: '目前订单量大，可能洗护时间延长，请您耐心等待。',
+    xi_popup1_icon: '⚠️',
+    xi_popup1_title_color: '#1989fa',
+    xi_popup1_content_color: '#333333',
+    xi_popup1_btn_text: '我知道了',
+    xi_popup1_btn_color: '#1989fa',
+    xi_popup1_btn_size: 'large',
+    xi_popup1_auto_close: '0',
+    xi_popup1_bg_color: '#ffffff',
+    // 弹窗2配置（选时间后弹窗）
+    xi_popup2_enabled: '0',
+    xi_popup2_title: '取件时间说明',
+    xi_popup2_content: '选择的取件时间为预计取件时间，实际可能因物流情况有所延误。',
+    xi_popup2_icon: '📦',
+    xi_popup2_title_color: '#1989fa',
+    xi_popup2_content_color: '#333333',
+    xi_popup2_btn_text: '我知道了',
+    xi_popup2_btn_color: '#1989fa',
+    xi_popup2_btn_size: 'large',
+    xi_popup2_auto_close: '0',
+    xi_popup2_bg_color: '#ffffff',
   }),
 
   getters: {
@@ -86,6 +111,30 @@ export const useLaundryOrderStore = defineStore('laundryOrder', {
       this.banner图URL = 信息.banner_url || ''
       this.下单须知 = 信息.notice || ''
       this.服务内容列表 = 信息.service_content || []
+      // 读取弹窗配置
+      const pc = 信息.popup_config || {}
+      this.xi_popup1_enabled = pc.xi_popup1_enabled || '0'
+      this.xi_popup1_title = pc.xi_popup1_title || '温馨提醒'
+      this.xi_popup1_content = pc.xi_popup1_content || '目前订单量大，可能洗护时间延长，请您耐心等待。'
+      this.xi_popup1_icon = pc.xi_popup1_icon || '⚠️'
+      this.xi_popup1_title_color = pc.xi_popup1_title_color || '#1989fa'
+      this.xi_popup1_content_color = pc.xi_popup1_content_color || '#333333'
+      this.xi_popup1_btn_text = pc.xi_popup1_btn_text || '我知道了'
+      this.xi_popup1_btn_color = pc.xi_popup1_btn_color || '#1989fa'
+      this.xi_popup1_btn_size = pc.xi_popup1_btn_size || 'large'
+      this.xi_popup1_auto_close = pc.xi_popup1_auto_close || '0'
+      this.xi_popup1_bg_color = pc.xi_popup1_bg_color || '#ffffff'
+      this.xi_popup2_enabled = pc.xi_popup2_enabled || '0'
+      this.xi_popup2_title = pc.xi_popup2_title || '取件时间说明'
+      this.xi_popup2_content = pc.xi_popup2_content || '选择的取件时间为预计取件时间，实际可能因物流情况有所延误。'
+      this.xi_popup2_icon = pc.xi_popup2_icon || '📦'
+      this.xi_popup2_title_color = pc.xi_popup2_title_color || '#1989fa'
+      this.xi_popup2_content_color = pc.xi_popup2_content_color || '#333333'
+      this.xi_popup2_btn_text = pc.xi_popup2_btn_text || '我知道了'
+      this.xi_popup2_btn_color = pc.xi_popup2_btn_color || '#1989fa'
+      this.xi_popup2_btn_size = pc.xi_popup2_btn_size || 'large'
+      this.xi_popup2_auto_close = pc.xi_popup2_auto_close || '0'
+      this.xi_popup2_bg_color = pc.xi_popup2_bg_color || '#ffffff'
     },
 
     // 保存取件地址

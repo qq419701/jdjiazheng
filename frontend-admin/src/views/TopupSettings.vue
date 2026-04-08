@@ -26,6 +26,109 @@
             <div class="字段说明">格式：JSON数组，每项含 icon、title、desc 字段</div>
             <el-button size="small" style="margin-top:6px" @click="填入默认服务内容">填入默认服务内容</el-button>
           </el-form-item>
+
+          <!-- 弹窗提醒设置 -->
+          <div style="color: #409eff; font-size: 13px; font-weight: 500; margin: 16px 0 12px; padding-left: 8px; border-left: 3px solid #409eff;">── 🔔 弹窗提醒设置 ──</div>
+
+          <!-- 弹窗1：首页弹窗 -->
+          <el-card style="margin-bottom: 16px; border: 1px solid #e4e7ed; border-radius: 8px;">
+            <template #header>
+              <div style="display:flex; align-items:center; gap:8px; font-weight:600">
+                <span>🏠 充值首页弹窗（popup1）</span>
+                <el-switch v-model="基本设置.cz_popup1_enabled" active-value="1" inactive-value="0" active-text="启用" inactive-text="关闭" />
+              </div>
+            </template>
+            <el-form-item label="弹窗标题">
+              <el-input v-model="基本设置.cz_popup1_title" placeholder="安全提醒" />
+            </el-form-item>
+            <el-form-item label="弹窗内容">
+              <el-input v-model="基本设置.cz_popup1_content" type="textarea" :rows="3" placeholder="弹窗内容，支持换行" />
+            </el-form-item>
+            <el-form-item label="标题图标">
+              <el-input v-model="基本设置.cz_popup1_icon" placeholder="⚠️" style="width: 100px" />
+              <span class="字段说明" style="margin-left:8px">输入Emoji图标</span>
+            </el-form-item>
+            <el-form-item label="标题颜色">
+              <el-color-picker v-model="基本设置.cz_popup1_title_color" show-alpha />
+              <el-input v-model="基本设置.cz_popup1_title_color" style="width:130px; margin-left:8px" />
+            </el-form-item>
+            <el-form-item label="内容颜色">
+              <el-color-picker v-model="基本设置.cz_popup1_content_color" show-alpha />
+              <el-input v-model="基本设置.cz_popup1_content_color" style="width:130px; margin-left:8px" />
+            </el-form-item>
+            <el-form-item label="背景颜色">
+              <el-color-picker v-model="基本设置.cz_popup1_bg_color" show-alpha />
+              <el-input v-model="基本设置.cz_popup1_bg_color" style="width:130px; margin-left:8px" />
+            </el-form-item>
+            <el-form-item label="关闭按钮文字">
+              <el-input v-model="基本设置.cz_popup1_btn_text" placeholder="我知道了" style="width: 180px" />
+            </el-form-item>
+            <el-form-item label="按钮颜色">
+              <el-color-picker v-model="基本设置.cz_popup1_btn_color" show-alpha />
+              <el-input v-model="基本设置.cz_popup1_btn_color" style="width:130px; margin-left:8px" />
+            </el-form-item>
+            <el-form-item label="按钮大小">
+              <el-select v-model="基本设置.cz_popup1_btn_size" style="width: 160px">
+                <el-option label="小 (44px)" value="small" />
+                <el-option label="中 (48px)" value="medium" />
+                <el-option label="大 (56px)" value="large" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="自动关闭秒数">
+              <el-input-number v-model="基本设置.cz_popup1_auto_close" :min="0" :max="60" style="width: 140px" />
+              <span class="字段说明" style="margin-left:8px">0 = 不自动关闭</span>
+            </el-form-item>
+          </el-card>
+
+          <!-- 弹窗2：账号验证通过弹窗 -->
+          <el-card style="margin-bottom: 16px; border: 1px solid #e4e7ed; border-radius: 8px;">
+            <template #header>
+              <div style="display:flex; align-items:center; gap:8px; font-weight:600">
+                <span>🔒 充值账号确认弹窗（popup2）</span>
+                <el-switch v-model="基本设置.cz_popup2_enabled" active-value="1" inactive-value="0" active-text="启用" inactive-text="关闭" />
+              </div>
+            </template>
+            <el-form-item label="弹窗标题">
+              <el-input v-model="基本设置.cz_popup2_title" placeholder="账号确认" />
+            </el-form-item>
+            <el-form-item label="弹窗内容">
+              <el-input v-model="基本设置.cz_popup2_content" type="textarea" :rows="3" placeholder="弹窗内容" />
+            </el-form-item>
+            <el-form-item label="标题图标">
+              <el-input v-model="基本设置.cz_popup2_icon" placeholder="🔒" style="width: 100px" />
+            </el-form-item>
+            <el-form-item label="标题颜色">
+              <el-color-picker v-model="基本设置.cz_popup2_title_color" show-alpha />
+              <el-input v-model="基本设置.cz_popup2_title_color" style="width:130px; margin-left:8px" />
+            </el-form-item>
+            <el-form-item label="内容颜色">
+              <el-color-picker v-model="基本设置.cz_popup2_content_color" show-alpha />
+              <el-input v-model="基本设置.cz_popup2_content_color" style="width:130px; margin-left:8px" />
+            </el-form-item>
+            <el-form-item label="背景颜色">
+              <el-color-picker v-model="基本设置.cz_popup2_bg_color" show-alpha />
+              <el-input v-model="基本设置.cz_popup2_bg_color" style="width:130px; margin-left:8px" />
+            </el-form-item>
+            <el-form-item label="关闭按钮文字">
+              <el-input v-model="基本设置.cz_popup2_btn_text" placeholder="我已确认" style="width: 180px" />
+            </el-form-item>
+            <el-form-item label="按钮颜色">
+              <el-color-picker v-model="基本设置.cz_popup2_btn_color" show-alpha />
+              <el-input v-model="基本设置.cz_popup2_btn_color" style="width:130px; margin-left:8px" />
+            </el-form-item>
+            <el-form-item label="按钮大小">
+              <el-select v-model="基本设置.cz_popup2_btn_size" style="width: 160px">
+                <el-option label="小 (44px)" value="small" />
+                <el-option label="中 (48px)" value="medium" />
+                <el-option label="大 (56px)" value="large" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="自动关闭秒数">
+              <el-input-number v-model="基本设置.cz_popup2_auto_close" :min="0" :max="60" style="width: 140px" />
+              <span class="字段说明" style="margin-left:8px">0 = 不自动关闭</span>
+            </el-form-item>
+          </el-card>
+
           <el-form-item>
             <el-button type="primary" :loading="保存中" @click="保存基本设置">保存基本设置</el-button>
           </el-form-item>
@@ -130,6 +233,30 @@ const 基本设置 = ref({
   topup_subtitle2: '快速到账  全程客服  值得信赖',
   topup_notice: '',
   topup_service_content: '',
+  // 充值弹窗1配置
+  cz_popup1_enabled: '0',
+  cz_popup1_title: '安全提醒',
+  cz_popup1_content: '务必确保充值账号准确，虚拟商品充错账号不支持退换货。',
+  cz_popup1_icon: '⚠️',
+  cz_popup1_title_color: '#667eea',
+  cz_popup1_content_color: '#333333',
+  cz_popup1_bg_color: '#ffffff',
+  cz_popup1_btn_text: '我知道了',
+  cz_popup1_btn_color: '#667eea',
+  cz_popup1_btn_size: 'large',
+  cz_popup1_auto_close: 0,
+  // 充值弹窗2配置
+  cz_popup2_enabled: '0',
+  cz_popup2_title: '账号确认',
+  cz_popup2_content: '请再次确认您的充值账号是否正确，虚拟商品一旦充值成功无法退款。',
+  cz_popup2_icon: '🔒',
+  cz_popup2_title_color: '#667eea',
+  cz_popup2_content_color: '#333333',
+  cz_popup2_bg_color: '#ffffff',
+  cz_popup2_btn_text: '我已确认',
+  cz_popup2_btn_color: '#667eea',
+  cz_popup2_btn_size: 'large',
+  cz_popup2_auto_close: 0,
 })
 
 // 验证设置
@@ -163,6 +290,30 @@ onMounted(async () => {
       基本设置.value.topup_subtitle2 = 数据.topup_subtitle2 || '快速到账  全程客服  值得信赖'
       基本设置.value.topup_notice = 数据.topup_notice || ''
       基本设置.value.topup_service_content = 数据.topup_service_content || ''
+      // 充值弹窗1配置
+      基本设置.value.cz_popup1_enabled = 数据.cz_popup1_enabled || '0'
+      基本设置.value.cz_popup1_title = 数据.cz_popup1_title || '安全提醒'
+      基本设置.value.cz_popup1_content = 数据.cz_popup1_content || '务必确保充值账号准确，虚拟商品充错账号不支持退换货。'
+      基本设置.value.cz_popup1_icon = 数据.cz_popup1_icon || '⚠️'
+      基本设置.value.cz_popup1_title_color = 数据.cz_popup1_title_color || '#667eea'
+      基本设置.value.cz_popup1_content_color = 数据.cz_popup1_content_color || '#333333'
+      基本设置.value.cz_popup1_bg_color = 数据.cz_popup1_bg_color || '#ffffff'
+      基本设置.value.cz_popup1_btn_text = 数据.cz_popup1_btn_text || '我知道了'
+      基本设置.value.cz_popup1_btn_color = 数据.cz_popup1_btn_color || '#667eea'
+      基本设置.value.cz_popup1_btn_size = 数据.cz_popup1_btn_size || 'large'
+      基本设置.value.cz_popup1_auto_close = parseInt(数据.cz_popup1_auto_close) || 0
+      // 充值弹窗2配置
+      基本设置.value.cz_popup2_enabled = 数据.cz_popup2_enabled || '0'
+      基本设置.value.cz_popup2_title = 数据.cz_popup2_title || '账号确认'
+      基本设置.value.cz_popup2_content = 数据.cz_popup2_content || '请再次确认您的充值账号是否正确，虚拟商品一旦充值成功无法退款。'
+      基本设置.value.cz_popup2_icon = 数据.cz_popup2_icon || '🔒'
+      基本设置.value.cz_popup2_title_color = 数据.cz_popup2_title_color || '#667eea'
+      基本设置.value.cz_popup2_content_color = 数据.cz_popup2_content_color || '#333333'
+      基本设置.value.cz_popup2_bg_color = 数据.cz_popup2_bg_color || '#ffffff'
+      基本设置.value.cz_popup2_btn_text = 数据.cz_popup2_btn_text || '我已确认'
+      基本设置.value.cz_popup2_btn_color = 数据.cz_popup2_btn_color || '#667eea'
+      基本设置.value.cz_popup2_btn_size = 数据.cz_popup2_btn_size || 'large'
+      基本设置.value.cz_popup2_auto_close = parseInt(数据.cz_popup2_auto_close) || 0
       // 验证设置
       验证设置.value.topup_phone_regex = 数据.topup_phone_regex || '^1[3-9]\\d{9}$'
       验证设置.value.topup_wechat_regex = 数据.topup_wechat_regex || '^[a-zA-Z0-9][a-zA-Z0-9_-]{5,19}$'

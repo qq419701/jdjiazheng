@@ -91,6 +91,109 @@
             />
             <div class="字段说明">开启后，新订单会自动触发京东下单流程</div>
           </el-form-item>
+
+          <!-- 弹窗提醒设置 -->
+          <div class="设置分组标题">── 🔔 弹窗提醒设置 ──</div>
+
+          <!-- 弹窗1：首页弹窗 -->
+          <el-card class="弹窗配置卡片" style="margin-bottom: 16px">
+            <template #header>
+              <div style="display:flex; align-items:center; gap:8px; font-weight:600">
+                <span>🏠 家政首页弹窗（popup1）</span>
+                <el-switch v-model="设置表单.jz_popup1_enabled" active-value="1" inactive-value="0" active-text="启用" inactive-text="关闭" />
+              </div>
+            </template>
+            <el-form-item label="弹窗标题">
+              <el-input v-model="设置表单.jz_popup1_title" placeholder="温馨提醒" />
+            </el-form-item>
+            <el-form-item label="弹窗内容">
+              <el-input v-model="设置表单.jz_popup1_content" type="textarea" :rows="3" placeholder="弹窗内容，支持换行" />
+            </el-form-item>
+            <el-form-item label="标题图标">
+              <el-input v-model="设置表单.jz_popup1_icon" placeholder="⚠️" style="width: 100px" />
+              <span class="字段说明" style="margin-left:8px">输入Emoji图标</span>
+            </el-form-item>
+            <el-form-item label="标题颜色">
+              <el-color-picker v-model="设置表单.jz_popup1_title_color" show-alpha />
+              <el-input v-model="设置表单.jz_popup1_title_color" style="width:130px; margin-left:8px" />
+            </el-form-item>
+            <el-form-item label="内容颜色">
+              <el-color-picker v-model="设置表单.jz_popup1_content_color" show-alpha />
+              <el-input v-model="设置表单.jz_popup1_content_color" style="width:130px; margin-left:8px" />
+            </el-form-item>
+            <el-form-item label="背景颜色">
+              <el-color-picker v-model="设置表单.jz_popup1_bg_color" show-alpha />
+              <el-input v-model="设置表单.jz_popup1_bg_color" style="width:130px; margin-left:8px" />
+            </el-form-item>
+            <el-form-item label="关闭按钮文字">
+              <el-input v-model="设置表单.jz_popup1_btn_text" placeholder="我知道了" style="width: 180px" />
+            </el-form-item>
+            <el-form-item label="按钮颜色">
+              <el-color-picker v-model="设置表单.jz_popup1_btn_color" show-alpha />
+              <el-input v-model="设置表单.jz_popup1_btn_color" style="width:130px; margin-left:8px" />
+            </el-form-item>
+            <el-form-item label="按钮大小">
+              <el-select v-model="设置表单.jz_popup1_btn_size" style="width: 160px">
+                <el-option label="小 (44px)" value="small" />
+                <el-option label="中 (48px)" value="medium" />
+                <el-option label="大 (56px)" value="large" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="自动关闭秒数">
+              <el-input-number v-model="设置表单.jz_popup1_auto_close" :min="0" :max="60" style="width: 140px" />
+              <span class="字段说明" style="margin-left:8px">0 = 不自动关闭</span>
+            </el-form-item>
+          </el-card>
+
+          <!-- 弹窗2：选时间弹窗 -->
+          <el-card class="弹窗配置卡片" style="margin-bottom: 16px">
+            <template #header>
+              <div style="display:flex; align-items:center; gap:8px; font-weight:600">
+                <span>⏰ 家政选时间弹窗（popup2）</span>
+                <el-switch v-model="设置表单.jz_popup2_enabled" active-value="1" inactive-value="0" active-text="启用" inactive-text="关闭" />
+              </div>
+            </template>
+            <el-form-item label="弹窗标题">
+              <el-input v-model="设置表单.jz_popup2_title" placeholder="退改签须知" />
+            </el-form-item>
+            <el-form-item label="弹窗内容">
+              <el-input v-model="设置表单.jz_popup2_content" type="textarea" :rows="3" placeholder="弹窗内容" />
+            </el-form-item>
+            <el-form-item label="标题图标">
+              <el-input v-model="设置表单.jz_popup2_icon" placeholder="📋" style="width: 100px" />
+            </el-form-item>
+            <el-form-item label="标题颜色">
+              <el-color-picker v-model="设置表单.jz_popup2_title_color" show-alpha />
+              <el-input v-model="设置表单.jz_popup2_title_color" style="width:130px; margin-left:8px" />
+            </el-form-item>
+            <el-form-item label="内容颜色">
+              <el-color-picker v-model="设置表单.jz_popup2_content_color" show-alpha />
+              <el-input v-model="设置表单.jz_popup2_content_color" style="width:130px; margin-left:8px" />
+            </el-form-item>
+            <el-form-item label="背景颜色">
+              <el-color-picker v-model="设置表单.jz_popup2_bg_color" show-alpha />
+              <el-input v-model="设置表单.jz_popup2_bg_color" style="width:130px; margin-left:8px" />
+            </el-form-item>
+            <el-form-item label="关闭按钮文字">
+              <el-input v-model="设置表单.jz_popup2_btn_text" placeholder="我已知晓" style="width: 180px" />
+            </el-form-item>
+            <el-form-item label="按钮颜色">
+              <el-color-picker v-model="设置表单.jz_popup2_btn_color" show-alpha />
+              <el-input v-model="设置表单.jz_popup2_btn_color" style="width:130px; margin-left:8px" />
+            </el-form-item>
+            <el-form-item label="按钮大小">
+              <el-select v-model="设置表单.jz_popup2_btn_size" style="width: 160px">
+                <el-option label="小 (44px)" value="small" />
+                <el-option label="中 (48px)" value="medium" />
+                <el-option label="大 (56px)" value="large" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="自动关闭秒数">
+              <el-input-number v-model="设置表单.jz_popup2_auto_close" :min="0" :max="60" style="width: 140px" />
+              <span class="字段说明" style="margin-left:8px">0 = 不自动关闭</span>
+            </el-form-item>
+          </el-card>
+
           <el-form-item>
             <el-button type="primary" :loading="保存中" @click="保存设置('jiazheng')">
               💾 保存家政设置
@@ -256,6 +359,30 @@ const 设置表单 = ref({
   agiso_merchant_key: '',
   agiso_user_id: '',
   agiso_products: '',
+  // 家政弹窗1配置
+  jz_popup1_enabled: '0',
+  jz_popup1_title: '温馨提醒',
+  jz_popup1_content: '您所在的城市，阿姨接单繁忙，会有一定概率无阿姨接单的情况。',
+  jz_popup1_icon: '⚠️',
+  jz_popup1_title_color: '#e54635',
+  jz_popup1_content_color: '#333333',
+  jz_popup1_bg_color: '#ffffff',
+  jz_popup1_btn_text: '我知道了',
+  jz_popup1_btn_color: '#e54635',
+  jz_popup1_btn_size: 'large',
+  jz_popup1_auto_close: 0,
+  // 家政弹窗2配置
+  jz_popup2_enabled: '0',
+  jz_popup2_title: '退改签须知',
+  jz_popup2_content: '一旦预约成功，退改签将收取50元的手续费，请确认后再提交。',
+  jz_popup2_icon: '📋',
+  jz_popup2_title_color: '#e54635',
+  jz_popup2_content_color: '#333333',
+  jz_popup2_bg_color: '#ffffff',
+  jz_popup2_btn_text: '我已知晓',
+  jz_popup2_btn_color: '#e54635',
+  jz_popup2_btn_size: 'large',
+  jz_popup2_auto_close: 0,
 })
 
 const 加载设置 = async () => {
@@ -291,6 +418,30 @@ const 加载设置 = async () => {
         agiso_merchant_key: 数据.agiso_merchant_key || '',
         agiso_user_id: 数据.agiso_user_id || '',
         agiso_products: 数据.agiso_products || '',
+        // 家政弹窗1配置
+        jz_popup1_enabled: 数据.jz_popup1_enabled || '0',
+        jz_popup1_title: 数据.jz_popup1_title || '温馨提醒',
+        jz_popup1_content: 数据.jz_popup1_content || '您所在的城市，阿姨接单繁忙，会有一定概率无阿姨接单的情况。',
+        jz_popup1_icon: 数据.jz_popup1_icon || '⚠️',
+        jz_popup1_title_color: 数据.jz_popup1_title_color || '#e54635',
+        jz_popup1_content_color: 数据.jz_popup1_content_color || '#333333',
+        jz_popup1_bg_color: 数据.jz_popup1_bg_color || '#ffffff',
+        jz_popup1_btn_text: 数据.jz_popup1_btn_text || '我知道了',
+        jz_popup1_btn_color: 数据.jz_popup1_btn_color || '#e54635',
+        jz_popup1_btn_size: 数据.jz_popup1_btn_size || 'large',
+        jz_popup1_auto_close: parseInt(数据.jz_popup1_auto_close) || 0,
+        // 家政弹窗2配置
+        jz_popup2_enabled: 数据.jz_popup2_enabled || '0',
+        jz_popup2_title: 数据.jz_popup2_title || '退改签须知',
+        jz_popup2_content: 数据.jz_popup2_content || '一旦预约成功，退改签将收取50元的手续费，请确认后再提交。',
+        jz_popup2_icon: 数据.jz_popup2_icon || '📋',
+        jz_popup2_title_color: 数据.jz_popup2_title_color || '#e54635',
+        jz_popup2_content_color: 数据.jz_popup2_content_color || '#333333',
+        jz_popup2_bg_color: 数据.jz_popup2_bg_color || '#ffffff',
+        jz_popup2_btn_text: 数据.jz_popup2_btn_text || '我已知晓',
+        jz_popup2_btn_color: 数据.jz_popup2_btn_color || '#e54635',
+        jz_popup2_btn_size: 数据.jz_popup2_btn_size || 'large',
+        jz_popup2_auto_close: parseInt(数据.jz_popup2_auto_close) || 0,
       }
     }
   } finally {
@@ -371,5 +522,10 @@ onMounted(() => 加载设置())
   color: #909399;
   font-size: 12px;
   white-space: nowrap;
+}
+
+.弹窗配置卡片 {
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
 }
 </style>
