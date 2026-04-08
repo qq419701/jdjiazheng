@@ -69,8 +69,6 @@ const 内容行列表 = computed(() => {
   return props.content.split('\n').filter(行 => 行.trim())
 })
 
-
-
 const 按钮显示文字 = computed(() => {
   if (倒计时剩余.value > 0) {
     return `${props.btnText} (${倒计时剩余.value}s)`
