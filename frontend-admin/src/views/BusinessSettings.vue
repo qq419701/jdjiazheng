@@ -22,7 +22,7 @@
           <el-icon class="占位图标"><Clock /></el-icon>
           <p class="占位文字">该板块即将整合完成，现有设置请使用侧边栏对应菜单</p>
           <el-button type="primary" @click="$router.push('/admin/laundry-settings')">
-            前往洗衣服设置
+            前往洗衣设置
           </el-button>
         </div>
       </el-tab-pane>
