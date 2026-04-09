@@ -710,6 +710,76 @@
       </template>
     </el-dialog>
 
+    <!-- 家政：订单详情弹窗 -->
+    <el-dialog
+      v-model="显示家政详情弹窗"
+      title="🏠 家政订单详情"
+      width="860px"
+      :close-on-click-modal="false"
+    >
+      <div v-loading="家政详情加载中">
+        <el-row :gutter="16" v-if="家政详情数据.id">
+          <el-col :span="16">
+            <el-descriptions title="客户信息" :column="2" border>
+              <el-descriptions-item label="订单编号">{{ 家政详情数据.order_no }}</el-descriptions-item>
+              <el-descriptions-item label="卡密">{{ 家政详情数据.card_code }}</el-descriptions-item>
+              <el-descriptions-item label="姓名">{{ 家政详情数据.name }}</el-descriptions-item>
+              <el-descriptions-item label="手机号">{{ 家政详情数据.phone }}</el-descriptions-item>
+              <el-descriptions-item label="服务地址" :span="2">{{ 家政详情数据.full_address }}</el-descriptions-item>
+              <el-descriptions-item label="服务类型">{{ 家政详情数据.service_type }}</el-descriptions-item>
+              <el-descriptions-item label="服务时长">{{ 家政详情数据.service_hours }}小时</el-descriptions-item>
+              <el-descriptions-item label="预约时间" :span="2">
+                <template v-if="解析多选时间(家政详情数据.visit_times).length > 0">
+                  <div v-for="(项, 索引) in 解析多选时间(家政详情数据.visit_times)" :key="索引" style="font-size:13px;line-height:1.8">
+                    {{ ['🥇','🥈','🥉'][索引] || `${索引+1}.` }} {{ 项.date }} {{ 项.time }}
+                    <el-tag v-if="索引 === 0" type="danger" size="small">优先</el-tag>
+                    <el-tag v-else type="info" size="small">备选</el-tag>
+                  </div>
+                </template>
+                <template v-else>{{ 家政详情数据.visit_date }} {{ 家政详情数据.visit_time }}</template>
+              </el-descriptions-item>
+              <el-descriptions-item v-if="家政详情数据.remark" label="备注" :span="2">
+                <span style="white-space:pre-wrap;color:#555">{{ 家政详情数据.remark }}</span>
+              </el-descriptions-item>
+            </el-descriptions>
+            <el-descriptions title="下单状态" :column="2" border style="margin-top:16px">
+              <el-descriptions-item label="状态">
+                <el-tag :type="jz获取状态类型(家政详情数据.status)">{{ jz获取状态文字(家政详情数据.status) }}</el-tag>
+              </el-descriptions-item>
+              <el-descriptions-item label="下单方式">{{ 家政详情数据.auto_order ? '自动下单' : '手动下单' }}</el-descriptions-item>
+              <el-descriptions-item label="京东订单号">{{ 家政详情数据.jd_order_id || '暂无' }}</el-descriptions-item>
+              <el-descriptions-item label="使用账号ID">{{ 家政详情数据.jd_account_id || '暂无' }}</el-descriptions-item>
+              <el-descriptions-item v-if="家政详情数据.fail_reason" label="失败原因" :span="2">
+                <span style="color:#F56C6C">{{ 家政详情数据.fail_reason }}</span>
+              </el-descriptions-item>
+            </el-descriptions>
+          </el-col>
+          <el-col :span="8">
+            <div style="font-size:14px;font-weight:600;color:#333;margin-bottom:8px">操作日志</div>
+            <el-timeline v-if="家政详情日志.length > 0">
+              <el-timeline-item
+                v-for="(日志, 索引) in 家政详情日志"
+                :key="索引"
+                :type="日志.状态 === 'success' ? 'success' : 日志.状态 === 'error' ? 'danger' : 'primary'"
+                :timestamp="日志.时间"
+                placement="top"
+              >{{ 日志.操作 }}</el-timeline-item>
+            </el-timeline>
+            <el-empty v-else description="暂无操作日志" />
+          </el-col>
+        </el-row>
+        <el-empty v-else-if="!家政详情加载中" description="加载中或暂无数据" />
+      </div>
+      <template #footer>
+        <el-button @click="显示家政详情弹窗 = false">关闭</el-button>
+        <el-button
+          v-if="家政详情数据.status === 0 || 家政详情数据.status === 3 || 家政详情数据.status === 7"
+          type="primary"
+          @click="jz触发下单(家政详情数据.id); 显示家政详情弹窗 = false"
+        >🤖 自动下单</el-button>
+      </template>
+    </el-dialog>
+
   </div>
 </template>
 
@@ -721,7 +791,7 @@ import { ArrowDown } from '@element-plus/icons-vue'
 import {
   获取订单列表API, 更新订单状态API, 触发自动下单API, 重置订单API, 更新订单备注API,
   上传备注图片API, 导出家政订单API, 订单页搜索家政卡密API, 作废卡密API,
-  申请退款API, 确认退款完成API, 获取家政预览卡密API,
+  申请退款API, 确认退款完成API, 获取家政预览卡密API, 获取订单详情API,
   获取洗衣订单列表API, 获取洗衣订单详情API, 触发洗衣API下单, 取消洗衣订单API,
   重置洗衣订单API, 修改洗衣订单API, 查询洗衣物流API, 更新洗衣订单备注API,
   申请洗衣退款API, 确认洗衣退款完成API, 导出洗衣订单API, 订单页搜索洗衣卡密API, 作废洗衣卡密API,
@@ -729,7 +799,7 @@ import {
   获取充值订单列表API, 获取充值订单详情API, 更新充值订单状态API, 更新充值订单备注API,
   申请充值退款API, 确认充值退款完成API, 导出充值订单API, 订单页搜索充值卡密API, 作废充值卡密API,
   获取充值预览卡密API,
-  获取设置API, 获取订单角标数量API
+  获取设置API, 获取订单角标数量API, 统一搜索卡密API
 } from '../api/index'
 
 const router = useRouter()
@@ -870,19 +940,30 @@ const 打开卡密作废弹窗 = (businessType) => {
 const 搜索卡密 = async () => {
   if (!卡密搜索关键词.value.trim()) { ElMessage.warning('请输入卡密码'); return }
   卡密搜索中.value = true
-  const apiMap = {
+  const 业务 = 卡密作废业务.value
+  const 旧接口Map = {
     jiazheng: 订单页搜索家政卡密API,
     xiyifu: 订单页搜索洗衣卡密API,
     topup: 订单页搜索充值卡密API,
   }
   try {
-    const 结果 = await apiMap[卡密作废业务.value](卡密搜索关键词.value.trim())
-    if (结果.code === 1) {
-      卡密搜索结果.value = 结果.data || []
-      if (!卡密搜索结果.value.length) ElMessage.info('未找到匹配的卡密')
-    } else {
-      ElMessage.warning(结果.message || '搜索失败')
+    const [旧结果, 新结果] = await Promise.allSettled([
+      旧接口Map[业务](卡密搜索关键词.value.trim()),
+      统一搜索卡密API(卡密搜索关键词.value.trim(), 业务),
+    ])
+    let 结果列表 = []
+    if (旧结果.status === 'fulfilled' && 旧结果.value?.code === 1) {
+      结果列表 = [...(旧结果.value.data || [])]
     }
+    if (新结果.status === 'fulfilled' && 新结果.value?.code === 1) {
+      const 新卡密列表 = 新结果.value.data?.list || []
+      const 已有codes = new Set(结果列表.map(c => c.code))
+      新卡密列表.forEach(c => {
+        if (!已有codes.has(c.code)) 结果列表.push(c)
+      })
+    }
+    卡密搜索结果.value = 结果列表
+    if (!结果列表.length) ElMessage.info('未找到匹配的卡密')
   } catch { ElMessage.error('搜索卡密失败') } finally { 卡密搜索中.value = false }
 }
 
@@ -981,6 +1062,12 @@ const 当前失败行 = ref(null)
 const 显示查看失败原因弹窗 = ref(false)
 const 当前查看失败原因 = ref('')
 
+// 家政：详情弹窗
+const 显示家政详情弹窗 = ref(false)
+const 家政详情数据 = ref({})
+const 家政详情日志 = ref([])
+const 家政详情加载中 = ref(false)
+
 const 加载家政订单 = async () => {
   jz加载中.value = true
   try {
@@ -1010,8 +1097,22 @@ const jz重置 = () => {
   加载家政订单()
 }
 
-const jz查看详情 = (id) => {
-  router.push(`/admin/orders/jiazheng/${id}`)
+const jz查看详情 = async (id) => {
+  显示家政详情弹窗.value = true
+  家政详情加载中.value = true
+  家政详情数据.value = {}
+  家政详情日志.value = []
+  try {
+    const 结果 = await 获取订单详情API(id)
+    if (结果.code === 1) {
+      家政详情数据.value = 结果.data
+      家政详情日志.value = Array.isArray(结果.data.order_log) ? 结果.data.order_log : []
+    }
+  } catch {
+    ElMessage.error('加载详情失败')
+  } finally {
+    家政详情加载中.value = false
+  }
 }
 
 const jz触发下单 = async (id) => {

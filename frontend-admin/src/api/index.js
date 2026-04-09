@@ -168,6 +168,9 @@ export const 获取充值预览卡密API = () => 请求实例.get('/topup-cards/
 export const 统一获取卡密列表API = (参数) => 请求实例.get('/unified-cards', { params: 参数 })
 export const 统一获取批次列表API = (参数) => 请求实例.get('/unified-batches', { params: 参数 })
 export const 统一获取卡密统计API = () => 请求实例.get('/unified-stats')
+// 统一卡密搜索（用于卡密作废弹窗，覆盖新旧两种生成方式）
+export const 统一搜索卡密API = (keyword, business_type) =>
+  请求实例.get('/unified-cards', { params: { keyword, business_type, limit: 20, page: 1 } })
 
 // ===== 套餐管理（新）=====
 export const 获取套餐列表API = (参数) => 请求实例.get('/products', { params: { ...参数, include_stock: 1 } })
