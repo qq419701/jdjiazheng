@@ -976,15 +976,18 @@ router.post('/card-templates/generate', 验证Token, async (req, res) => {
       topup_account_error_msg: 套餐.topup_account_error_msg || null,
     });
 
-    // 生成卡密（去重）
+    // 生成卡密（去重，按业务类型加前缀 JZ/XY/CZ）
     const 现有卡密 = await Card.findAll({ attributes: ['code'] });
     const 已有集合 = new Set(现有卡密.map(c => c.code));
+
+    const 前缀Map = { jiazheng: 'JZ', xiyifu: 'XY', topup: 'CZ' };
+    const 业务前缀 = 前缀Map[套餐.business_type] || '';
 
     const 新卡密列表 = [];
     let n = 0, tries = 0;
     while (n < 实际数量 && tries < 实际数量 * 10) {
       tries++;
-      const 码 = 生成卡密码(16);
+      const 码 = 生成卡密码(16, 业务前缀);
       if (!已有集合.has(码)) {
         已有集合.add(码);
         新卡密列表.push({

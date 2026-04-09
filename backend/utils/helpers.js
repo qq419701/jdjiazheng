@@ -5,13 +5,15 @@
  * @param {number} 长度 - 卡密长度，默认16位
  * @returns {string} 大写字母和数字组合的卡密
  */
-const 生成卡密 = (长度 = 16) => {
+const 生成卡密 = (长度 = 16, 前缀 = '') => {
   const 字符集 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let 卡密 = '';
-  for (let i = 0; i < 长度; i++) {
+  // 随机部分长度 = 总长度 - 前缀长度，最少8位随机字符
+  const 随机长度 = Math.max(8, 长度 - 前缀.length);
+  for (let i = 0; i < 随机长度; i++) {
     卡密 += 字符集.charAt(Math.floor(Math.random() * 字符集.length));
   }
-  return 卡密;
+  return 前缀 + 卡密;
 };
 
 /**

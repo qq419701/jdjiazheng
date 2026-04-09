@@ -278,6 +278,7 @@
           <span class="批量提示">已选 {{ 卡密选中列表.length }} 条</span>
           <el-button size="small" type="warning" @click="批量作废">批量作废</el-button>
           <el-button size="small" type="primary" @click="批量复制链接">批量复制链接</el-button>
+          <el-button size="small" type="danger" @click="批量删除卡密">🗑️ 批量删除</el-button>
         </div>
 
         <!-- 分页 -->
@@ -525,15 +526,43 @@ const 执行生成卡密 = async () => {
 // ===== 链接生成 =====
 const 生成链接 = (业务类型, 卡密码) => {
   const 域名 = 站点域名.value || window.location.origin
-  if (业务类型 === 'jiazheng') return `${域名}/${卡密码}`
   if (业务类型 === 'xiyifu') return `${域名}/xi/${卡密码}`
   if (业务类型 === 'topup') return `${域名}/cz/${卡密码}`
-  return `${域名}/${卡密码}`
+  // 家政统一用 /jz/ 前缀
+  return `${域名}/jz/${卡密码}`
 }
 
 // ===== 复制/下载 =====
-const 复制文本 = (文本) => {
-  navigator.clipboard.writeText(文本).then(() => ElMessage.success('已复制'))
+// HTTP/HTTPS 兼容复制函数
+const copyToClipboard = (text) => {
+  return new Promise((resolve, reject) => {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(resolve).catch(reject)
+      return
+    }
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.style.position = 'fixed'
+    textarea.style.left = '-9999px'
+    textarea.style.top = '-9999px'
+    document.body.appendChild(textarea)
+    textarea.focus()
+    textarea.select()
+    try {
+      const success = document.execCommand('copy')
+      document.body.removeChild(textarea)
+      success ? resolve() : reject(new Error('execCommand失败'))
+    } catch (e) {
+      document.body.removeChild(textarea)
+      reject(e)
+    }
+  })
+}
+
+const 复制文本 = (text) => {
+  copyToClipboard(text)
+    .then(() => ElMessage.success('已复制'))
+    .catch(() => ElMessage.error('复制失败，请手动复制'))
 }
 
 const 复制完整链接 = () => {
@@ -728,6 +757,36 @@ const 批量复制链接 = () => {
   }
   const 文本 = 卡密选中列表.value.map(c => 生成链接(c.business_type, c.code)).join('\n')
   复制文本(文本)
+}
+
+const 批量删除卡密 = async () => {
+  if (卡密选中列表.value.length === 0) return
+  try {
+    await ElMessageBox.confirm(
+      `确认删除选中的 ${卡密选中列表.value.length} 条卡密？已使用的卡密将跳过删除，此操作不可逆。`,
+      '批量删除确认',
+      { type: 'warning', confirmButtonText: '确认删除' }
+    )
+    let 成功数 = 0
+    let 跳过数 = 0
+    for (const 卡密 of 卡密选中列表.value) {
+      try {
+        if (卡密.business_type === 'xiyifu') {
+          await 删除洗衣卡密API(卡密.id)
+        } else if (卡密.business_type === 'topup') {
+          await 删除充值卡密API(卡密.id)
+        } else {
+          await 删除卡密API(卡密.id)
+        }
+        成功数++
+      } catch {
+        跳过数++
+      }
+    }
+    ElMessage.success(`删除完成：成功 ${成功数} 条${跳过数 > 0 ? `，跳过 ${跳过数} 条（已使用）` : ''}`)
+    搜索卡密()
+    加载统计()
+  } catch {}
 }
 
 // ===== 导出卡密列表 =====
