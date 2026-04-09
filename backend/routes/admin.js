@@ -1034,4 +1034,22 @@ router.post('/card-templates/generate', 验证Token, async (req, res) => {
   }
 });
 
+// ===== 订单中心：角标数量接口 =====
+// GET /admin/api/order-center/badge-counts
+// 返回三业务待处理订单数，用于Tab角标显示
+router.get('/order-center/badge-counts', 验证Token, async (req, res) => {
+  try {
+    const { Op } = require('sequelize');
+    const [jz, xi, tp] = await Promise.all([
+      Order.count({ where: { business_type: 'jiazheng', status: 0 } }),
+      Order.count({ where: { business_type: 'xiyifu', status: 0 } }),
+      Order.count({ where: { business_type: 'topup', status: 0 } }),
+    ]);
+    res.json({ code: 1, data: { jiazheng: jz, xiyifu: xi, topup: tp } });
+  } catch (错误) {
+    console.error('获取订单角标数量出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
 module.exports = router;

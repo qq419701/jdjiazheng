@@ -163,14 +163,14 @@ const routes = [
         path: 'order-center',
         name: 'OrderCenter',
         component: () => import('../views/OrderCenter.vue'),
-        meta: { 标题: '订单中心（整合中）', 权限Key: 'order_center' },
+        meta: { 标题: '订单中心', 权限Key: 'order_center' },
       },
       // ===== 业务设置（预留）=====
       {
         path: 'business-settings',
         name: 'BusinessSettings',
         component: () => import('../views/BusinessSettings.vue'),
-        meta: { 标题: '业务设置（整合中）', 权限Key: 'business_settings' },
+        meta: { 标题: '业务设置', 权限Key: 'business_settings' },
       },
     ],
   },

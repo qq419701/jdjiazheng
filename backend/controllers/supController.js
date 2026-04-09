@@ -487,6 +487,29 @@ const 撤销订单 = async (req, res) => {
       });
     }
 
+    // ===== 核心规则：卡密 status=0（未使用）→ 直接作废 + 取消关联订单 =====
+    if (卡密记录.status === 0) {
+      // 卡密未使用，无论什么业务直接作废并撤单
+      const 关联订单 = await Order.findOne({
+        where: { card_code: 卡密记录.code, status: { [Op.ne]: 4 } },
+      });
+      if (关联订单) {
+        const 日志 = 安全解析JSON(关联订单.order_log, []);
+        日志.push({
+          时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+          操作: '阿奇所平台撤单（卡密未使用），订单自动取消',
+          状态: 'cancel',
+        });
+        await 关联订单.update({ status: 4, order_log: JSON.stringify(日志) });
+      }
+      await 卡密记录.update({ status: 2, sup_status: 2 });
+      return res.json({
+        code: 200,
+        message: '接口调用成功',
+        data: { cancelStatus: 20 },
+      });
+    }
+
     const 业务类型 = 卡密记录.business_type || 'jiazheng';
 
     if (业务类型 === 'jiazheng') {
@@ -500,14 +523,14 @@ const 撤销订单 = async (req, res) => {
       });
 
       if (关联订单) {
-        // 已下单（status=2）：不允许撤单
-        if (关联订单.status === 2) {
+        // 预约完成（status>=6）：不允许撤单
+        if (关联订单.status >= 6) {
           return res.json({
             code: 200,
             message: '接口调用成功',
             data: {
               cancelStatus: 30,
-              cancelErrMsg: '卡密已用于家政预约且已下单，无法退款',
+              cancelErrMsg: '家政服务已预约完成，无法撤单',
             },
           });
         }
@@ -550,7 +573,19 @@ const 撤销订单 = async (req, res) => {
       });
 
       if (关联订单) {
-        // 如果已推送到鲸蚁（有 laundry_order_id），尝试通知鲸蚁取消
+        // 已在鲸蚁系统处理中（有laundry_order_id且laundry_status不为空/已取消）：拒绝撤单
+        if (关联订单.laundry_order_id && 关联订单.laundry_status && !['已取消'].includes(关联订单.laundry_status)) {
+          return res.json({
+            code: 200,
+            message: '接口调用成功',
+            data: {
+              cancelStatus: 30,
+              cancelErrMsg: `洗衣服务已在鲸蚁系统处理（${关联订单.laundry_status}），无法撤单`,
+            },
+          });
+        }
+
+        // 如果已推送到鲸蚁（有 laundry_order_id 但已取消状态），尝试通知鲸蚁取消
         if (关联订单.laundry_order_id) {
           try {
             const { 同步订单状态 } = require('../services/laundryApiService');
@@ -596,10 +631,21 @@ const 撤销订单 = async (req, res) => {
 
     } else if (业务类型 === 'topup') {
       // ===== 充值业务 =====
-      // 充值业务无论订单状态如何，都允许撤单（充值是人工操作，未发货前均可退）
       const 关联订单 = await Order.findOne({
         where: { card_code: 卡密记录.code },
       });
+
+      // 已完成充值（status=2）：拒绝撤单
+      if (关联订单 && 关联订单.status === 2) {
+        return res.json({
+          code: 200,
+          message: '接口调用成功',
+          data: {
+            cancelStatus: 30,
+            cancelErrMsg: '充值已完成，无法撤单',
+          },
+        });
+      }
 
       if (关联订单 && 关联订单.status !== 4) {
         const 现有日志 = 安全解析JSON(关联订单.order_log, []);
