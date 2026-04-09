@@ -95,16 +95,23 @@
       </template>
     </el-dialog>
 
-    <!-- 三业务 Tabs -->
-    <el-tabs v-model="当前Tab" type="card" @tab-change="切换Tab">
+    <!-- 自定义 Tab 切换栏 -->
+    <div class="订单Tab栏">
+      <div
+        v-for="tab in Tab列表"
+        :key="tab.key"
+        :class="['Tab按钮', { 'Tab激活': 当前Tab === tab.key, 'Tab禁用': tab.disabled }]"
+        @click="!tab.disabled && 切换Tab(tab.key)"
+      >
+        <span class="Tab图标">{{ tab.icon }}</span>
+        <span class="Tab文字">{{ tab.label }}</span>
+        <span v-if="tab.badge" class="Tab角标">{{ tab.badge }}</span>
+        <span v-if="tab.disabled" class="Tab即将上线">即将上线</span>
+      </div>
+    </div>
 
-      <!-- ============ 家政订单 Tab ============ -->
-      <el-tab-pane name="jiazheng">
-        <template #label>
-          <el-badge :value="角标数量.jiazheng || undefined" :hidden="!角标数量.jiazheng">
-            🏠 家政订单
-          </el-badge>
-        </template>
+      <!-- ============ 家政订单 内容 ============ -->
+      <div v-show="当前Tab === 'jiazheng'">
 
         <!-- 家政筛选行 -->
         <el-card class="搜索卡片">
@@ -217,15 +224,10 @@
           </el-table>
           <el-pagination v-model:current-page="jz当前页" v-model:page-size="jz每页数量" :total="jz总数" layout="total, prev, pager, next" class="分页器" @change="加载家政订单" />
         </el-card>
-      </el-tab-pane>
+      </div>
 
-      <!-- ============ 洗衣订单 Tab ============ -->
-      <el-tab-pane name="xiyifu">
-        <template #label>
-          <el-badge :value="角标数量.xiyifu || undefined" :hidden="!角标数量.xiyifu">
-            🧺 洗衣订单
-          </el-badge>
-        </template>
+      <!-- ============ 洗衣订单 内容 ============ -->
+      <div v-show="当前Tab === 'xiyifu'">
 
         <!-- 洗衣筛选行 -->
         <el-card class="搜索卡片">
@@ -330,15 +332,10 @@
           </el-table>
           <el-pagination v-model:current-page="xi当前页" v-model:page-size="xi每页数量" :total="xi总数" layout="total, prev, pager, next" class="分页器" @change="加载洗衣订单" />
         </el-card>
-      </el-tab-pane>
+      </div>
 
-      <!-- ============ 充值订单 Tab ============ -->
-      <el-tab-pane name="topup">
-        <template #label>
-          <el-badge :value="角标数量.topup || undefined" :hidden="!角标数量.topup">
-            💳 充值订单
-          </el-badge>
-        </template>
+      <!-- ============ 充值订单 内容 ============ -->
+      <div v-show="当前Tab === 'topup'">
 
         <!-- 充值筛选行 -->
         <el-card class="搜索卡片">
@@ -468,8 +465,7 @@
           </el-table>
           <el-pagination v-model:current-page="tp当前页" v-model:page-size="tp每页数量" :total="tp总数" layout="total, prev, pager, next" class="分页器" @change="加载充值订单" />
         </el-card>
-      </el-tab-pane>
-    </el-tabs>
+      </div>
 
     <!-- ============ 共用：备注弹窗 ============ -->
     <el-dialog v-model="显示备注弹窗" title="编辑备注" width="520px" :close-on-click-modal="false">
@@ -923,6 +919,14 @@ const 预览链接 = ref('')
 const 角标数量 = ref({ jiazheng: 0, xiyifu: 0, topup: 0 })
 const 导出中 = ref(false)
 
+// Tab 列表（含第4个空调订单预留位）
+const Tab列表 = computed(() => [
+  { key: 'jiazheng', icon: '🏠', label: '家政订单', badge: 角标数量.value.jiazheng || 0 },
+  { key: 'xiyifu', icon: '🧺', label: '洗衣订单', badge: 角标数量.value.xiyifu || 0 },
+  { key: 'topup', icon: '💳', label: '充值订单', badge: 角标数量.value.topup || 0 },
+  { key: 'aircon', icon: '❄️', label: '空调订单', badge: 0, disabled: true },
+])
+
 // ==================== 卡密作废（共享） ====================
 
 const 显示卡密作废弹窗 = ref(false)
@@ -1039,6 +1043,7 @@ const 导出订单 = async (businessType) => {
 // ==================== Tab 切换 ====================
 
 const 切换Tab = (tabName) => {
+  当前Tab.value = tabName
   if (tabName === 'jiazheng' && jz订单列表.value.length === 0) 加载家政订单()
   if (tabName === 'xiyifu' && xi订单列表.value.length === 0) 加载洗衣订单()
   if (tabName === 'topup' && tp订单列表.value.length === 0) 加载充值订单()
@@ -1617,4 +1622,86 @@ onMounted(async () => {
 .图片上传区:hover, .图片上传区.拖拽悬停 { border-color: #409eff; }
 .上传提示 { display: flex; flex-direction: column; gap: 4px; color: #999; font-size: 13px; }
 .上传进度 { color: #409eff; }
+
+/* ===== 自定义订单Tab栏样式 ===== */
+.订单Tab栏 {
+  display: flex;
+  gap: 0;
+  margin-bottom: 12px;
+  background: #f0f2f5;
+  border-radius: 12px;
+  padding: 4px;
+}
+.Tab按钮 {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 8px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
+  min-height: 64px;
+}
+.Tab按钮:hover:not(.Tab禁用):not(.Tab激活) {
+  background: rgba(255,255,255,0.6);
+}
+.Tab激活 {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+}
+.Tab禁用 {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.Tab图标 {
+  font-size: 22px;
+  margin-bottom: 3px;
+  transition: transform 0.2s;
+  display: block;
+}
+.Tab激活 .Tab图标 {
+  transform: scale(1.15);
+}
+.Tab文字 {
+  font-size: 13px;
+  color: #888;
+  font-weight: 400;
+  transition: color 0.2s, font-weight 0.2s;
+}
+.Tab激活 .Tab文字 {
+  color: #1989fa;
+  font-weight: 700;
+}
+.Tab角标 {
+  position: absolute;
+  top: 6px;
+  right: 12px;
+  background: #f56c6c;
+  color: white;
+  border-radius: 10px;
+  font-size: 11px;
+  padding: 1px 6px;
+  min-width: 18px;
+  text-align: center;
+  line-height: 16px;
+}
+.Tab即将上线 {
+  font-size: 10px;
+  color: #bbb;
+  margin-top: 2px;
+  display: block;
+}
+.Tab激活::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 20%;
+  right: 20%;
+  height: 3px;
+  border-radius: 2px 2px 0 0;
+  background: #1989fa;
+}
 </style>

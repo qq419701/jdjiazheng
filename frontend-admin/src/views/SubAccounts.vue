@@ -144,24 +144,28 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { 获取子账号列表API, 新增子账号API, 更新子账号API, 重置子账号密码API, 删除子账号API, 修改自己密码API } from '../api/index'
 
-// 所有可授权的模块
+// 所有可授权的模块（新版权限key，与最新路由一致）
 const 权限模块标签 = {
   dashboard: '数据看板',
-  orders: '家政订单',
-  cards: '家政卡密',
-  jd_accounts: '京东账号',
-  time_rules: '时间规则',
-  laundry_orders: '洗衣订单',
-  laundry_cards: '洗衣卡密',
-  laundry_time_rules: '洗衣时间规则',
-  laundry_settings: '洗衣设置',
-  topup_orders: '充值订单',
-  topup_cards: '充值卡密',
-  topup_settings: '充值设置',
-  products: '奇所商品管理',
+  card_workbench: '卡密工作台',
+  template_manager: '套餐管理',
+  order_center: '订单中心',
+  business_settings: '业务设置',
   regions: '地区管理',
-  settings: '系统设置',
+  jd_accounts: '京东账号管理',
   sub_accounts: '子账号管理',
+  // [已废弃] orders: '家政订单',
+  // [已废弃] cards: '家政卡密',
+  // [已废弃] time_rules: '时间规则',
+  // [已废弃] laundry_orders: '洗衣订单',
+  // [已废弃] laundry_cards: '洗衣卡密',
+  // [已废弃] laundry_time_rules: '洗衣时间规则',
+  // [已废弃] laundry_settings: '洗衣设置',
+  // [已废弃] topup_orders: '充值订单',
+  // [已废弃] topup_cards: '充值卡密',
+  // [已废弃] topup_settings: '充值设置',
+  // [已废弃] products: '奇所商品管理',
+  // [已废弃] settings: '系统设置',
 }
 
 const 格式化时间 = (isoStr) => {

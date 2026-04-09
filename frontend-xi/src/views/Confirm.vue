@@ -1,6 +1,6 @@
 <template>
   <div class="确认页面">
-    <van-nav-bar title="确认预约" left-arrow @click-left="返回上页" :border="false" />
+    <van-nav-bar title="确认预约 - 优米拉洗衣服务" left-arrow @click-left="返回上页" :border="false" />
 
     <!-- 洗护商品 -->
     <div class="白色卡片">

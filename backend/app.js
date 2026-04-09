@@ -82,6 +82,8 @@ app.use('/admin', express.static(path.join(__dirname, 'public/admin')));
 app.use('/xi', express.static(path.join(__dirname, 'public/xi')));
 // 充值H5静态文件（/cz 路径）
 app.use('/cz', express.static(path.join(__dirname, 'public/cz')));
+// 京东家政H5（/jz 路径，新格式卡密链接：域名/jz/{卡密}）
+app.use('/jz', express.static(path.join(__dirname, 'public/h5')));
 // 备注图片上传目录（/uploads/remarks/ 路径，供前端直接访问）
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // 前端H5静态文件（/ 根路径）
@@ -125,6 +127,11 @@ app.get('/xi/*', 页面限流, (req, res) => {
 // 充值H5路由兜底（/cz/* 返回充值H5首页）
 app.get('/cz/*', 页面限流, (req, res) => {
   res.sendFile(path.join(__dirname, 'public/cz/index.html'));
+});
+
+// 家政H5新路径路由兜底（/jz/{卡密} 格式，新版卡密链接）
+app.get('/jz/*', 页面限流, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/h5/index.html'));
 });
 
 // H5前端路由兜底（所有非 /api /admin 路径均返回H5首页）
