@@ -277,24 +277,19 @@ const 表单数据 = reactive({
   topup_account_error_msg: '',
 })
 
-// 表单验证规则
-const 表单规则 = {
-  product_name: [{ required: true, message: '请填写套餐名称', trigger: 'blur' }],
-  service_type: [{ required: true, message: '请填写服务类型', trigger: 'blur' }],
-  topup_member_name: [{ required: true, message: '请填写充值会员名称', trigger: 'blur' }],
-}
-
+// 表单验证规则（根据业务类型动态计算）
 const 动态表单规则 = computed(() => {
-  const 基础规则 = {
+  const 规则 = {
     product_name: [{ required: true, message: '请填写套餐名称', trigger: 'blur' }],
   }
-  if (当前业务类型.value === 'jiazheng' || 当前业务类型.value === 'xiyifu') {
-    基础规则.service_type = [{ required: true, message: '请填写服务类型', trigger: 'blur' }]
+  if (当前业务类型.value === 'jiazheng') {
+    规则.service_type = [{ required: true, message: '请填写服务分类', trigger: 'blur' }]
+  } else if (当前业务类型.value === 'xiyifu') {
+    规则.service_type = [{ required: true, message: '请填写服务类型', trigger: 'blur' }]
+  } else if (当前业务类型.value === 'topup') {
+    规则.topup_member_name = [{ required: true, message: '请填写充值会员名称', trigger: 'blur' }]
   }
-  if (当前业务类型.value === 'topup') {
-    基础规则.topup_member_name = [{ required: true, message: '请填写充值会员名称', trigger: 'blur' }]
-  }
-  return 基础规则
+  return 规则
 })
 
 // ===== 数据加载 =====
@@ -311,6 +306,7 @@ const 加载套餐列表 = async () => {
 }
 
 const 切换业务类型 = () => {
+  表单引用.value?.clearValidate()
   加载套餐列表()
 }
 
@@ -401,8 +397,8 @@ const 提交表单 = async () => {
     } else {
       ElMessage.warning(结果?.message || '操作失败')
     }
-  } catch (e) {
-    ElMessage.error('操作失败，请稍后重试')
+  } catch {
+    ElMessage.error('网络错误，请稍后重试')
   } finally {
     提交中.value = false
   }
