@@ -9,6 +9,7 @@ const { Op } = require('sequelize');
 const { Card, Order, Setting, Product } = require('../models');
 const 数据库连接 = require('../config/database');
 const { 加密卡密 } = require('../services/agisoService');
+const { 安全解析JSON } = require('../utils/helpers');
 
 // 洗衣价格单位换算常量（Setting表中以分存储，转换为元返回）
 const 分转元 = 100;
@@ -457,9 +458,8 @@ const 查询订单 = async (req, res) => {
  * 响应格式：{ code: 200, message: '接口调用成功', data: { cancelStatus: 20 } }
  * 业务说明：
  *   - cancelStatus说明：20=撤单成功，30=撤单失败
- *   - 检查卡密是否已被用于预约（Order表中存在 card_code = card.code 且 status != 4 的记录）
- *   - 如果卡密已用于预约，不允许撤单（返回cancelStatus=30）
- *   - 如果卡密未用于预约，撤单成功（status改回0，清空agiso_order_no，sup_status改为2）
+ *   - 按业务类型分别处理：家政/洗衣/充值
+ *   - 撤单成功后卡密 status 改为 2（已失效），防止重复使用
  */
 const 撤销订单 = async (req, res) => {
   try {
@@ -478,41 +478,131 @@ const 撤销订单 = async (req, res) => {
       return res.json({ code: 404, message: '订单不存在' });
     }
 
-    // 检查该卡密是否已被用于创建预约订单
-    // 查 Order 表中 card_code = card.code 且 status != 4（未取消）的记录
-    const 关联预约订单 = await Order.findOne({
-      where: {
-        card_code: 卡密记录.code,
-        status: { [Op.ne]: 4 }, // 排除已取消状态
-      },
-    });
-
-    if (关联预约订单) {
-      // 卡密已被用于服务预约，不允许撤单
+    // 幂等处理：如果已经是已撤单状态，直接返回成功
+    if (卡密记录.sup_status === 2) {
       return res.json({
         code: 200,
         message: '接口调用成功',
-        data: {
-          cancelStatus: 30,
-          cancelErrMsg: '卡密已用于服务预约，无法退款',
-        },
+        data: { cancelStatus: 20 },
       });
     }
 
-    // 卡密未被用于预约，允许撤单
-    // status改回0（未使用），清空 agiso_order_no，sup_status改为2（已撤单）
-    await 卡密记录.update({
-      status: 0,
-      agiso_order_no: null,
-      sup_status: 2, // 2=已撤单
-    });
+    const 业务类型 = 卡密记录.business_type || 'jiazheng';
+
+    if (业务类型 === 'jiazheng') {
+      // ===== 家政业务 =====
+      // 查找关联且未取消的订单
+      const 关联订单 = await Order.findOne({
+        where: {
+          card_code: 卡密记录.code,
+          status: { [Op.ne]: 4 },
+        },
+      });
+
+      if (关联订单) {
+        // 已下单（status=2）：不允许撤单
+        if (关联订单.status === 2) {
+          return res.json({
+            code: 200,
+            message: '接口调用成功',
+            data: {
+              cancelStatus: 30,
+              cancelErrMsg: '卡密已用于家政预约且已下单，无法退款',
+            },
+          });
+        }
+        // 其他状态（待处理/下单中/失败等）：允许撤单，取消订单
+        const 现有日志 = 安全解析JSON(关联订单.order_log, []);
+        现有日志.push({
+          时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+          操作: '阿奇所平台撤单，订单自动取消',
+          状态: 'cancel',
+        });
+        await 关联订单.update({ status: 4, order_log: JSON.stringify(现有日志) });
+      }
+
+      // 将卡密状态设为已失效，sup_status 设为已撤单
+      await 卡密记录.update({ status: 2, sup_status: 2 });
+
+    } else if (业务类型 === 'xiyifu') {
+      // ===== 洗衣业务 =====
+      const 关联订单 = await Order.findOne({
+        where: { card_code: 卡密记录.code },
+      });
+
+      if (关联订单) {
+        // 如果已推送到鲸蚁（有 laundry_order_id），尝试通知鲸蚁取消
+        if (关联订单.laundry_order_id) {
+          try {
+            const { 同步订单状态 } = require('../services/laundryApiService');
+            const out_booking_no = `B${关联订单.id}`;
+            await 同步订单状态(关联订单.order_no, out_booking_no, -1);
+          } catch (鲸蚁错误) {
+            // 通知失败时记录日志，但不阻塞撤单流程
+            console.warn(`洗衣撤单通知鲸蚁失败（不阻塞），订单号：${关联订单.order_no}，错误：${鲸蚁错误.message}`);
+          }
+        }
+
+        // 取消订单
+        const 现有日志 = 安全解析JSON(关联订单.order_log, []);
+        现有日志.push({
+          时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+          操作: '阿奇所平台撤单，订单自动取消',
+          状态: 'cancel',
+        });
+        await 关联订单.update({ status: 4, order_log: JSON.stringify(现有日志) });
+      }
+
+      // 将卡密状态设为已失效，sup_status 设为已撤单
+      await 卡密记录.update({ status: 2, sup_status: 2 });
+
+    } else if (业务类型 === 'topup') {
+      // ===== 充值业务 =====
+      // 充值业务无论订单状态如何，都允许撤单（充值是人工操作，未发货前均可退）
+      const 关联订单 = await Order.findOne({
+        where: { card_code: 卡密记录.code },
+      });
+
+      if (关联订单 && 关联订单.status !== 4) {
+        const 现有日志 = 安全解析JSON(关联订单.order_log, []);
+        现有日志.push({
+          时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+          操作: '阿奇所平台撤单，订单自动取消，卡密已失效',
+          状态: 'cancel',
+        });
+        await 关联订单.update({ status: 4, order_log: JSON.stringify(现有日志) });
+      }
+
+      // 将卡密状态设为已失效，sup_status 设为已撤单
+      await 卡密记录.update({ status: 2, sup_status: 2 });
+
+    } else {
+      // 未知业务类型：按原逻辑处理（查关联订单，未使用则撤单）
+      const 关联订单 = await Order.findOne({
+        where: {
+          card_code: 卡密记录.code,
+          status: { [Op.ne]: 4 },
+        },
+      });
+
+      if (关联订单) {
+        return res.json({
+          code: 200,
+          message: '接口调用成功',
+          data: {
+            cancelStatus: 30,
+            cancelErrMsg: '卡密已用于服务预约，无法退款',
+          },
+        });
+      }
+
+      await 卡密记录.update({ status: 2, sup_status: 2 });
+    }
 
     res.json({
       code: 200,
       message: '接口调用成功',
-      data: {
-        cancelStatus: 20, // 20=撤单成功
-      },
+      data: { cancelStatus: 20 },
     });
   } catch (错误) {
     console.error('SUP撤单出错:', 错误);

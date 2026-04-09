@@ -9,7 +9,7 @@ const 配置 = require('../config/config');
 const { Admin, Order } = require('../models');
 const { 验证Token } = require('../middleware/auth');
 const { 获取订单列表, 获取订单详情, 更新订单状态, 触发自动下单, 重置订单, 更新订单备注, 导出订单, 确认退款完成 } = require('../controllers/orderController');
-const { 获取卡密列表, 生成卡密, 导出卡密, 作废卡密, 删除卡密, 获取批次列表, 获取批次卡密, 删除批次 } = require('../controllers/cardController');
+const { 获取卡密列表, 生成卡密, 导出卡密, 作废卡密, 删除卡密, 获取批次列表, 获取批次卡密, 删除批次, 统一获取卡密列表, 统一获取批次列表, 统一获取卡密统计 } = require('../controllers/cardController');
 const { 获取账号列表, 新增账号, 更新账号, 删除账号, 触发自动登录 } = require('../controllers/jdAccountController');
 const { 获取规则列表, 新增规则, 更新规则, 删除规则 } = require('../controllers/timeRuleController');
 const { 获取所有设置, 批量更新设置 } = require('../controllers/settingController');
@@ -929,5 +929,10 @@ router.get('/topup-card-batches', 验证Token, async (req, res) => {
 
 router.get('/topup-card-batches/:id/cards', 验证Token, 获取批次卡密);
 router.delete('/topup-card-batches/:id', 验证Token, 删除批次);
+
+// ===== 统一卡密中心接口 =====
+router.get('/unified-cards', 验证Token, 统一获取卡密列表);
+router.get('/unified-batches', 验证Token, 统一获取批次列表);
+router.get('/unified-stats', 验证Token, 统一获取卡密统计);
 
 module.exports = router;

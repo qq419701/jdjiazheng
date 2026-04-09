@@ -283,4 +283,112 @@ const 删除批次 = async (req, res) => {
   }
 };
 
-module.exports = { 获取卡密列表, 生成卡密, 导出卡密, 作废卡密, 删除卡密, 获取批次列表, 获取批次卡密, 删除批次 };
+/**
+ * 统一获取卡密列表（支持三业务混合查询）
+ * GET /admin/api/unified-cards
+ */
+const 统一获取卡密列表 = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, keyword = '', status, business_type } = req.query;
+    const 条件 = {};
+
+    if (keyword) {
+      条件[Op.or] = [
+        { code: { [Op.like]: `%${keyword}%` } },
+        { remark: { [Op.like]: `%${keyword}%` } },
+        { service_type: { [Op.like]: `%${keyword}%` } },
+      ];
+    }
+    if (status !== undefined && status !== '') 条件.status = parseInt(status);
+    if (business_type && business_type !== '') 条件.business_type = business_type;
+
+    const { count, rows } = await Card.findAndCountAll({
+      where: 条件,
+      order: [['created_at', 'DESC']],
+      limit: parseInt(limit),
+      offset: (parseInt(page) - 1) * parseInt(limit),
+    });
+
+    // 计算每张卡密的链接前缀
+    const 列表 = rows.map(卡密 => {
+      let link_prefix = '';
+      if (卡密.business_type === 'xiyifu') link_prefix = '/xi/';
+      else if (卡密.business_type === 'topup') link_prefix = '/cz/';
+      else link_prefix = '/';
+      return { ...卡密.toJSON(), link_prefix };
+    });
+
+    res.json({
+      code: 1,
+      message: '获取成功',
+      data: { total: count, page: parseInt(page), limit: parseInt(limit), list: 列表 },
+    });
+  } catch (错误) {
+    console.error('统一获取卡密列表出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+};
+
+/**
+ * 统一获取批次列表（支持三业务混合查询）
+ * GET /admin/api/unified-batches
+ */
+const 统一获取批次列表 = async (req, res) => {
+  try {
+    const { business_type } = req.query;
+    const 条件 = {};
+    if (business_type && business_type !== '') 条件.business_type = business_type;
+
+    const 批次列表 = await CardBatch.findAll({
+      where: 条件,
+      order: [['created_at', 'DESC']],
+    });
+
+    const 批次数据 = await Promise.all(批次列表.map(async (批次) => {
+      const [实际数量, 已用数量, 未用数量] = await Promise.all([
+        Card.count({ where: { batch_id: 批次.id } }),
+        Card.count({ where: { batch_id: 批次.id, status: 1 } }),
+        Card.count({ where: { batch_id: 批次.id, status: 0 } }),
+      ]);
+      return {
+        ...批次.toJSON(),
+        actual_count: 实际数量,
+        used_count: 已用数量,
+        unused_count: 未用数量,
+      };
+    }));
+
+    res.json({ code: 1, message: '获取成功', data: 批次数据 });
+  } catch (错误) {
+    console.error('统一获取批次列表出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+};
+
+/**
+ * 统一获取卡密统计（三业务各自的总/未用/已用/已失效数）
+ * GET /admin/api/unified-stats
+ */
+const 统一获取卡密统计 = async (req, res) => {
+  try {
+    const 业务类型列表 = ['jiazheng', 'xiyifu', 'topup'];
+    const 统计数据 = {};
+
+    await Promise.all(业务类型列表.map(async (业务类型) => {
+      const [总数, 未用数, 已用数, 已失效数] = await Promise.all([
+        Card.count({ where: { business_type: 业务类型 } }),
+        Card.count({ where: { business_type: 业务类型, status: 0 } }),
+        Card.count({ where: { business_type: 业务类型, status: 1 } }),
+        Card.count({ where: { business_type: 业务类型, status: 2 } }),
+      ]);
+      统计数据[业务类型] = { total: 总数, unused: 未用数, used: 已用数, expired: 已失效数 };
+    }));
+
+    res.json({ code: 1, message: '获取成功', data: 统计数据 });
+  } catch (错误) {
+    console.error('统一获取卡密统计出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+};
+
+module.exports = { 获取卡密列表, 生成卡密, 导出卡密, 作废卡密, 删除卡密, 获取批次列表, 获取批次卡密, 删除批次, 统一获取卡密列表, 统一获取批次列表, 统一获取卡密统计 };
