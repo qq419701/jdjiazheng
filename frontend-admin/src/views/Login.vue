@@ -121,7 +121,26 @@ const 提交登录 = async () => {
     if (结果.code === 1) {
       authStore.保存登录信息(结果.data)
       ElMessage.success('登录成功')
-      router.push({ name: 'Dashboard' })
+      // 根据角色和权限决定跳转目标（子账号可能没有 dashboard 权限，避免登录后卡住）
+      const role = 结果.data.role
+      const permissions = 结果.data.permissions || []
+      if (role === 'admin' || role === 'super') {
+        router.push({ name: 'Dashboard' })
+      } else {
+        // 子账号：跳转到第一个有权限的页面，避免登录后卡在"登录中"
+        const 路由优先级 = [
+          { key: 'dashboard', name: 'Dashboard' },
+          { key: 'order_center', name: 'OrderCenter' },
+          { key: 'card_workbench', name: 'CardWorkbench' },
+          { key: 'template_manager', name: 'TemplateManager' },
+          { key: 'business_settings', name: 'BusinessSettings' },
+          { key: 'regions', name: 'Regions' },
+          { key: 'jd_accounts', name: 'JdAccounts' },
+          { key: 'sub_accounts', name: 'SubAccounts' },
+        ]
+        const 目标 = 路由优先级.find(r => permissions.includes(r.key))
+        router.push({ name: 目标 ? 目标.name : 'Login' })
+      }
     } else {
       ElMessage.error(结果.message || '登录失败')
       刷新验证码()

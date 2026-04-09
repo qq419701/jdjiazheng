@@ -1,6 +1,6 @@
 <template>
   <div class="地址页面">
-    <van-nav-bar title="填写地址" left-arrow @click-left="返回上页" :border="false" />
+    <van-nav-bar title="填写取件地址 - 优米拉洗衣服务" left-arrow @click-left="返回上页" :border="false" />
 
     <div class="表单区域">
       <!-- 取件地址 -->

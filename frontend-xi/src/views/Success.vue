@@ -1,7 +1,7 @@
 <template>
   <div class="成功页面">
     <div class="成功图标">✅</div>
-    <div class="成功标题">预约成功！</div>
+    <div class="成功标题">预约成功！- 优米拉洗衣服务</div>
     <div class="成功描述">快递员将在预约时间段内上门取件，请保持手机畅通</div>
 
     <div class="订单卡片">
