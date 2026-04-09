@@ -297,7 +297,7 @@ const 加载套餐列表 = async () => {
   加载中.value = true
   try {
     const 响应 = await 获取套餐列表API({ business_type: 当前业务类型.value })
-    套餐列表.value = 响应.data?.data || []
+    套餐列表.value = 响应?.data || []
   } catch {
     ElMessage.error('加载套餐列表失败')
   } finally {
@@ -375,9 +375,17 @@ const 重置表单 = () => {
 }
 
 const 提交表单 = async () => {
-  try {
-    await 表单引用.value?.validate()
-  } catch {
+  // 手动校验必填字段
+  if (!表单数据.product_name?.trim()) {
+    ElMessage.warning('请填写套餐名称')
+    return
+  }
+  if ((当前业务类型.value === 'jiazheng' || 当前业务类型.value === 'xiyifu') && !表单数据.service_type?.trim()) {
+    ElMessage.warning('请填写服务分类')
+    return
+  }
+  if (当前业务类型.value === 'topup' && !表单数据.topup_member_name?.trim()) {
+    ElMessage.warning('请填写充值会员名称')
     return
   }
   提交中.value = true
@@ -389,7 +397,7 @@ const 提交表单 = async () => {
     } else {
       响应 = await 新增套餐API(数据)
     }
-    const 结果 = 响应.data
+    const 结果 = 响应
     if (结果?.code === 1) {
       ElMessage.success(结果.message || (当前编辑ID.value ? '套餐更新成功' : '套餐新建成功'))
       弹窗可见.value = false
@@ -424,11 +432,11 @@ const 删除套餐 = async (行) => {
   )
   try {
     const 响应 = await 删除套餐API(行.id)
-    if (响应.data?.code === 1) {
+    if (响应?.code === 1) {
       ElMessage.success('套餐已删除')
       加载套餐列表()
     } else {
-      ElMessage.warning(响应.data?.message || '删除失败')
+      ElMessage.warning(响应?.message || '删除失败')
     }
   } catch {
     ElMessage.error('删除失败，请稍后重试')

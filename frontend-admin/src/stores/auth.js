@@ -59,6 +59,7 @@ export const useAuthStore = defineStore('auth', {
 
     // 仅刷新权限相关字段（不更新token），用于路由守卫实时同步权限
     刷新权限(数据) {
+      if (!数据) return
       this.nickname = 数据.nickname || this.nickname
       this.role = 数据.role || this.role
       this.permissions = 数据.permissions || []

@@ -442,7 +442,7 @@ onMounted(async () => {
   // 读取站点域名
   try {
     const 设置响应 = await 获取设置API()
-    const 设置列表 = 设置响应.data?.data || []
+    const 设置列表 = 设置响应?.data || []
     const 站点配置 = 设置列表.find(s => s.key_name === 'site_url')
     if (站点配置?.key_value) {
       站点域名.value = 站点配置.key_value.replace(/\/$/, '')
@@ -458,7 +458,7 @@ onMounted(async () => {
 const 加载统计 = async () => {
   try {
     const 响应 = await 统一获取卡密统计API()
-    统计数据.value = 响应.data?.data || null
+    统计数据.value = 响应?.data || null
   } catch {}
 }
 
@@ -475,7 +475,7 @@ const 加载当前套餐 = async () => {
   套餐加载中.value = true
   try {
     const 响应 = await 获取套餐列表API({ business_type: 选中业务类型.value, status: 1 })
-    当前套餐列表.value = 响应.data?.data || []
+    当前套餐列表.value = 响应?.data || []
   } catch {
     ElMessage.error('加载套餐失败')
   } finally {
@@ -506,14 +506,14 @@ const 执行生成卡密 = async () => {
       remark: 批次备注.value,
       expired_at: 过期时间.value || null,
     })
-    if (响应.data?.code === 1) {
-      生成结果.value = 响应.data.data
-      ElMessage.success(响应.data.message)
+    if (响应?.code === 1) {
+      生成结果.value = 响应.data
+      ElMessage.success(响应.message)
       // 刷新统计和套餐库存
       加载统计()
       加载当前套餐()
     } else {
-      ElMessage.warning(响应.data?.message || '生成失败')
+      ElMessage.warning(响应?.message || '生成失败')
     }
   } catch {
     ElMessage.error('生成卡密失败，请稍后重试')
@@ -572,8 +572,8 @@ const 搜索卡密 = async () => {
       page: 卡密分页.page,
       limit: 卡密分页.limit,
     })
-    卡密列表.value = 响应.data?.data?.list || 响应.data?.data || []
-    卡密分页.total = 响应.data?.data?.total || 卡密列表.value.length
+    卡密列表.value = 响应?.data?.list || 响应?.data || []
+    卡密分页.total = 响应?.data?.total || 卡密列表.value.length
   } catch {
     ElMessage.error('加载卡密列表失败')
   } finally {
@@ -626,7 +626,7 @@ const 加载批次列表 = async () => {
   批次加载中.value = true
   try {
     const 响应 = await 统一获取批次列表API(批次筛选)
-    批次列表.value = 响应.data?.data?.list || 响应.data?.data || []
+    批次列表.value = 响应?.data?.list || 响应?.data || []
   } catch {
     ElMessage.error('加载批次列表失败')
   } finally {
@@ -645,7 +645,7 @@ const 查看批次卡密 = async (行) => {
   // 通过统一接口筛选该批次卡密
   try {
     const 响应 = await 统一获取卡密列表API({ batch_id: 行.id, limit: 500 })
-    批次卡密列表.value = 响应.data?.data?.list || 响应.data?.data || []
+    批次卡密列表.value = 响应?.data?.list || 响应?.data || []
   } catch {
     ElMessage.error('加载批次卡密失败')
   }
@@ -739,7 +739,7 @@ const 导出卡密列表TXT = async () => {
       page: 1,
       limit: 5000,
     })
-    const 列表 = 响应.data?.data?.list || 响应.data?.data || []
+    const 列表 = 响应?.data?.list || 响应?.data || []
     if (列表.length === 0) {
       ElMessage.warning('没有可导出的卡密')
       return
@@ -764,7 +764,7 @@ const 导出卡密列表TXT = async () => {
 const 导出批次TXT = async (批次行) => {
   try {
     const 响应 = await 统一获取卡密列表API({ batch_id: 批次行.id, limit: 5000 })
-    const 列表 = 响应.data?.data?.list || 响应.data?.data || []
+    const 列表 = 响应?.data?.list || 响应?.data || []
     if (列表.length === 0) {
       ElMessage.warning('该批次暂无卡密')
       return
