@@ -177,3 +177,6 @@ export const 删除套餐API = (id) => 请求实例.delete(`/products/${id}`)
 
 // ===== 卡密工作台（新）=====
 export const 套餐生成卡密API = (数据) => 请求实例.post('/card-templates/generate', 数据)
+
+// ===== 订单中心 =====
+export const 获取订单角标数量API = () => 请求实例.get('/order-center/badge-counts')

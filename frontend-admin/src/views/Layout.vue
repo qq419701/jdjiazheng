@@ -85,7 +85,7 @@
           </el-menu-item>
         </el-menu-item-group>
 
-        <el-menu-item-group v-if="显示整合预留分组" title="整合预留">
+        <el-menu-item-group v-if="显示整合预留分组" title="业务管理">
           <el-menu-item v-if="authStore.有权限('order_center')" index="/admin/order-center">
             <el-icon><List /></el-icon>
             <span>📋 订单中心</span>
