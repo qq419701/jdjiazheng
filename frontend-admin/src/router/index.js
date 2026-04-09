@@ -25,18 +25,43 @@ const routes = [
       // 旧路径重定向，保持兼容
       {
         path: 'orders',
-        redirect: '/admin/orders/jiazheng',
+        redirect: '/admin/order-center',
+      },
+      {
+        path: 'orders/:businessType',
+        redirect: '/admin/order-center',
       },
       {
         path: 'cards',
         redirect: '/admin/cards/jiazheng',
       },
-      // 订单管理（带业务类型参数）
       {
-        path: 'orders/:businessType',
-        name: 'Orders',
-        component: () => import('../views/Orders.vue'),
-        meta: { 标题: '订单管理', 权限Key: 'orders' },
+        path: 'laundry-orders',
+        redirect: '/admin/order-center',
+      },
+      {
+        path: 'topup-orders',
+        redirect: '/admin/order-center',
+      },
+      {
+        path: 'settings',
+        redirect: '/admin/business-settings',
+      },
+      {
+        path: 'laundry-settings',
+        redirect: '/admin/business-settings',
+      },
+      {
+        path: 'topup-settings',
+        redirect: '/admin/business-settings',
+      },
+      {
+        path: 'time-rules',
+        redirect: '/admin/business-settings',
+      },
+      {
+        path: 'laundry-time-rules',
+        redirect: '/admin/business-settings',
       },
       {
         path: 'orders/:businessType/:id',
@@ -63,30 +88,21 @@ const routes = [
         component: () => import('../views/JdAccounts.vue'),
         meta: { 标题: '京东账号管理', 权限Key: 'jd_accounts' },
       },
+      // ===== 充值业务 =====
       {
-        path: 'time-rules',
-        name: 'TimeRules',
-        component: () => import('../views/TimeRules.vue'),
-        meta: { 标题: '时间规则管理', 权限Key: 'time_rules' },
+        // 充值卡密生成页（必须在 topup-cards 之前注册，防止被拦截）
+        path: 'topup-cards/generate',
+        name: 'TopupCardGenerate',
+        component: () => import('../views/TopupCardGenerate.vue'),
+        meta: { 标题: '生成充值卡密', 权限Key: 'topup_cards' },
       },
       {
-        path: 'settings',
-        name: 'Settings',
-        component: () => import('../views/Settings.vue'),
-        meta: { 标题: '系统设置', 权限Key: 'settings' },
+        path: 'topup-cards',
+        name: 'TopupCards',
+        component: () => import('../views/TopupCards.vue'),
+        meta: { 标题: '充值卡密管理', 权限Key: 'topup_cards' },
       },
-      {
-        path: 'regions',
-        name: 'Regions',
-        component: () => import('../views/Regions.vue'),
-        meta: { 标题: '地区管理', 权限Key: 'regions' },
-      },
-      {
-        path: 'laundry-orders',
-        name: 'LaundryOrders',
-        component: () => import('../views/LaundryOrders.vue'),
-        meta: { 标题: '洗衣订单管理', 权限Key: 'laundry_orders' },
-      },
+      // ===== 洗衣卡密 =====
       {
         path: 'laundry-cards',
         name: 'LaundryCards',
@@ -99,43 +115,12 @@ const routes = [
         component: () => import('../views/LaundryCardGenerate.vue'),
         meta: { 标题: '批量生成洗衣卡密', 权限Key: 'laundry_cards' },
       },
+      // ===== 地区管理 =====
       {
-        path: 'laundry-time-rules',
-        name: 'LaundryTimeRules',
-        component: () => import('../views/LaundryTimeRules.vue'),
-        meta: { 标题: '洗衣时间规则', 权限Key: 'laundry_time_rules' },
-      },
-      {
-        path: 'laundry-settings',
-        name: 'LaundrySettings',
-        component: () => import('../views/LaundrySettings.vue'),
-        meta: { 标题: '洗衣设置', 权限Key: 'laundry_settings' },
-      },
-      // ===== 充值业务（预留占位页面）=====
-      {
-        // 充值卡密生成页（必须在 topup-cards 之前注册，防止被拦截）
-        path: 'topup-cards/generate',
-        name: 'TopupCardGenerate',
-        component: () => import('../views/TopupCardGenerate.vue'),
-        meta: { 标题: '生成充值卡密', 权限Key: 'topup_cards' },
-      },
-      {
-        path: 'topup-orders',
-        name: 'TopupOrders',
-        component: () => import('../views/TopupOrders.vue'),
-        meta: { 标题: '充值订单管理', 权限Key: 'topup_orders' },
-      },
-      {
-        path: 'topup-cards',
-        name: 'TopupCards',
-        component: () => import('../views/TopupCards.vue'),
-        meta: { 标题: '充值卡密管理', 权限Key: 'topup_cards' },
-      },
-      {
-        path: 'topup-settings',
-        name: 'TopupSettings',
-        component: () => import('../views/TopupSettings.vue'),
-        meta: { 标题: '虚拟充值设置', 权限Key: 'topup_settings' },
+        path: 'regions',
+        name: 'Regions',
+        component: () => import('../views/Regions.vue'),
+        meta: { 标题: '地区管理', 权限Key: 'regions' },
       },
       // ===== 子账号管理 =====
       {

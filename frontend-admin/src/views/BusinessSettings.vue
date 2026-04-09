@@ -200,10 +200,158 @@
           <el-form-item>
             <el-button type="primary" :loading="保存中" @click="保存设置('jiazheng')">💾 保存家政设置</el-button>
           </el-form-item>
-          <el-form-item label="快速跳转">
-            <el-button @click="router.push('/admin/time-rules')">⏰ 时间规则管理</el-button>
-            <el-button @click="router.push('/admin/jd-accounts')" style="margin-left:8px">👤 京东账号管理</el-button>
-          </el-form-item>
+
+          <!-- 内嵌家政时间规则管理 -->
+          <div class="设置分组标题">── ⏰ 家政时间规则管理 ──</div>
+          <div class="内嵌管理区">
+            <div class="内嵌操作栏">
+              <span style="font-size: 14px; color: #666">时间规则控制各城市预约前多少天显示"已约满"</span>
+              <el-button type="primary" size="small" @click="jz新增规则">+ 新增规则</el-button>
+            </div>
+            <el-table :data="jz时间规则列表" v-loading="jz规则加载中" stripe size="small">
+              <el-table-column prop="sort_order" label="优先级" width="70" />
+              <el-table-column label="规则类型" width="100">
+                <template #default="{ row }">
+                  <el-tag :type="{ city: 'primary', tier: 'warning', global: 'info' }[row.rule_type]" size="small">
+                    {{ { city: '城市精确', tier: '地区等级', global: '全局默认' }[row.rule_type] }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="rule_name" label="规则名称" width="150" />
+              <el-table-column prop="match_value" label="匹配城市" show-overflow-tooltip />
+              <el-table-column prop="locked_days" label="锁定天数" width="90" />
+              <el-table-column prop="max_days" label="最远天数" width="90" />
+              <el-table-column label="状态" width="80">
+                <template #default="{ row }">
+                  <el-tag :type="row.is_active ? 'success' : 'info'" size="small">
+                    {{ row.is_active ? '启用' : '禁用' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="140">
+                <template #default="{ row }">
+                  <el-button size="small" @click="jz编辑规则(row)">编辑</el-button>
+                  <el-button size="small" type="danger" @click="jz删除规则(row.id)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+
+          <!-- 家政时间规则弹窗 -->
+          <el-dialog v-model="jz显示规则弹窗" :title="jz当前编辑ID ? '编辑规则' : '新增规则'" width="560px">
+            <el-form :model="jz规则表单" label-width="100px">
+              <el-form-item label="规则类型">
+                <el-radio-group v-model="jz规则表单.rule_type">
+                  <el-radio-button value="city">城市精确匹配</el-radio-button>
+                  <el-radio-button value="tier">地区等级匹配</el-radio-button>
+                  <el-radio-button value="global">全局默认</el-radio-button>
+                </el-radio-group>
+              </el-form-item>
+              <el-form-item label="规则名称">
+                <el-input v-model="jz规则表单.rule_name" placeholder="如：一线城市规则" />
+              </el-form-item>
+              <el-form-item label="匹配城市" v-if="jz规则表单.rule_type !== 'global'">
+                <el-input v-model="jz规则表单.match_value" placeholder="多个城市用逗号分隔，如：北京,上海,广州" type="textarea" :rows="2" />
+              </el-form-item>
+              <el-form-item label="锁定天数">
+                <el-input-number v-model="jz规则表单.locked_days" :min="0" :max="30" />
+                <span style="margin-left: 8px; color: #999; font-size: 12px">前N天显示"已约满"</span>
+              </el-form-item>
+              <el-form-item label="最远天数">
+                <el-input-number v-model="jz规则表单.max_days" :min="7" :max="60" />
+                <span style="margin-left: 8px; color: #999; font-size: 12px">最远可预约天数</span>
+              </el-form-item>
+              <el-form-item label="优先级">
+                <el-input-number v-model="jz规则表单.sort_order" :min="1" :max="99" />
+                <span style="margin-left: 8px; color: #999; font-size: 12px">数值越小优先级越高</span>
+              </el-form-item>
+              <el-form-item label="可选时间段">
+                <el-checkbox-group v-model="jz规则表单.选中时间段">
+                  <el-checkbox v-for="时间 in jz所有时间段" :key="时间" :label="时间" :value="时间" />
+                </el-checkbox-group>
+              </el-form-item>
+              <el-form-item label="工作日">
+                <el-checkbox-group v-model="jz规则表单.选中工作日">
+                  <el-checkbox v-for="(名称, 索引) in jz星期名称" :key="索引" :label="名称" :value="索引 + 1" />
+                </el-checkbox-group>
+              </el-form-item>
+              <el-form-item label="是否启用">
+                <el-switch v-model="jz规则表单.is_active" :active-value="1" :inactive-value="0" />
+              </el-form-item>
+            </el-form>
+            <template #footer>
+              <el-button @click="jz显示规则弹窗 = false">取消</el-button>
+              <el-button type="primary" @click="jz保存规则">保存</el-button>
+            </template>
+          </el-dialog>
+
+          <!-- 内嵌京东账号管理 -->
+          <div class="设置分组标题">── 👤 京东账号管理 ──</div>
+          <div class="内嵌管理区">
+            <div class="内嵌操作栏">
+              <span style="font-size: 14px; color: #666">共 {{ jd账号列表.length }} 个账号</span>
+              <el-button type="primary" size="small" @click="jd显示账号弹窗 = true">+ 添加账号</el-button>
+            </div>
+            <el-table :data="jd账号列表" v-loading="jd账号加载中" stripe size="small">
+              <el-table-column prop="id" label="ID" width="60" />
+              <el-table-column prop="nickname" label="备注名" width="120" />
+              <el-table-column prop="username" label="账号" width="150" />
+              <el-table-column label="账号状态" width="90">
+                <template #default="{ row }">
+                  <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
+                    {{ row.status === 1 ? '正常' : '异常' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="Cookie状态" width="100">
+                <template #default="{ row }">
+                  <el-tag :type="jd检查Cookie是否有效(row) ? 'success' : 'warning'" size="small">
+                    {{ jd检查Cookie是否有效(row) ? '有效' : '已过期' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="使用状态" width="90">
+                <template #default="{ row }">
+                  <el-tag :type="row.is_busy ? 'warning' : 'success'" size="small">
+                    {{ row.is_busy ? '使用中' : '空闲' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="use_count" label="今日次数" width="90" />
+              <el-table-column prop="daily_limit" label="日限制" width="80" />
+              <el-table-column prop="last_used" label="最后使用" width="160" />
+              <el-table-column label="操作" width="200" fixed="right">
+                <template #default="{ row }">
+                  <el-button size="small" type="primary" @click="jd触发自动登录(row.id)">自动登录</el-button>
+                  <el-button size="small" @click="jd编辑账号(row)">编辑</el-button>
+                  <el-button size="small" type="danger" @click="jd删除账号(row.id)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+
+          <!-- 京东账号编辑弹窗 -->
+          <el-dialog v-model="jd显示账号弹窗" :title="jd编辑中ID ? '编辑账号' : '添加京东账号'" width="400px">
+            <el-form :model="jd账号表单" label-width="80px">
+              <el-form-item label="备注名">
+                <el-input v-model="jd账号表单.nickname" placeholder="如：买家号1" />
+              </el-form-item>
+              <el-form-item label="账号">
+                <el-input v-model="jd账号表单.username" placeholder="京东账号（手机号）" />
+              </el-form-item>
+              <el-form-item label="密码">
+                <el-input v-model="jd账号表单.password" type="password" placeholder="京东密码" show-password />
+              </el-form-item>
+              <el-form-item label="日限制">
+                <el-input-number v-model="jd账号表单.daily_limit" :min="1" :max="100" />
+                <span style="margin-left: 8px; color: #999; font-size: 12px">单日最大下单次数</span>
+              </el-form-item>
+            </el-form>
+            <template #footer>
+              <el-button @click="jd显示账号弹窗 = false">取消</el-button>
+              <el-button type="primary" @click="jd保存账号">保存</el-button>
+            </template>
+          </el-dialog>
         </el-form>
       </el-tab-pane>
 
@@ -406,9 +554,84 @@
           <el-form-item>
             <el-button type="primary" :loading="保存中" @click="保存设置('xiyifu')">💾 保存洗衣设置</el-button>
           </el-form-item>
-          <el-form-item label="快速跳转">
-            <el-button @click="router.push('/admin/laundry-time-rules')">⏰ 洗衣时间规则</el-button>
-          </el-form-item>
+
+          <!-- 内嵌洗衣时间规则管理 -->
+          <div class="设置分组标题">── ⏰ 洗衣时间规则管理 ──</div>
+          <div class="内嵌管理区">
+            <div class="内嵌操作栏">
+              <span style="font-size: 14px; color: #666">洗衣时间段格式：<strong>09:00-10:00</strong>（含开始和结束时间）</span>
+              <el-button type="primary" size="small" @click="xi新增规则">+ 新增时间规则</el-button>
+            </div>
+            <el-table :data="xi时间规则列表" v-loading="xi规则加载中" stripe size="small">
+              <el-table-column prop="sort_order" label="优先级" width="70" />
+              <el-table-column label="规则类型" width="100">
+                <template #default="{ row }">
+                  <el-tag :type="{ city: 'primary', tier: 'warning', global: 'info' }[row.rule_type]" size="small">
+                    {{ { city: '城市精确', tier: '地区等级', global: '全局默认' }[row.rule_type] }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column prop="rule_name" label="规则名称" width="150" />
+              <el-table-column prop="match_value" label="匹配城市" show-overflow-tooltip />
+              <el-table-column label="时间段" show-overflow-tooltip>
+                <template #default="{ row }">
+                  {{ xi解析时间段显示(row.time_slots) }}
+                </template>
+              </el-table-column>
+              <el-table-column label="状态" width="80">
+                <template #default="{ row }">
+                  <el-tag :type="row.is_active ? 'success' : 'info'" size="small">
+                    {{ row.is_active ? '启用' : '禁用' }}
+                  </el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="140">
+                <template #default="{ row }">
+                  <el-button size="small" @click="xi编辑规则(row)">编辑</el-button>
+                  <el-button size="small" type="danger" @click="xi删除规则(row.id)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+
+          <!-- 洗衣时间规则弹窗 -->
+          <el-dialog v-model="xi显示规则弹窗" :title="xi当前编辑ID ? '编辑洗衣时间规则' : '新增洗衣时间规则'" width="580px">
+            <el-form :model="xi规则表单" label-width="100px">
+              <el-form-item label="规则类型">
+                <el-radio-group v-model="xi规则表单.rule_type">
+                  <el-radio-button value="city">城市精确匹配</el-radio-button>
+                  <el-radio-button value="global">全局默认</el-radio-button>
+                </el-radio-group>
+              </el-form-item>
+              <el-form-item label="规则名称">
+                <el-input v-model="xi规则表单.rule_name" placeholder="如：全国洗衣时间规则" />
+              </el-form-item>
+              <el-form-item label="匹配城市" v-if="xi规则表单.rule_type !== 'global'">
+                <el-input v-model="xi规则表单.match_value" placeholder="多城市用逗号分隔，如：北京,上海" type="textarea" :rows="2" />
+              </el-form-item>
+              <el-form-item label="时间段">
+                <div class="时间段编辑区">
+                  <div v-for="(时间段, 索引) in xi规则表单.时间段列表" :key="索引" class="时间段行">
+                    <el-input v-model="xi规则表单.时间段列表[索引]" placeholder="如：09:00-10:00" style="width: 160px" />
+                    <el-button type="danger" link @click="xi删除时间段(索引)">删除</el-button>
+                  </div>
+                  <el-button type="primary" link @click="xi添加时间段">+ 添加时间段</el-button>
+                </div>
+                <div class="字段说明">格式：09:00-10:00（开始时间-结束时间）</div>
+              </el-form-item>
+              <el-form-item label="优先级">
+                <el-input-number v-model="xi规则表单.sort_order" :min="1" :max="99" />
+                <span style="margin-left: 8px; color: #999; font-size: 12px">数值越小优先级越高</span>
+              </el-form-item>
+              <el-form-item label="是否启用">
+                <el-switch v-model="xi规则表单.is_active" :active-value="1" :inactive-value="0" />
+              </el-form-item>
+            </el-form>
+            <template #footer>
+              <el-button @click="xi显示规则弹窗 = false">取消</el-button>
+              <el-button type="primary" @click="xi保存规则">保存</el-button>
+            </template>
+          </el-dialog>
         </el-form>
       </el-tab-pane>
 
@@ -727,8 +950,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { 获取设置API, 保存设置API, 测试洗衣API连接 } from '../api/index'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { 获取设置API, 保存设置API, 测试洗衣API连接, 获取规则列表API, 新增规则API, 更新规则API, 删除规则API, 获取洗衣时间规则API, 新增洗衣时间规则API, 更新洗衣时间规则API, 删除洗衣时间规则API, 获取账号列表API, 新增账号API, 更新账号API, 删除账号API, 触发账号登录API } from '../api/index'
 import axios from 'axios'
 
 const router = useRouter()
@@ -1048,7 +1271,224 @@ const 填入默认服务内容 = () => {
   ], null, 2)
 }
 
-onMounted(() => 加载设置())
+// ===== 家政时间规则（内嵌）=====
+const jz时间规则列表 = ref([])
+const jz规则加载中 = ref(false)
+const jz显示规则弹窗 = ref(false)
+const jz当前编辑ID = ref(null)
+const jz所有时间段 = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00']
+const jz星期名称 = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+const jz默认表单 = () => ({
+  rule_type: 'city',
+  rule_name: '',
+  match_value: '',
+  locked_days: 3,
+  max_days: 14,
+  sort_order: 50,
+  is_active: 1,
+  选中时间段: ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'],
+  选中工作日: [1, 2, 3, 4, 5, 6, 7],
+})
+const jz规则表单 = ref(jz默认表单())
+
+const jz加载规则 = async () => {
+  jz规则加载中.value = true
+  try {
+    const 结果 = await 获取规则列表API()
+    if (结果.code === 1) jz时间规则列表.value = 结果.data
+  } finally {
+    jz规则加载中.value = false
+  }
+}
+const jz新增规则 = () => {
+  jz当前编辑ID.value = null
+  jz规则表单.value = jz默认表单()
+  jz显示规则弹窗.value = true
+}
+const jz编辑规则 = (规则) => {
+  jz当前编辑ID.value = 规则.id
+  jz规则表单.value = {
+    ...规则,
+    选中时间段: JSON.parse(规则.time_slots || '[]'),
+    选中工作日: JSON.parse(规则.work_days || '[1,2,3,4,5,6,7]'),
+  }
+  jz显示规则弹窗.value = true
+}
+const jz保存规则 = async () => {
+  const 提交数据 = {
+    ...jz规则表单.value,
+    time_slots: JSON.stringify(jz规则表单.value.选中时间段),
+    work_days: JSON.stringify(jz规则表单.value.选中工作日),
+  }
+  delete 提交数据.选中时间段
+  delete 提交数据.选中工作日
+  try {
+    if (jz当前编辑ID.value) {
+      await 更新规则API(jz当前编辑ID.value, 提交数据)
+    } else {
+      await 新增规则API(提交数据)
+    }
+    ElMessage.success('保存成功')
+    jz显示规则弹窗.value = false
+    jz加载规则()
+  } catch {
+    ElMessage.error('保存失败')
+  }
+}
+const jz删除规则 = async (id) => {
+  try {
+    await ElMessageBox.confirm('确认删除该规则？', '提示', { type: 'warning' })
+    await 删除规则API(id)
+    ElMessage.success('删除成功')
+    jz加载规则()
+  } catch {}
+}
+
+// ===== 洗衣时间规则（内嵌）=====
+const xi时间规则列表 = ref([])
+const xi规则加载中 = ref(false)
+const xi显示规则弹窗 = ref(false)
+const xi当前编辑ID = ref(null)
+const xi默认表单 = () => ({
+  rule_type: 'global',
+  rule_name: '',
+  match_value: '',
+  sort_order: 50,
+  is_active: 1,
+  时间段列表: ['09:00-10:00', '10:00-11:00', '14:00-15:00', '15:00-16:00'],
+})
+const xi规则表单 = ref(xi默认表单())
+
+const xi解析时间段显示 = (time_slots_json) => {
+  try {
+    const 列表 = JSON.parse(time_slots_json || '[]')
+    return 列表.join('、') || '-'
+  } catch { return '-' }
+}
+const xi加载规则 = async () => {
+  xi规则加载中.value = true
+  try {
+    const 结果 = await 获取洗衣时间规则API()
+    if (结果.code === 1) xi时间规则列表.value = 结果.data
+  } finally { xi规则加载中.value = false }
+}
+const xi新增规则 = () => {
+  xi当前编辑ID.value = null
+  xi规则表单.value = xi默认表单()
+  xi显示规则弹窗.value = true
+}
+const xi编辑规则 = (规则) => {
+  xi当前编辑ID.value = 规则.id
+  xi规则表单.value = {
+    ...规则,
+    时间段列表: JSON.parse(规则.time_slots || '[]'),
+  }
+  xi显示规则弹窗.value = true
+}
+const xi添加时间段 = () => {
+  xi规则表单.value.时间段列表.push('')
+}
+const xi删除时间段 = (索引) => {
+  xi规则表单.value.时间段列表.splice(索引, 1)
+}
+const xi保存规则 = async () => {
+  const 有效时间段 = xi规则表单.value.时间段列表.filter(t => t.trim())
+  const 提交数据 = {
+    rule_type: xi规则表单.value.rule_type,
+    rule_name: xi规则表单.value.rule_name,
+    match_value: xi规则表单.value.match_value,
+    sort_order: xi规则表单.value.sort_order,
+    is_active: xi规则表单.value.is_active,
+    time_slots: JSON.stringify(有效时间段),
+    work_days: '[1,2,3,4,5,6,7]',
+    locked_days: 0,
+    max_days: 14,
+    business_type: 'xiyifu',
+  }
+  try {
+    if (xi当前编辑ID.value) {
+      await 更新洗衣时间规则API(xi当前编辑ID.value, 提交数据)
+    } else {
+      await 新增洗衣时间规则API(提交数据)
+    }
+    ElMessage.success('保存成功')
+    xi显示规则弹窗.value = false
+    xi加载规则()
+  } catch {
+    ElMessage.error('保存失败')
+  }
+}
+const xi删除规则 = async (id) => {
+  try {
+    await ElMessageBox.confirm('确认删除该时间规则？', '提示', { type: 'warning' })
+    await 删除洗衣时间规则API(id)
+    ElMessage.success('删除成功')
+    xi加载规则()
+  } catch {}
+}
+
+// ===== 京东账号管理（内嵌）=====
+const jd账号列表 = ref([])
+const jd账号加载中 = ref(false)
+const jd显示账号弹窗 = ref(false)
+const jd编辑中ID = ref(null)
+const jd账号表单 = ref({ nickname: '', username: '', password: '', daily_limit: 20 })
+
+const jd检查Cookie是否有效 = (账号) => {
+  if (!账号.cookie || !账号.cookie_expire) return false
+  return new Date(账号.cookie_expire) > new Date()
+}
+const jd加载账号 = async () => {
+  jd账号加载中.value = true
+  try {
+    const 结果 = await 获取账号列表API()
+    if (结果.code === 1) jd账号列表.value = 结果.data
+  } finally {
+    jd账号加载中.value = false
+  }
+}
+const jd编辑账号 = (账号) => {
+  jd编辑中ID.value = 账号.id
+  jd账号表单.value = { nickname: 账号.nickname, username: 账号.username, password: '', daily_limit: 账号.daily_limit }
+  jd显示账号弹窗.value = true
+}
+const jd保存账号 = async () => {
+  if (!jd账号表单.value.username) return ElMessage.error('请输入账号')
+  try {
+    if (jd编辑中ID.value) {
+      await 更新账号API(jd编辑中ID.value, jd账号表单.value)
+    } else {
+      await 新增账号API(jd账号表单.value)
+    }
+    ElMessage.success('保存成功')
+    jd显示账号弹窗.value = false
+    jd编辑中ID.value = null
+    jd加载账号()
+  } catch {
+    ElMessage.error('保存失败')
+  }
+}
+const jd触发自动登录 = async (id) => {
+  ElMessage.info('正在启动自动登录，请稍候...')
+  const 结果 = await 触发账号登录API(id)
+  ElMessage[结果.code === 1 ? 'success' : 'error'](结果.message || (结果.code === 1 ? '登录成功' : '登录失败'))
+  jd加载账号()
+}
+const jd删除账号 = async (id) => {
+  try {
+    await ElMessageBox.confirm('确认删除该账号？', '提示', { type: 'warning' })
+    await 删除账号API(id)
+    ElMessage.success('删除成功')
+    jd加载账号()
+  } catch {}
+}
+
+onMounted(() => {
+  加载设置()
+  jz加载规则()
+  xi加载规则()
+  jd加载账号()
+})
 </script>
 
 <style scoped>
@@ -1082,13 +1522,23 @@ onMounted(() => 加载设置())
   width: 100%;
 }
 
-.接口地址行 {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 0;
-  font-size: 13px;
+.内嵌管理区 {
+  margin: 12px 0 20px;
+  border: 1px solid #e4e7ed;
+  border-radius: 6px;
+  padding: 12px;
+  background: #fafafa;
 }
+
+.内嵌操作栏 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.时间段编辑区 { display: flex; flex-direction: column; gap: 8px; }
+.时间段行 { display: flex; align-items: center; gap: 8px; }
 
 .接口方法 {
   background: #409eff;
