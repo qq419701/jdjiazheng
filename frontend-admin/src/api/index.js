@@ -168,3 +168,12 @@ export const 获取充值预览卡密API = () => 请求实例.get('/topup-cards/
 export const 统一获取卡密列表API = (参数) => 请求实例.get('/unified-cards', { params: 参数 })
 export const 统一获取批次列表API = (参数) => 请求实例.get('/unified-batches', { params: 参数 })
 export const 统一获取卡密统计API = () => 请求实例.get('/unified-stats')
+
+// ===== 套餐管理（新）=====
+export const 获取套餐列表API = (参数) => 请求实例.get('/products', { params: { ...参数, include_stock: 1 } })
+export const 新增套餐API = (数据) => 请求实例.post('/products', 数据)
+export const 更新套餐API = (id, 数据) => 请求实例.put(`/products/${id}`, 数据)
+export const 删除套餐API = (id) => 请求实例.delete(`/products/${id}`)
+
+// ===== 卡密工作台（新）=====
+export const 套餐生成卡密API = (数据) => 请求实例.post('/card-templates/generate', 数据)

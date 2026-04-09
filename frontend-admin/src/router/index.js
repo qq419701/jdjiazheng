@@ -144,19 +144,33 @@ const routes = [
         component: () => import('../views/SubAccounts.vue'),
         meta: { 标题: '子账号管理', 权限Key: 'sub_accounts' },
       },
-      // ===== 商品管理（SUP商品管理）=====
+      // ===== 卡密工作台（新）=====
       {
-        path: 'products',
-        name: 'Products',
-        component: () => import('../views/Products.vue'),
-        meta: { 标题: '商品管理', 权限Key: 'products' },
+        path: 'card-workbench',
+        name: 'CardWorkbench',
+        component: () => import('../views/CardWorkbench.vue'),
+        meta: { 标题: '卡密工作台', 权限Key: 'card_workbench' },
       },
-      // ===== 统一卡密中心 =====
+      // ===== 套餐管理（新，替代商品管理）=====
       {
-        path: 'card-center',
-        name: 'UnifiedCardCenter',
-        component: () => import('../views/UnifiedCardCenter.vue'),
-        meta: { 标题: '统一卡密中心', 权限Key: 'card_center' },
+        path: 'template-manager',
+        name: 'TemplateManager',
+        component: () => import('../views/TemplateManager.vue'),
+        meta: { 标题: '套餐管理', 权限Key: 'template_manager' },
+      },
+      // ===== 订单中心（预留）=====
+      {
+        path: 'order-center',
+        name: 'OrderCenter',
+        component: () => import('../views/OrderCenter.vue'),
+        meta: { 标题: '订单中心（整合中）', 权限Key: 'order_center' },
+      },
+      // ===== 业务设置（预留）=====
+      {
+        path: 'business-settings',
+        name: 'BusinessSettings',
+        component: () => import('../views/BusinessSettings.vue'),
+        meta: { 标题: '业务设置（整合中）', 权限Key: 'business_settings' },
       },
     ],
   },

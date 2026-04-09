@@ -935,4 +935,103 @@ router.get('/unified-cards', 验证Token, 统一获取卡密列表);
 router.get('/unified-batches', 验证Token, 统一获取批次列表);
 router.get('/unified-stats', 验证Token, 统一获取卡密统计);
 
+// ===== 卡密工作台：选套餐生成卡密 =====
+router.post('/card-templates/generate', 验证Token, async (req, res) => {
+  try {
+    const { template_id, count = 1, remark = '', expired_at = null } = req.body;
+    if (!template_id) return res.json({ code: 0, message: '请选择套餐' });
+
+    const { Product, CardBatch, Card } = require('../models');
+    const { 生成卡密: 生成卡密码 } = require('../utils/helpers');
+
+    // 查套餐
+    const 套餐 = await Product.findOne({ where: { id: template_id, status: 1 } });
+    if (!套餐) return res.json({ code: 0, message: '套餐不存在或已禁用' });
+
+    const 实际数量 = Math.min(parseInt(count) || 1, 1000);
+
+    // 生成批次号
+    const 批次号 = `TPL${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+
+    // 创建批次记录
+    const 批次 = await CardBatch.create({
+      batch_no: 批次号,
+      category: 套餐.product_name,
+      service_type: 套餐.service_type || 套餐.product_name,
+      service_hours: 套餐.service_hours || 0,
+      count: 实际数量,
+      remark: remark || '',
+      business_type: 套餐.business_type,
+      created_by: req.管理员?.id || null,
+      created_at: new Date(),
+      product_id: 套餐.id,
+      topup_account_type: 套餐.topup_account_type || null,
+      topup_account_label: 套餐.topup_account_label || null,
+      topup_member_name: 套餐.topup_member_name || null,
+      topup_member_icon: 套餐.topup_member_icon || null,
+      topup_arrival_time: 套餐.topup_arrival_time || null,
+      topup_show_expired: 套餐.topup_show_expired || 0,
+      topup_steps: 套餐.topup_steps || null,
+      topup_account_regex: 套餐.topup_account_regex || null,
+      topup_account_error_msg: 套餐.topup_account_error_msg || null,
+    });
+
+    // 生成卡密（去重）
+    const 现有卡密 = await Card.findAll({ attributes: ['code'] });
+    const 已有集合 = new Set(现有卡密.map(c => c.code));
+
+    const 新卡密列表 = [];
+    let n = 0, tries = 0;
+    while (n < 实际数量 && tries < 实际数量 * 10) {
+      tries++;
+      const 码 = 生成卡密码(16);
+      if (!已有集合.has(码)) {
+        已有集合.add(码);
+        新卡密列表.push({
+          code: 码,
+          category: 套餐.product_name,
+          service_type: 套餐.service_type || 套餐.product_name,
+          service_hours: 套餐.service_hours || 0,
+          remark: remark || '',
+          status: 0,
+          created_by: req.管理员?.id || null,
+          batch_id: 批次.id,
+          expired_at: expired_at || null,
+          created_at: new Date(),
+          business_type: 套餐.business_type,
+          product_id: 套餐.id,
+          topup_account_type: 套餐.topup_account_type || null,
+          topup_account_label: 套餐.topup_account_label || null,
+          topup_member_name: 套餐.topup_member_name || null,
+          topup_member_icon: 套餐.topup_member_icon || null,
+          topup_arrival_time: 套餐.topup_arrival_time || null,
+          topup_show_expired: 套餐.topup_show_expired || 0,
+          topup_steps: 套餐.topup_steps || null,
+          topup_account_regex: 套餐.topup_account_regex || null,
+          topup_account_error_msg: 套餐.topup_account_error_msg || null,
+        });
+        n++;
+      }
+    }
+
+    await Card.bulkCreate(新卡密列表);
+
+    res.json({
+      code: 1,
+      message: `成功生成 ${新卡密列表.length} 个卡密`,
+      data: {
+        batch_no: 批次号,
+        batch_id: 批次.id,
+        codes: 新卡密列表.map(c => c.code),
+        count: 新卡密列表.length,
+        template_name: 套餐.product_name,
+        business_type: 套餐.business_type,
+      },
+    });
+  } catch (错误) {
+    console.error('卡密工作台生成卡密出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
 module.exports = router;
