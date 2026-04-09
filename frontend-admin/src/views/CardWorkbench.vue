@@ -155,7 +155,9 @@
                   <el-button size="small" type="success" @click="下载TXT">下载TXT</el-button>
                 </div>
                 <div class="预览卡密">
-                  <div class="预览标题">前20条预览：</div>
+                  <div class="预览标题">
+                    前20条预览（{{ 站点域名 || '加载站点域名中...' }}）：
+                  </div>
                   <div
                     v-for="(码, i) in 生成结果.codes.slice(0, 20)"
                     :key="i"
@@ -164,6 +166,7 @@
                     <span class="序号">{{ i + 1 }}.</span>
                     <span class="卡密码">{{ 码 }}</span>
                     <span class="完整链接">{{ 生成链接(生成结果.business_type, 码) }}</span>
+                    <el-button size="small" text type="primary" style="padding:0 2px; font-size:11px" @click="复制文本(生成链接(生成结果.business_type, 码))">复制</el-button>
                   </div>
                   <div v-if="生成结果.codes.length > 20" class="更多提示">
                     ... 共 {{ 生成结果.codes.length }} 张，请下载TXT查看全部
@@ -187,28 +190,55 @@
             <el-option label="已使用" value="1" />
             <el-option label="已失效" value="2" />
           </el-select>
+          <el-select v-model="卡密筛选.sup_status" placeholder="SUP发货" clearable style="width:120px">
+            <el-option label="未发货" value="0" />
+            <el-option label="已发货" value="1" />
+            <el-option label="已撤单" value="2" />
+          </el-select>
+          <el-input
+            v-model="卡密筛选.batch_no"
+            placeholder="批次号"
+            style="width:160px"
+            clearable
+          />
           <el-input
             v-model="卡密筛选.keyword"
             placeholder="卡密码/备注"
-            style="width:180px"
+            style="width:160px"
             clearable
           />
           <el-button type="primary" @click="搜索卡密">搜索</el-button>
           <el-button @click="重置卡密筛选">重置</el-button>
+          <el-button type="success" @click="导出卡密列表TXT">📥 导出TXT</el-button>
         </div>
 
-        <el-table :data="卡密列表" v-loading="卡密加载中" border stripe style="margin-top:12px">
+        <el-table
+          ref="卡密表格引用"
+          :data="卡密列表"
+          v-loading="卡密加载中"
+          border stripe
+          style="margin-top:12px"
+          @selection-change="卡密选择变化"
+        >
+          <el-table-column type="selection" width="45" />
           <el-table-column prop="id" label="ID" width="70" />
           <el-table-column label="卡密码" min-width="160">
             <template #default="{ row }">
               <span class="等宽字体">{{ row.code }}</span>
+              <el-button size="small" text type="primary" style="padding:0 4px" @click="复制文本(row.code)">
+                <el-icon><CopyDocument /></el-icon>
+              </el-button>
             </template>
           </el-table-column>
           <el-table-column label="完整链接" min-width="200">
             <template #default="{ row }">
-              <span class="截断链接">{{ 生成链接(row.business_type, row.code) }}</span>
-              <el-button size="small" text @click="复制文本(生成链接(row.business_type, row.code))">复制</el-button>
+              <span class="截断链接" style="cursor:pointer" @click="复制文本(生成链接(row.business_type, row.code))">
+                {{ 生成链接(row.business_type, row.code) }}
+              </span>
             </template>
+          </el-table-column>
+          <el-table-column label="套餐名称" min-width="120">
+            <template #default="{ row }">{{ row.product_name || row.service_type || '-' }}</template>
           </el-table-column>
           <el-table-column label="业务" width="80">
             <template #default="{ row }">
@@ -216,9 +246,6 @@
                 {{ 业务中文(row.business_type) }}
               </el-tag>
             </template>
-          </el-table-column>
-          <el-table-column label="套餐/服务" min-width="120">
-            <template #default="{ row }">{{ row.category || row.service_type || '-' }}</template>
           </el-table-column>
           <el-table-column label="SUP发货" width="90">
             <template #default="{ row }">
@@ -237,13 +264,21 @@
           <el-table-column label="创建时间" width="170">
             <template #default="{ row }">{{ 格式化时间(row.created_at) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="120" fixed="right">
+          <el-table-column label="操作" width="180" fixed="right">
             <template #default="{ row }">
+              <el-button size="small" @click="复制文本(生成链接(row.business_type, row.code))">复制链接</el-button>
               <el-button size="small" type="warning" @click="作废卡密(row)" :disabled="row.status !== 0">作废</el-button>
               <el-button size="small" type="danger" @click="删除卡密(row)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
+
+        <!-- 批量操作栏 -->
+        <div v-if="卡密选中列表.length > 0" class="批量操作栏">
+          <span class="批量提示">已选 {{ 卡密选中列表.length }} 条</span>
+          <el-button size="small" type="warning" @click="批量作废">批量作废</el-button>
+          <el-button size="small" type="primary" @click="批量复制链接">批量复制链接</el-button>
+        </div>
 
         <!-- 分页 -->
         <div class="分页区">
@@ -280,21 +315,24 @@
             </template>
           </el-table-column>
           <el-table-column label="套餐名称" min-width="140">
-            <template #default="{ row }">{{ row.category || '-' }}</template>
+            <template #default="{ row }">{{ row.category || row.product_name || '-' }}</template>
           </el-table-column>
-          <el-table-column label="数量/已用/未用" width="140">
+          <el-table-column label="总/已用/未用" width="140">
             <template #default="{ row }">
-              {{ row.count }} / {{ row.used_count ?? '-' }} / {{ row.unused_count ?? '-' }}
+              <span>{{ row.count }}</span> /
+              <span style="color:#909399">{{ row.used_count ?? '-' }}</span> /
+              <span style="color:#67c23a">{{ row.unused_count ?? '-' }}</span>
             </template>
           </el-table-column>
           <el-table-column label="创建时间" width="170">
             <template #default="{ row }">{{ 格式化时间(row.created_at) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="280" fixed="right">
+          <el-table-column label="操作" width="320" fixed="right">
             <template #default="{ row }">
               <el-button size="small" @click="查看批次卡密(row)">查看卡密</el-button>
               <el-button size="small" @click="复制批次链接(row)">复制链接</el-button>
               <el-button size="small" @click="复制批次卡密(row)">复制卡密</el-button>
+              <el-button size="small" type="success" @click="导出批次TXT(row)">导出TXT</el-button>
               <el-button size="small" type="danger" @click="删除批次(row)">删除</el-button>
             </template>
           </el-table-column>
@@ -303,7 +341,13 @@
     </el-tabs>
 
     <!-- 批次卡密弹窗 -->
-    <el-dialog v-model="批次弹窗可见" :title="`批次卡密 - ${当前批次?.batch_no}`" width="700px">
+    <el-dialog v-model="批次弹窗可见" :title="`批次卡密 - ${当前批次?.batch_no}`" width="780px">
+      <!-- 操作按钮 -->
+      <div style="margin-bottom:12px; display:flex; gap:8px">
+        <el-button size="small" type="primary" @click="批次弹窗全选复制链接">全选复制链接</el-button>
+        <el-button size="small" @click="批次弹窗全选复制卡密">全选复制卡密</el-button>
+        <el-button size="small" type="success" @click="批次弹窗导出TXT">导出TXT</el-button>
+      </div>
       <el-table :data="批次卡密列表" border stripe max-height="400px">
         <el-table-column prop="code" label="卡密码" min-width="160">
           <template #default="{ row }">
@@ -317,9 +361,15 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="完整链接" min-width="180">
+        <el-table-column label="完整链接" min-width="200">
           <template #default="{ row }">
-            <span class="截断链接">{{ 生成链接(row.business_type, row.code) }}</span>
+            <span
+              class="截断链接"
+              style="cursor:pointer; max-width:200px"
+              @click="复制文本(生成链接(row.business_type || 当前批次?.business_type, row.code))"
+            >
+              {{ 生成链接(row.business_type || 当前批次?.business_type, row.code) }}
+            </span>
           </template>
         </el-table-column>
       </el-table>
@@ -330,7 +380,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Ticket } from '@element-plus/icons-vue'
+import { Ticket, CopyDocument } from '@element-plus/icons-vue'
 import {
   获取套餐列表API,
   套餐生成卡密API,
@@ -344,6 +394,7 @@ import {
 
 // 批次删除需要判断业务类型，引入各业务接口
 import { 删除批次API, 删除洗衣批次API, 删除充值批次API } from '../api/index'
+import { 作废洗衣卡密API, 作废充值卡密API, 删除洗衣卡密API, 删除充值卡密API } from '../api/index'
 
 // ===== 常量 =====
 const 业务列表 = [
@@ -371,7 +422,7 @@ const 生成结果 = ref(null)
 // 卡密列表
 const 卡密列表 = ref([])
 const 卡密加载中 = ref(false)
-const 卡密筛选 = reactive({ business_type: '', status: '', keyword: '' })
+const 卡密筛选 = reactive({ business_type: '', status: '', keyword: '', batch_no: '', sup_status: '' })
 const 卡密分页 = reactive({ page: 1, limit: 20, total: 0 })
 
 // 批次
@@ -381,6 +432,10 @@ const 批次筛选 = reactive({ business_type: '' })
 const 批次弹窗可见 = ref(false)
 const 当前批次 = ref(null)
 const 批次卡密列表 = ref([])
+
+// Tab2 多选
+const 卡密选中列表 = ref([])
+const 卡密表格引用 = ref(null)
 
 // ===== 初始化 =====
 onMounted(async () => {
@@ -527,7 +582,7 @@ const 搜索卡密 = async () => {
 }
 
 const 重置卡密筛选 = () => {
-  Object.assign(卡密筛选, { business_type: '', status: '', keyword: '' })
+  Object.assign(卡密筛选, { business_type: '', status: '', keyword: '', batch_no: '', sup_status: '' })
   卡密分页.page = 1
   搜索卡密()
 }
@@ -535,7 +590,13 @@ const 重置卡密筛选 = () => {
 const 作废卡密 = async (行) => {
   await ElMessageBox.confirm(`确认作废卡密 ${行.code}？此操作不可逆。`, '确认作废', { type: 'warning' })
   try {
-    await 作废卡密API(行.id)
+    if (行.business_type === 'xiyifu') {
+      await 作废洗衣卡密API(行.id)
+    } else if (行.business_type === 'topup') {
+      await 作废充值卡密API(行.id)
+    } else {
+      await 作废卡密API(行.id)
+    }
     ElMessage.success('卡密已作废')
     搜索卡密()
   } catch {
@@ -546,7 +607,13 @@ const 作废卡密 = async (行) => {
 const 删除卡密 = async (行) => {
   await ElMessageBox.confirm(`确认删除卡密 ${行.code}？`, '确认删除', { type: 'warning' })
   try {
-    await 删除卡密API(行.id)
+    if (行.business_type === 'xiyifu') {
+      await 删除洗衣卡密API(行.id)
+    } else if (行.business_type === 'topup') {
+      await 删除充值卡密API(行.id)
+    } else {
+      await 删除卡密API(行.id)
+    }
     ElMessage.success('卡密已删除')
     搜索卡密()
   } catch {
@@ -623,6 +690,116 @@ const 删除批次 = async (行) => {
   } catch {
     ElMessage.error('删除失败')
   }
+}
+
+// ===== 批量操作 =====
+const 卡密选择变化 = (selection) => {
+  卡密选中列表.value = selection
+}
+
+const 批量作废 = async () => {
+  const 待作废 = 卡密选中列表.value.filter(c => c.status === 0)
+  if (待作废.length === 0) {
+    ElMessage.warning('请先勾选状态为"未使用"的卡密')
+    return
+  }
+  await ElMessageBox.confirm(`确认批量作废 ${待作废.length} 张卡密？此操作不可逆。`, '确认批量作废', { type: 'warning' })
+  let 成功 = 0
+  for (const 卡密 of 待作废) {
+    try {
+      if (卡密.business_type === 'xiyifu') {
+        await 作废洗衣卡密API(卡密.id)
+      } else if (卡密.business_type === 'topup') {
+        await 作废充值卡密API(卡密.id)
+      } else {
+        await 作废卡密API(卡密.id)
+      }
+      成功++
+    } catch {}
+  }
+  ElMessage.success(`已作废 ${成功} 张`)
+  搜索卡密()
+}
+
+const 批量复制链接 = () => {
+  if (卡密选中列表.value.length === 0) {
+    ElMessage.warning('请先勾选卡密')
+    return
+  }
+  const 文本 = 卡密选中列表.value.map(c => 生成链接(c.business_type, c.code)).join('\n')
+  复制文本(文本)
+}
+
+// ===== 导出卡密列表 =====
+const 导出卡密列表TXT = async () => {
+  卡密加载中.value = true
+  try {
+    const 响应 = await 统一获取卡密列表API({
+      ...卡密筛选,
+      page: 1,
+      limit: 5000,
+    })
+    const 列表 = 响应.data?.data?.list || 响应.data?.data || []
+    if (列表.length === 0) {
+      ElMessage.warning('没有可导出的卡密')
+      return
+    }
+    const 内容 = 列表.map(c => `${c.code}\t${生成链接(c.business_type, c.code)}`).join('\n')
+    const blob = new Blob([内容], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `卡密列表_${new Date().toLocaleDateString('zh-CN').replace(/\//g, '-')}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success(`已导出 ${列表.length} 条`)
+  } catch {
+    ElMessage.error('导出失败')
+  } finally {
+    卡密加载中.value = false
+  }
+}
+
+// ===== 导出批次TXT =====
+const 导出批次TXT = async (批次行) => {
+  try {
+    const 响应 = await 统一获取卡密列表API({ batch_id: 批次行.id, limit: 5000 })
+    const 列表 = 响应.data?.data?.list || 响应.data?.data || []
+    if (列表.length === 0) {
+      ElMessage.warning('该批次暂无卡密')
+      return
+    }
+    const 内容 = 列表.map(c => `${c.code}\t${生成链接(c.business_type || 批次行.business_type, c.code)}`).join('\n')
+    const blob = new Blob([内容], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${批次行.batch_no}.txt`
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success(`已导出 ${列表.length} 张`)
+  } catch {
+    ElMessage.error('导出失败')
+  }
+}
+
+// ===== 批次弹窗 - 全选复制 =====
+const 批次弹窗全选复制链接 = () => {
+  if (批次卡密列表.value.length === 0) return
+  const 文本 = 批次卡密列表.value
+    .map(c => 生成链接(c.business_type || 当前批次.value?.business_type, c.code))
+    .join('\n')
+  复制文本(文本)
+}
+
+const 批次弹窗全选复制卡密 = () => {
+  if (批次卡密列表.value.length === 0) return
+  复制文本(批次卡密列表.value.map(c => c.code).join('\n'))
+}
+
+const 批次弹窗导出TXT = () => {
+  if (!当前批次.value) return
+  导出批次TXT(当前批次.value)
 }
 
 // ===== 工具函数 =====
@@ -975,5 +1152,23 @@ const 主TabChange = (tab) => {
   margin-left: 10px;
   font-size: 12px;
   color: #909399;
+}
+
+/* 批量操作栏 */
+.批量操作栏 {
+  margin-top: 12px;
+  padding: 8px 16px;
+  background: #ecf5ff;
+  border-radius: 4px;
+  border: 1px solid #b3d8ff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.批量提示 {
+  font-size: 13px;
+  color: #409eff;
+  font-weight: 500;
 }
 </style>
