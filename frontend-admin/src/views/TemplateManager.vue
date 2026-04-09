@@ -63,79 +63,146 @@
     <el-dialog
       v-model="弹窗可见"
       :title="当前编辑ID ? '编辑套餐' : '新建套餐'"
-      width="600px"
+      width="680px"
+      :body-style="{ overflowY: 'auto', maxHeight: '80vh' }"
       @closed="重置表单"
     >
-      <el-form ref="表单引用" :model="表单数据" :rules="表单规则" label-width="140px">
+      <el-form ref="表单引用" :model="表单数据" :rules="动态表单规则" label-width="140px">
+        <!-- 套餐名称 - 所有业务类型通用 -->
         <el-form-item label="套餐名称" prop="product_name">
-          <el-input v-model="表单数据.product_name" placeholder="如：日常保洁2小时家政卡" />
+          <el-input v-model="表单数据.product_name" placeholder="如：日常保洁2小时家政卡" style="width:280px" />
+          <div class="字段提示块">💡 此名称用于内部管理和SUP商品名称，不显示在前端H5</div>
         </el-form-item>
 
-        <!-- 家政专用字段 -->
+        <!-- ===== 家政专用字段 ===== -->
         <template v-if="当前业务类型 === 'jiazheng'">
-          <el-form-item label="服务类型" prop="service_type">
-            <el-input v-model="表单数据.service_type" placeholder="如：日常保洁" />
+          <el-form-item label="服务分类" prop="service_type">
+            <el-input v-model="表单数据.service_type" placeholder="如：日常保洁" style="width:280px" />
+            <div class="字段提示块">💡 对应前端H5预约页显示的服务分类，如：日常保洁、深度清洁、专项保洁</div>
+            <div class="快捷选择行">
+              <span class="快捷标签">快捷选择：</span>
+              <el-button
+                v-for="项 in 家政服务分类快捷"
+                :key="项"
+                size="small"
+                plain
+                @click="表单数据.service_type = 项"
+              >{{ 项 }}</el-button>
+            </div>
           </el-form-item>
-          <el-form-item label="服务时长（小时）">
+          <el-form-item label="服务时长(小时)">
             <el-input-number v-model="表单数据.service_hours" :min="0" :max="24" />
-            <span class="字段提示">0 = 不限时长</span>
+            <div class="字段提示块">💡 生成的卡密会携带此时长信息，影响前端H5预约页显示的服务时长（0=不限时长）</div>
           </el-form-item>
         </template>
 
-        <!-- 洗衣专用字段 -->
+        <!-- ===== 洗衣专用字段 ===== -->
         <template v-if="当前业务类型 === 'xiyifu'">
           <el-form-item label="服务类型" prop="service_type">
-            <el-input v-model="表单数据.service_type" placeholder="如：任洗一件" />
+            <el-input v-model="表单数据.service_type" placeholder="如：任洗一件" style="width:280px" />
+            <div class="字段提示块">💡 对应前端H5洗衣页显示的服务名称</div>
+            <div class="快捷选择行">
+              <span class="快捷标签">快捷选择：</span>
+              <el-button
+                v-for="项 in 洗衣服务类型快捷"
+                :key="项"
+                size="small"
+                plain
+                @click="表单数据.service_type = 项"
+              >{{ 项 }}</el-button>
+            </div>
+          </el-form-item>
+          <el-form-item label="到账时间">
+            <el-input v-model="表单数据.topup_arrival_time" placeholder="如：1-6小时" style="width:200px" />
+            <div class="字段提示块">💡 洗衣服务预计到账时间（可选，填写后显示在前端洗衣H5）</div>
+            <div class="快捷选择行">
+              <span class="快捷标签">快捷选择：</span>
+              <el-button
+                v-for="项 in 到账时间快捷"
+                :key="项"
+                size="small"
+                plain
+                @click="表单数据.topup_arrival_time = 项"
+              >{{ 项 }}</el-button>
+            </div>
           </el-form-item>
         </template>
 
-        <!-- 充值专用字段 -->
+        <!-- ===== 充值专用字段 ===== -->
         <template v-if="当前业务类型 === 'topup'">
           <el-form-item label="充值会员名称" prop="topup_member_name">
-            <el-input v-model="表单数据.topup_member_name" placeholder="如：优酷年卡" />
+            <el-input v-model="表单数据.topup_member_name" placeholder="如：优酷年卡" style="width:280px" />
+            <div class="字段提示块">💡 显示在充值H5前端顶部Banner的会员名称，如：优酷年卡、爱奇艺季卡</div>
           </el-form-item>
           <el-form-item label="账号类型">
-            <el-select v-model="表单数据.topup_account_type" placeholder="请选择" @change="自动填充标签" style="width:180px">
+            <el-select v-model="表单数据.topup_account_type" placeholder="请选择" style="width:180px" @change="自动填充标签">
               <el-option label="手机号" value="phone" />
               <el-option label="微信号" value="wechat" />
               <el-option label="QQ号" value="qq" />
               <el-option label="邮箱" value="email" />
               <el-option label="其他" value="other" />
             </el-select>
+            <div class="字段提示块">💡 前端H5充值页会根据此类型对输入账号进行格式校验</div>
           </el-form-item>
-          <el-form-item label="输入框标签">
-            <el-input v-model="表单数据.topup_account_label" placeholder="如：请输入手机号" />
+          <el-form-item label="账号输入标签">
+            <el-input v-model="表单数据.topup_account_label" placeholder="如：请输入手机号" style="width:220px" />
+            <el-button size="small" style="margin-left:8px" @click="自动填充标签(表单数据.topup_account_type)">智能填充</el-button>
+            <div class="字段提示块">💡 显示在充值H5前端输入框上方的提示文字</div>
           </el-form-item>
           <el-form-item label="预计到账时间">
-            <el-input v-model="表单数据.topup_arrival_time" placeholder="如：24小时内" />
+            <el-input v-model="表单数据.topup_arrival_time" placeholder="如：1-6小时" style="width:200px" />
+            <div class="快捷选择行">
+              <el-button
+                v-for="项 in 充值到账时间快捷"
+                :key="项"
+                size="small"
+                plain
+                @click="表单数据.topup_arrival_time = 项"
+              >{{ 项 }}</el-button>
+            </div>
+            <div class="字段提示块">💡 显示在充值H5前端，告知用户预计充值到账时间</div>
           </el-form-item>
           <el-form-item label="显示到期选项">
             <el-switch v-model="表单数据.topup_show_expired" :active-value="1" :inactive-value="0" />
+            <div class="字段提示块">💡 开启后，充值H5会显示"会员是否到期"的是/否单选（某些充值不需要此选项）</div>
+          </el-form-item>
+
+          <el-divider content-position="left">
+            <span style="font-size:12px; color:#999">高级：自定义验证（可选）</span>
+          </el-divider>
+
+          <el-form-item label="自定义验证正则">
+            <el-input v-model="表单数据.topup_account_regex" placeholder="留空则使用全局验证规则" style="width:300px" />
+            <div class="字段提示块">💡 仅在账号类型为"其他"或需要覆盖默认验证时填写，如：^[a-zA-Z0-9]{6,20}$</div>
+          </el-form-item>
+          <el-form-item label="验证失败提示语">
+            <el-input v-model="表单数据.topup_account_error_msg" placeholder="如：请输入正确的游戏账号（6-20位字母数字）" style="width:300px" />
+            <div class="字段提示块">💡 账号格式不符合时，前端H5显示的错误提示文字</div>
           </el-form-item>
           <el-form-item label="充值步骤说明">
             <el-input
               v-model="表单数据.topup_steps"
               type="textarea"
-              :rows="3"
-              placeholder="填写充值操作步骤说明"
+              :rows="2"
+              placeholder="如：①填写充值账号 ②接听人工客服电话 ③充值成功"
+              style="width:300px"
             />
-          </el-form-item>
-          <el-form-item label="验证正则（可选）">
-            <el-input v-model="表单数据.topup_account_regex" placeholder="如：^1[3-9]\\d{9}$" />
-          </el-form-item>
-          <el-form-item label="验证失败提示">
-            <el-input v-model="表单数据.topup_account_error_msg" placeholder="如：请输入正确的手机号" />
+            <el-button size="small" style="margin-left:8px; vertical-align: top" @click="步骤选择弹窗 = true">快捷填充步骤</el-button>
+            <div class="字段提示块">💡 显示在充值H5前端的操作步骤引导</div>
           </el-form-item>
           <el-form-item label="会员图标URL">
-            <el-input v-model="表单数据.topup_member_icon" placeholder="图标图片地址（可选）" />
+            <el-input v-model="表单数据.topup_member_icon" placeholder="可选，显示在顶部Banner旁" style="width:300px" />
+            <div class="字段提示块">💡 充值H5顶部Banner区域显示的图标图片，建议64x64 PNG</div>
           </el-form-item>
         </template>
 
+        <!-- 通用字段 -->
         <el-form-item label="成本价（元）">
           <el-input-number v-model="表单数据.cost_price" :min="0" :precision="2" :step="1" />
+          <div class="字段提示块">💡 用于奇所SUP平台的商品成本价，影响奇所对账</div>
         </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="表单数据.remark" type="textarea" :rows="2" placeholder="备注（可选）" />
+          <el-input v-model="表单数据.remark" type="textarea" :rows="2" placeholder="内部备注（可选）" style="width:300px" />
         </el-form-item>
         <el-form-item label="状态">
           <el-switch v-model="表单数据.status" :active-value="1" :inactive-value="0" />
@@ -150,11 +217,24 @@
         </el-button>
       </template>
     </el-dialog>
+
+    <!-- 步骤快捷填充弹窗 -->
+    <el-dialog v-model="步骤选择弹窗" title="快捷填充步骤" width="500px">
+      <div style="display:flex; flex-direction:column; gap:10px">
+        <el-button
+          v-for="步骤 in 步骤快捷选项"
+          :key="步骤"
+          plain
+          style="text-align:left; height:auto; white-space:normal; padding:10px 16px"
+          @click="快捷填充步骤(步骤)"
+        >{{ 步骤 }}</el-button>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 获取套餐列表API, 新增套餐API, 更新套餐API, 删除套餐API } from '../api/index'
 
@@ -166,6 +246,18 @@ const 弹窗可见 = ref(false)
 const 当前编辑ID = ref(null)
 const 提交中 = ref(false)
 const 表单引用 = ref(null)
+
+const 步骤快捷选项 = [
+  '①填写充值账号 ②接听人工客服电话 ③充值成功',
+  '①填写账号 ②等待客服联系 ③48小时内充值',
+  '①填写账号 ②在线充值 ③即时到账',
+]
+const 步骤选择弹窗 = ref(false)
+
+const 家政服务分类快捷 = ['日常保洁', '深度清洁', '专项保洁', '开荒保洁', '玻璃清洁']
+const 洗衣服务类型快捷 = ['任洗一件', '任洗两件', '任洗三件', '床品套件', '大件清洗']
+const 到账时间快捷 = ['当天', '1-3天', '3-5天', '5-7天']
+const 充值到账时间快捷 = ['1小时内', '1-6小时', '24小时内', '即时到账']
 
 const 表单数据 = reactive({
   product_name: '',
@@ -191,6 +283,19 @@ const 表单规则 = {
   service_type: [{ required: true, message: '请填写服务类型', trigger: 'blur' }],
   topup_member_name: [{ required: true, message: '请填写充值会员名称', trigger: 'blur' }],
 }
+
+const 动态表单规则 = computed(() => {
+  const 基础规则 = {
+    product_name: [{ required: true, message: '请填写套餐名称', trigger: 'blur' }],
+  }
+  if (当前业务类型.value === 'jiazheng' || 当前业务类型.value === 'xiyifu') {
+    基础规则.service_type = [{ required: true, message: '请填写服务类型', trigger: 'blur' }]
+  }
+  if (当前业务类型.value === 'topup') {
+    基础规则.topup_member_name = [{ required: true, message: '请填写充值会员名称', trigger: 'blur' }]
+  }
+  return 基础规则
+})
 
 // ===== 数据加载 =====
 const 加载套餐列表 = async () => {
@@ -224,10 +329,13 @@ const 库存样式 = (stock) => {
 
 // 选择账号类型时自动填充标签
 const 自动填充标签 = (type) => {
-  if (!表单数据.topup_account_label) {
-    const map = { phone: '请输入手机号', wechat: '请输入微信号', qq: '请输入QQ号', email: '请输入邮箱', other: '请输入账号' }
-    表单数据.topup_account_label = map[type] || ''
-  }
+  const map = { phone: '请输入手机号', wechat: '请输入微信号', qq: '请输入QQ号', email: '请输入邮箱地址', other: '请输入账号' }
+  表单数据.topup_account_label = map[type] || ''
+}
+
+const 快捷填充步骤 = (步骤) => {
+  表单数据.topup_steps = 步骤
+  步骤选择弹窗.value = false
 }
 
 // ===== 弹窗操作 =====
@@ -271,24 +379,30 @@ const 重置表单 = () => {
 }
 
 const 提交表单 = async () => {
-  await 表单引用.value?.validate()
+  try {
+    await 表单引用.value?.validate()
+  } catch {
+    return
+  }
   提交中.value = true
   try {
-    const 数据 = {
-      ...表单数据,
-      business_type: 当前业务类型.value,
-    }
+    const 数据 = { ...表单数据, business_type: 当前业务类型.value }
+    let 响应
     if (当前编辑ID.value) {
-      await 更新套餐API(当前编辑ID.value, 数据)
-      ElMessage.success('套餐更新成功')
+      响应 = await 更新套餐API(当前编辑ID.value, 数据)
     } else {
-      await 新增套餐API(数据)
-      ElMessage.success('套餐新建成功')
+      响应 = await 新增套餐API(数据)
     }
-    弹窗可见.value = false
-    加载套餐列表()
+    const 结果 = 响应.data
+    if (结果?.code === 1) {
+      ElMessage.success(结果.message || (当前编辑ID.value ? '套餐更新成功' : '套餐新建成功'))
+      弹窗可见.value = false
+      加载套餐列表()
+    } else {
+      ElMessage.warning(结果?.message || '操作失败')
+    }
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '操作失败，请稍后重试')
+    ElMessage.error('操作失败，请稍后重试')
   } finally {
     提交中.value = false
   }
@@ -360,6 +474,26 @@ onMounted(() => {
 
 .字段提示 {
   margin-left: 10px;
+  font-size: 12px;
+  color: #909399;
+}
+
+.字段提示块 {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+.快捷选择行 {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.快捷标签 {
   font-size: 12px;
   color: #909399;
 }
