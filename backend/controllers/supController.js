@@ -524,6 +524,25 @@ const 撤销订单 = async (req, res) => {
       // 将卡密状态设为已失效，sup_status 设为已撤单
       await 卡密记录.update({ status: 2, sup_status: 2 });
 
+      // 撤单成功后，自动将关联的预约订单改为"退款处理中(8)"
+      try {
+        const 更新条数 = await Order.update(
+          { status: 8 },
+          {
+            where: {
+              card_code: 卡密记录.code,
+              status: { [Op.in]: [0, 1, 2, 5] },
+            },
+          }
+        );
+        if (更新条数[0] > 0) {
+          console.log(`SUP撤单自动退款：卡密 ${卡密记录.code} 关联的 ${更新条数[0]} 个订单已标记为退款处理中`);
+        }
+      } catch (退款错误) {
+        console.error('SUP撤单自动更新订单状态出错:', 退款错误);
+        // 不影响撤单结果返回
+      }
+
     } else if (业务类型 === 'xiyifu') {
       // ===== 洗衣业务 =====
       const 关联订单 = await Order.findOne({
@@ -555,6 +574,25 @@ const 撤销订单 = async (req, res) => {
 
       // 将卡密状态设为已失效，sup_status 设为已撤单
       await 卡密记录.update({ status: 2, sup_status: 2 });
+
+      // 撤单成功后，自动将关联的预约订单改为"退款处理中(8)"
+      try {
+        const 更新条数 = await Order.update(
+          { status: 8 },
+          {
+            where: {
+              card_code: 卡密记录.code,
+              status: { [Op.in]: [0, 1, 2, 5] },
+            },
+          }
+        );
+        if (更新条数[0] > 0) {
+          console.log(`SUP撤单自动退款：卡密 ${卡密记录.code} 关联的 ${更新条数[0]} 个订单已标记为退款处理中`);
+        }
+      } catch (退款错误) {
+        console.error('SUP撤单自动更新订单状态出错:', 退款错误);
+        // 不影响撤单结果返回
+      }
 
     } else if (业务类型 === 'topup') {
       // ===== 充值业务 =====
