@@ -887,7 +887,19 @@
           </el-form-item>
 
           <el-form-item label="撤单拒绝凭证图片">
-            <el-input v-model="设置表单.agiso_refuse_proof" placeholder="撤单失败时返回的凭证图片URL（.jpg/.png/.gif，不超过127k）" />
+            <div style="display: flex; flex-direction: column; gap: 8px; width: 100%">
+              <div style="display: flex; gap: 8px; align-items: center">
+                <el-input v-model="设置表单.agiso_refuse_proof" placeholder="撤单失败时返回的凭证图片URL（.jpg/.png/.gif，不超过127k）" style="flex: 1" />
+                <el-button :loading="凭证图片上传中" @click="凭证图片输入.click()">📁 上传图片</el-button>
+                <input ref="凭证图片输入" type="file" accept="image/*" style="display: none" @change="处理凭证图片选择" />
+              </div>
+              <img
+                v-if="设置表单.agiso_refuse_proof && /\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i.test(设置表单.agiso_refuse_proof)"
+                :src="设置表单.agiso_refuse_proof"
+                style="max-width: 160px; max-height: 80px; border: 1px solid #dcdfe6; border-radius: 4px; object-fit: contain"
+                alt="凭证图片预览"
+              />
+            </div>
             <div class="字段说明">撤单失败（cancelStatus=30）时必须返回的凭证图片URL，须为可公开访问的图片链接</div>
           </el-form-item>
 
@@ -961,7 +973,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { 获取设置API, 保存设置API, 测试洗衣API连接, 获取规则列表API, 新增规则API, 更新规则API, 删除规则API, 获取洗衣时间规则API, 新增洗衣时间规则API, 更新洗衣时间规则API, 删除洗衣时间规则API, 获取账号列表API, 新增账号API, 更新账号API, 删除账号API, 触发账号登录API } from '../api/index'
+import { 获取设置API, 保存设置API, 测试洗衣API连接, 获取规则列表API, 新增规则API, 更新规则API, 删除规则API, 获取洗衣时间规则API, 新增洗衣时间规则API, 更新洗衣时间规则API, 删除洗衣时间规则API, 获取账号列表API, 新增账号API, 更新账号API, 删除账号API, 触发账号登录API, 上传备注图片API } from '../api/index'
 import axios from 'axios'
 
 const router = useRouter()
@@ -972,6 +984,29 @@ const 测试洗衣中 = ref(false)
 const 测试洗衣结果 = ref(null)
 const 测试定位中 = ref(false)
 const 定位测试结果 = ref(null)
+const 凭证图片上传中 = ref(false)
+const 凭证图片输入 = ref(null)
+
+const 上传凭证图片 = async (文件) => {
+  凭证图片上传中.value = true
+  try {
+    const fd = new FormData()
+    fd.append('image', 文件)
+    const r = await 上传备注图片API(fd)
+    if (r.code === 1 && r.data?.url) {
+      设置表单.value.agiso_refuse_proof = r.data.url
+      ElMessage.success('图片上传成功')
+    } else {
+      ElMessage.warning(r.message || '上传失败')
+    }
+  } catch (err) { ElMessage.error(`图片上传失败: ${err.message || '未知错误'}`) } finally { 凭证图片上传中.value = false }
+}
+
+const 处理凭证图片选择 = (e) => {
+  const 文件 = e.target.files?.[0]
+  if (文件) 上传凭证图片(文件)
+  e.target.value = ''
+}
 
 const 设置表单 = ref({
   // 通用

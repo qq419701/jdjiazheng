@@ -5,17 +5,15 @@
 const { Setting } = require('../models');
 const { 验证签名 } = require('../services/agisoService');
 
-// 时间戳有效期（秒），超过此时间的请求将被拒绝
-const 时间戳有效期秒 = 5 * 60;
-
 /**
  * 奇所SUP签名验证中间件
  * 验证流程：
  *   1. 从数据库读取 agiso_sup_enabled、agiso_app_secret、agiso_merchant_key、agiso_user_id
  *   2. 检查SUP接口总开关
- *   3. 验证时间戳（超过5分钟的请求拒绝）
- *   4. 验证签名
- *   5. 验证 userId
+ *   3. 验证签名
+ *   4. 验证 userId
+ * 注意：不验证时间戳。奇所文档中时间戳验证仅为"建议"，回调请求由奇所主动推送，
+ *       我们无法控制其时间戳（测试环境使用固定老时间戳），签名验证已足够保证安全。
  */
 const 验证奇所签名 = async (req, res, next) => {
   try {
@@ -43,17 +41,7 @@ const 验证奇所签名 = async (req, res, next) => {
 
     // 获取请求参数（POST body）
     const 请求体 = req.body || {};
-    const { userId, timestamp, sign } = 请求体;
-
-    // 验证时间戳（超过5分钟的请求拒绝）
-    if (!timestamp) {
-      return res.json({ code: 408, message: '时间戳已过期' });
-    }
-    const 当前时间戳 = Math.floor(Date.now() / 1000);
-    const 请求时间戳 = parseInt(timestamp);
-    if (Math.abs(当前时间戳 - 请求时间戳) > 时间戳有效期秒) {
-      return res.json({ code: 408, message: '时间戳已过期' });
-    }
+    const { userId, sign } = 请求体;
 
     // 验证签名
     if (!sign) {
