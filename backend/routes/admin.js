@@ -948,7 +948,7 @@ router.post('/card-templates/generate', 验证Token, async (req, res) => {
     const 套餐 = await Product.findOne({ where: { id: template_id, status: 1 } });
     if (!套餐) return res.json({ code: 0, message: '套餐不存在或已禁用' });
 
-    const 实际数量 = Math.min(parseInt(count) || 1, 1000);
+    const 实际数量 = Math.min(parseInt(count) || 1, 5000);
 
     // 生成批次号
     const 批次号 = `TPL${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;

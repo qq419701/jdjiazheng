@@ -45,9 +45,17 @@
               </el-button-group>
             </div>
 
+            <el-input
+              v-model="套餐搜索词"
+              placeholder="搜索套餐名称..."
+              clearable
+              size="small"
+              class="套餐搜索框"
+            />
+
             <div class="套餐卡片列表" v-loading="套餐加载中">
               <div
-                v-for="套餐 in 当前套餐列表"
+                v-for="套餐 in 过滤套餐列表"
                 :key="套餐.id"
                 class="套餐卡片"
                 :class="{
@@ -56,26 +64,22 @@
                   '库存为零': (套餐.stock_unused ?? 0) === 0,
                 }"
               >
-                <div class="卡片主信息">
+                <div class="卡片紧凑行">
                   <span class="套餐名称">{{ 套餐.product_name }}</span>
                   <el-tag size="small" :type="库存标签样式(套餐.stock_unused)">
-                    库存 {{ 套餐.stock_unused ?? 0 }}
+                    {{ 套餐.stock_unused ?? 0 }}
                   </el-tag>
+                  <el-button
+                    size="small"
+                    type="primary"
+                    plain
+                    @click="选择套餐(套餐)"
+                  >选择</el-button>
                 </div>
-                <div class="卡片副信息">
-                  <span class="编号">SUP #{{ 套餐.product_no }}</span>
-                </div>
-                <el-button
-                  size="small"
-                  type="primary"
-                  plain
-                  @click="选择套餐(套餐)"
-                  style="margin-top:8px;width:100%"
-                >选择</el-button>
               </div>
 
-              <div v-if="当前套餐列表.length === 0 && !套餐加载中" class="空状态">
-                <p>暂无套餐</p>
+              <div v-if="过滤套餐列表.length === 0 && !套餐加载中" class="空状态">
+                <p>{{ 套餐搜索词 ? '无匹配套餐' : '暂无套餐' }}</p>
               </div>
             </div>
 
@@ -117,8 +121,8 @@
               <!-- 生成参数表单 -->
               <el-form label-width="100px" style="margin-top:16px">
                 <el-form-item label="生成数量">
-                  <el-input-number v-model="生成数量" :min="1" :max="1000" />
-                  <span class="字段提示">最多1000张</span>
+                  <el-input-number v-model="生成数量" :min="1" :max="5000" />
+                  <span class="字段提示">最多5000张</span>
                 </el-form-item>
                 <el-form-item label="批次备注">
                   <el-input v-model="批次备注" placeholder="可选，用于区分批次" />
@@ -379,7 +383,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Ticket, CopyDocument } from '@element-plus/icons-vue'
 import {
@@ -412,6 +416,7 @@ const 统计数据 = ref(null)
 // 生成卡密
 const 选中业务类型 = ref('jiazheng')
 const 当前套餐列表 = ref([])
+const 套餐搜索词 = ref('')
 const 套餐加载中 = ref(false)
 const 已选套餐 = ref(null)
 const 生成数量 = ref(10)
@@ -419,6 +424,13 @@ const 批次备注 = ref('')
 const 过期时间 = ref('')
 const 生成中 = ref(false)
 const 生成结果 = ref(null)
+
+// 过滤套餐列表（按搜索词）
+const 过滤套餐列表 = computed(() => {
+  if (!套餐搜索词.value) return 当前套餐列表.value
+  const 词 = 套餐搜索词.value.trim().toLowerCase()
+  return 当前套餐列表.value.filter(s => s.product_name?.toLowerCase().includes(词))
+})
 
 // 卡密列表
 const 卡密列表 = ref([])
@@ -488,6 +500,7 @@ const 切换业务类型 = (类型) => {
   选中业务类型.value = 类型
   已选套餐.value = null
   生成结果.value = null
+  套餐搜索词.value = ''
   加载当前套餐()
 }
 
@@ -1024,11 +1037,15 @@ const 主TabChange = (tab) => {
   display: flex;
 }
 
+.套餐搜索框 {
+  width: 100%;
+}
+
 .套餐卡片列表 {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   overflow-y: auto;
   max-height: 500px;
 }
@@ -1036,7 +1053,7 @@ const 主TabChange = (tab) => {
 .套餐卡片 {
   border: 1.5px solid #e4e7ed;
   border-radius: 6px;
-  padding: 12px;
+  padding: 8px;
   cursor: pointer;
   transition: all 0.2s;
   background: white;
@@ -1063,22 +1080,20 @@ const 主TabChange = (tab) => {
   opacity: 0.8;
 }
 
-.卡片主信息 {
+.卡片紧凑行 {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  gap: 6px;
 }
 
-.套餐名称 {
-  font-size: 14px;
+.卡片紧凑行 .套餐名称 {
+  flex: 1;
+  font-size: 13px;
   font-weight: 600;
   color: #333;
-}
-
-.卡片副信息 {
-  font-size: 12px;
-  color: #999;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .新建套餐入口 {

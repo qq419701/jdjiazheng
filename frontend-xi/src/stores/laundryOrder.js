@@ -8,6 +8,9 @@ export const useLaundryOrderStore = defineStore('laundryOrder', {
     商品名称: '任洗一件',
     商品价格: 0,
     banner图URL: '',
+    主标题: '优米拉洗衣服务',
+    副标题1: '京东快递免费取送 专业洗护',
+    副标题2: '',
     下单须知: '',
     服务内容列表: [],
 
@@ -109,6 +112,9 @@ export const useLaundryOrderStore = defineStore('laundryOrder', {
       this.商品名称 = 信息.product_name || '任洗一件'
       this.商品价格 = 信息.product_price || 0
       this.banner图URL = 信息.banner_url || ''
+      this.主标题 = 信息.title || '优米拉洗衣服务'
+      this.副标题1 = 信息.subtitle1 || '京东快递免费取送 专业洗护'
+      this.副标题2 = 信息.subtitle2 || ''
       this.下单须知 = 信息.notice || ''
       this.服务内容列表 = 信息.service_content || []
       // 读取弹窗配置
