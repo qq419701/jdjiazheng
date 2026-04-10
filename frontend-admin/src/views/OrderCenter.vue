@@ -173,6 +173,12 @@
             </el-table-column>
             <el-table-column prop="service_type" label="服务类型" width="100" show-overflow-tooltip />
             <el-table-column prop="card_code" label="卡密" width="150" show-overflow-tooltip />
+            <el-table-column label="电商单号" width="170" show-overflow-tooltip>
+              <template #default="{ row }">
+                <span v-if="row.ecommerce_order_no" style="color:#409eff;font-size:12px;font-weight:500">{{ row.ecommerce_order_no }}</span>
+                <span v-else style="color:#bbb;font-size:12px">-</span>
+              </template>
+            </el-table-column>
             <!-- 备注列：hover图片预览 -->
             <el-table-column label="备注" width="155">
               <template #default="{ row }">
@@ -283,6 +289,12 @@
               <template #default="{ row }">{{ row.express_order_id || '-' }}</template>
             </el-table-column>
             <el-table-column prop="card_code" label="卡密" width="150" show-overflow-tooltip />
+            <el-table-column label="电商单号" width="170" show-overflow-tooltip>
+              <template #default="{ row }">
+                <span v-if="row.ecommerce_order_no" style="color:#409eff;font-size:12px;font-weight:500">{{ row.ecommerce_order_no }}</span>
+                <span v-else style="color:#bbb;font-size:12px">-</span>
+              </template>
+            </el-table-column>
             <!-- 备注列 -->
             <el-table-column label="备注" width="155">
               <template #default="{ row }">
@@ -412,6 +424,12 @@
               </template>
             </el-table-column>
             <el-table-column prop="card_code" label="卡密" width="150" show-overflow-tooltip />
+            <el-table-column label="电商单号" width="170" show-overflow-tooltip>
+              <template #default="{ row }">
+                <span v-if="row.ecommerce_order_no" style="color:#409eff;font-size:12px;font-weight:500">{{ row.ecommerce_order_no }}</span>
+                <span v-else style="color:#bbb;font-size:12px">-</span>
+              </template>
+            </el-table-column>
             <el-table-column label="状态" width="100">
               <template #default="{ row }">
                 <el-tag :type="tp获取状态类型(row.status)" size="small">{{ tp获取状态文字(row.status) }}</el-tag>
@@ -537,6 +555,10 @@
         <el-descriptions :column="2" border>
           <el-descriptions-item label="订单号">{{ 洗衣详情数据.order_no }}</el-descriptions-item>
           <el-descriptions-item label="卡密">{{ 洗衣详情数据.card_code }}</el-descriptions-item>
+          <el-descriptions-item v-if="洗衣详情数据.ecommerce_order_no" label="电商平台单号" :span="2">
+            <span style="color:#409eff;font-weight:600;font-size:14px">{{ 洗衣详情数据.ecommerce_order_no }}</span>
+            <el-tag size="small" type="info" style="margin-left:8px">电商单号</el-tag>
+          </el-descriptions-item>
           <el-descriptions-item label="取件人">{{ 洗衣详情数据.name }}</el-descriptions-item>
           <el-descriptions-item label="手机号">{{ 洗衣详情数据.phone }}</el-descriptions-item>
           <el-descriptions-item label="取件地址" :span="2">{{ 洗衣详情数据.full_address }}</el-descriptions-item>
@@ -671,6 +693,10 @@
         <el-descriptions :column="2" border>
           <el-descriptions-item label="订单号">{{ 充值详情数据.order_no }}</el-descriptions-item>
           <el-descriptions-item label="卡密">{{ 充值详情数据.card_code }}</el-descriptions-item>
+          <el-descriptions-item v-if="充值详情数据.ecommerce_order_no" label="电商平台单号" :span="2">
+            <span style="color:#409eff;font-weight:600;font-size:14px">{{ 充值详情数据.ecommerce_order_no }}</span>
+            <el-tag size="small" type="info" style="margin-left:8px">电商单号</el-tag>
+          </el-descriptions-item>
           <el-descriptions-item label="充值账号">
             {{ 充值详情数据.topup_account || '-' }}
             <el-button v-if="充值详情数据.topup_account" link size="small" style="margin-left:6px;color:#409eff" @click="复制到剪贴板(充值详情数据.topup_account, '账号已复制')">📋 复制</el-button>
@@ -719,6 +745,10 @@
             <el-descriptions title="客户信息" :column="2" border>
               <el-descriptions-item label="订单编号">{{ 家政详情数据.order_no }}</el-descriptions-item>
               <el-descriptions-item label="卡密">{{ 家政详情数据.card_code }}</el-descriptions-item>
+              <el-descriptions-item v-if="家政详情数据.ecommerce_order_no" label="电商平台单号" :span="2">
+                <span style="color:#409eff;font-weight:600;font-size:14px">{{ 家政详情数据.ecommerce_order_no }}</span>
+                <el-tag size="small" type="info" style="margin-left:8px">电商单号</el-tag>
+              </el-descriptions-item>
               <el-descriptions-item label="姓名">{{ 家政详情数据.name }}</el-descriptions-item>
               <el-descriptions-item label="手机号">{{ 家政详情数据.phone }}</el-descriptions-item>
               <el-descriptions-item label="服务地址" :span="2">{{ 家政详情数据.full_address }}</el-descriptions-item>
