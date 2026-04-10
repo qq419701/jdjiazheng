@@ -265,10 +265,11 @@ const 卡密下单 = async (req, res) => {
       }
     }
 
-    // 读取 AppSecret 配置（用于AES加密）
-    const 配置 = await 读取配置(['agiso_app_secret', 'agiso_merchant_key']);
+    // 读取 AppSecret 配置（用于AES加密）及 site_url（用于构建完整卡密链接）
+    const 配置 = await 读取配置(['agiso_app_secret', 'agiso_merchant_key', 'site_url']);
     const appSecret = 配置.agiso_app_secret || '';
     const merchantKey = 配置.agiso_merchant_key || '';
+    const siteUrl = (配置.site_url || '').replace(/\/$/, ''); // 去掉末尾斜线
 
     // 解析商品编号：从 Product 表查询（先于防重检查，确保无效商品直接返回1100）
     const 商品 = await Product.findOne({
@@ -337,7 +338,7 @@ const 卡密下单 = async (req, res) => {
       // 重复请求，直接返回已有订单状态（加密卡密返回）
       const 卡密信息 = [
         {
-          cardNo: 已有卡密.code,
+          cardNo: siteUrl ? `${siteUrl}/${已有卡密.code}` : 已有卡密.code,
           cardPwd: '',
           expireTime: 格式化过期时间(已有卡密.expired_at),
         },
@@ -435,7 +436,7 @@ const 卡密下单 = async (req, res) => {
       }
 
       const 卡密信息批量 = 目标卡密列表.map(c => ({
-        cardNo: c.code,
+        cardNo: siteUrl ? `${siteUrl}/${c.code}` : c.code,
         cardPwd: '',
         expireTime: 格式化过期时间(c.expired_at),
       }));
@@ -592,7 +593,7 @@ const 卡密下单 = async (req, res) => {
       // 后台异步发送回调
       setImmediate(async () => {
         try {
-          await 发送异步回调(callbackUrl, orderNo, 目标卡密.id.toString(), 目标卡密, 商品, buyNum, appSecret, merchantKey);
+          await 发送异步回调(callbackUrl, orderNo, 目标卡密.id.toString(), 目标卡密, 商品, buyNum, appSecret, merchantKey, siteUrl);
         } catch (未捕获错误) {
           console.error(`SUP异步回调未捕获异常: orderNo=${orderNo}`, 未捕获错误.message);
         }
@@ -605,7 +606,7 @@ const 卡密下单 = async (req, res) => {
     // AES加密卡密信息
     const 卡密信息 = [
       {
-        cardNo: 目标卡密.code,
+        cardNo: siteUrl ? `${siteUrl}/${目标卡密.code}` : 目标卡密.code,
         cardPwd: '',
         expireTime: 格式化过期时间(目标卡密.expired_at),
       },
@@ -663,11 +664,12 @@ const 卡密下单 = async (req, res) => {
  * @param {number|string} buyNum - 购买数量
  * @param {string} appSecret - 阿奇所appSecret（用于AES加密和签名）
  * @param {string} merchantKey - 商户密钥（用于签名）
+ * @param {string} siteUrl - 站点域名（构建卡密完整链接，末尾不含斜线）
  */
-const 发送异步回调 = async (callbackUrl, orderNo, outTradeNo, 卡密, 商品, buyNum, appSecret, merchantKey) => {
+const 发送异步回调 = async (callbackUrl, orderNo, outTradeNo, 卡密, 商品, buyNum, appSecret, merchantKey, siteUrl = '') => {
   try {
     const 卡密信息 = [{
-      cardNo: 卡密.code,
+      cardNo: siteUrl ? `${siteUrl}/${卡密.code}` : 卡密.code,
       cardPwd: '',
       expireTime: 格式化过期时间(卡密.expired_at),
     }];
@@ -753,9 +755,10 @@ const 查询订单 = async (req, res) => {
       return res.json({ code: 400, message: '订单号不能为空' });
     }
 
-    // 读取 AppSecret 配置
-    const 配置 = await 读取配置(['agiso_app_secret']);
+    // 读取 AppSecret 配置及 site_url
+    const 配置 = await 读取配置(['agiso_app_secret', 'site_url']);
     const appSecret = 配置.agiso_app_secret || '';
+    const siteUrl = (配置.site_url || '').replace(/\/$/, '');
 
     // 根据奇所订单号查找卡密记录
     const 卡密记录 = await Card.findOne({
@@ -793,7 +796,7 @@ const 查询订单 = async (req, res) => {
     // 格式化过期时间并加密卡密
     const 卡密信息 = [
       {
-        cardNo: 卡密记录.code,
+        cardNo: siteUrl ? `${siteUrl}/${卡密记录.code}` : 卡密记录.code,
         cardPwd: '',
         expireTime: 格式化过期时间(卡密记录.expired_at),
       },
@@ -947,6 +950,25 @@ const 撤销订单 = async (req, res) => {
         await 关联订单.update({ status: 4, order_log: JSON.stringify(日志) });
       }
       await 卡密记录.update({ status: 2, sup_status: 2 });
+      // 写入日志：卡密未使用，直接撤单成功
+      try {
+        const reqCopy = { ...req.body };
+        delete reqCopy.sign;
+        await SupLog.create({
+          log_type: 'cancelOrder',
+          order_no: orderNo,
+          out_trade_no: 卡密记录.id.toString(),
+          user_id: req.body.userId || null,
+          request_data: JSON.stringify(reqCopy),
+          response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { orderNo: orderNo, cancelStatus: 20 } }),
+          status_code: 200,
+          cancel_status: 20,
+          result: 'success',
+          error_msg: '卡密未使用，直接作废撤单',
+        });
+      } catch (日志错误) {
+        console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+      }
       return res.json({
         code: 200,
         message: '接口调用成功',
@@ -1177,13 +1199,32 @@ const 撤销订单 = async (req, res) => {
       });
 
       if (关联订单) {
+        const 拒绝原因 = '卡密已用于服务预约，无法退款';
+        try {
+          const reqCopy = { ...req.body };
+          delete reqCopy.sign;
+          await SupLog.create({
+            log_type: 'cancelOrder',
+            order_no: orderNo,
+            out_trade_no: 卡密记录.id.toString(),
+            user_id: req.body.userId || null,
+            request_data: JSON.stringify(reqCopy),
+            response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { orderNo: orderNo, cancelStatus: 30, refuseReason: 拒绝原因, refuseProof: 拒绝凭证URL } }),
+            status_code: 200,
+            cancel_status: 30,
+            result: 'fail',
+            error_msg: 拒绝原因,
+          });
+        } catch (日志错误) {
+          console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+        }
         return res.json({
           code: 200,
           message: '接口调用成功',
           data: {
             orderNo: orderNo,
             cancelStatus: 30,
-            refuseReason: '卡密已用于服务预约，无法退款',
+            refuseReason: 拒绝原因,
             refuseProof: 拒绝凭证URL,
           },
         });
