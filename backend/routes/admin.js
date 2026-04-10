@@ -1112,7 +1112,7 @@ router.get('/sup-logs', 验证Token, async (req, res) => {
   }
 });
 
-// 获取SUP日志统计（今日）
+// 获取SUP日志统计（今日+累计）
 router.get('/sup-logs/stats', 验证Token, async (req, res) => {
   try {
     const { Op } = require('sequelize');
@@ -1121,21 +1121,45 @@ router.get('/sup-logs/stats', 验证Token, async (req, res) => {
     const 今天开始 = new Date();
     今天开始.setHours(0, 0, 0, 0);
 
-    const [今日总数, 今日成功, 今日下单, 今日撤单] = await Promise.all([
+    const [
+      今日总数, 今日成功,
+      今日下单, 今日撤单, 今日查单,
+      今日下单成功, 今日撤单成功,
+      累计总数, 累计成功,
+      累计下单, 累计撤单,
+    ] = await Promise.all([
       SupLog.count({ where: { created_at: { [Op.gte]: 今天开始 } } }),
       SupLog.count({ where: { created_at: { [Op.gte]: 今天开始 }, result: 'success' } }),
       SupLog.count({ where: { created_at: { [Op.gte]: 今天开始 }, log_type: 'createPurchase' } }),
       SupLog.count({ where: { created_at: { [Op.gte]: 今天开始 }, log_type: 'cancelOrder' } }),
+      SupLog.count({ where: { created_at: { [Op.gte]: 今天开始 }, log_type: 'queryOrder' } }),
+      SupLog.count({ where: { created_at: { [Op.gte]: 今天开始 }, log_type: 'createPurchase', result: 'success' } }),
+      SupLog.count({ where: { created_at: { [Op.gte]: 今天开始 }, log_type: 'cancelOrder', result: 'success' } }),
+      SupLog.count(),
+      SupLog.count({ where: { result: 'success' } }),
+      SupLog.count({ where: { log_type: 'createPurchase' } }),
+      SupLog.count({ where: { log_type: 'cancelOrder' } }),
     ]);
 
     res.json({
       code: 1,
       message: '获取成功',
       data: {
+        // 今日统计
         todayTotal: 今日总数,
         todaySuccess: 今日成功,
         todayPurchase: 今日下单,
         todayCancel: 今日撤单,
+        todayQuery: 今日查单,
+        todayPurchaseSuccess: 今日下单成功,
+        todayCancelSuccess: 今日撤单成功,
+        todaySuccessRate: 今日总数 > 0 ? Math.round((今日成功 / 今日总数) * 100) : 0,
+        // 累计统计
+        totalAll: 累计总数,
+        totalSuccess: 累计成功,
+        totalPurchase: 累计下单,
+        totalCancel: 累计撤单,
+        totalSuccessRate: 累计总数 > 0 ? Math.round((累计成功 / 累计总数) * 100) : 0,
       },
     });
   } catch (错误) {
