@@ -272,6 +272,11 @@ const Order = 数据库连接.define('Order', {
     allowNull: true,
     comment: '用户提交订单时的IP地址',
   },
+  ecommerce_order_no: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: '电商平台订单号（从卡密的ecommerce_order_no自动带入，如小红书单号P791381403338389551）',
+  },
 }, {
   tableName: 'orders',
   timestamps: false,

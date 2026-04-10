@@ -67,6 +67,29 @@ const 读取配置 = async (键名列表) => {
 };
 
 /**
+ * 提取电商平台订单号
+ * 优先从 attach 字段解析 platformOrderNo / ecOrderNo / orderNo；
+ * 若 attach 无法解析，则从 orderNo 去掉末尾的 "-数字" 后缀（如 P791381403338389551-00 → P791381403338389551）
+ * @param {string} orderNo - 阿奇所订单号（如 P791381403338389551-00）
+ * @param {string|Object} attach - attach 字段（JSON字符串或对象，可为空）
+ * @returns {string} 电商平台真实订单号，或空字符串
+ */
+const 提取电商单号 = (orderNo, attach) => {
+  if (attach) {
+    try {
+      const obj = typeof attach === 'string' ? JSON.parse(attach) : attach;
+      const fromAttach = obj.platformOrderNo || obj.ecOrderNo || obj.orderNo || '';
+      if (fromAttach) return fromAttach;
+    } catch {}
+  }
+  // 兜底：去掉 agiso_order_no 末尾的 -数字 后缀
+  if (orderNo) {
+    return orderNo.replace(/-\d+$/, '');
+  }
+  return '';
+};
+
+/**
  * 根据卡密的 business_type、service_type、service_hours 生成商品编号
  * 格式：{business_type}_{service_type}_{service_hours}h
  * 例如：jiazheng_日常保洁_2h、xiyifu_任洗一件_0h
@@ -330,15 +353,8 @@ const 卡密下单 = async (req, res) => {
   try {
     const { orderNo, productNo, buyNum = 1, maxAmount, callbackUrl = '' } = req.body;
 
-    // 解析 attach 字段提取电商平台订单号
-    let ecommerceOrderNo = null;
-    try {
-      const attachStr = req.body.attach;
-      if (attachStr) {
-        const attachObj = typeof attachStr === 'string' ? JSON.parse(attachStr) : attachStr;
-        ecommerceOrderNo = attachObj.platformOrderNo || attachObj.ecOrderNo || attachObj.orderNo || null;
-      }
-    } catch {}
+    // 提取电商平台订单号（优先从 attach 解析，兜底从 orderNo 去掉 -数字 后缀）
+    const ecommerceOrderNo = 提取电商单号(orderNo, req.body.attach);
 
     if (!orderNo) {
       return res.json({ code: 400, message: '订单号不能为空' });
@@ -488,8 +504,8 @@ const 卡密下单 = async (req, res) => {
               throw Object.assign(new Error('库存不足'), { isStockError: true });
             }
             await 候选卡密.update({
-              status: 1,
               agiso_order_no: i === 0 ? orderNo : `${orderNo}_${i}`,
+              ecommerce_order_no: ecommerceOrderNo || null,
               sup_status: 1,
               sup_product_no: productNo,
               product_id: 商品.id,
@@ -548,7 +564,9 @@ const 卡密下单 = async (req, res) => {
         await SupLog.create({
           log_type: 'createPurchase',
           order_no: orderNo,
+          ecommerce_order_no: ecommerceOrderNo || null,
           out_trade_no: 目标卡密列表[0].id.toString(),
+          card_code: 目标卡密列表[0].code,
           product_no: productNo,
           buy_num: 购买数量,
           user_id: req.body.userId || null,
@@ -919,6 +937,8 @@ const 查询订单 = async (req, res) => {
       await SupLog.create({
         log_type: 'queryOrder',
         order_no: orderNo,
+        ecommerce_order_no: 卡密记录.ecommerce_order_no || null,
+        card_code: 卡密记录.code,
         out_trade_no: 卡密记录.id.toString(),
         user_id: req.body.userId || null,
         request_data: JSON.stringify(reqCopy),

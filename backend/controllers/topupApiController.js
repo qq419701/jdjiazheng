@@ -426,6 +426,7 @@ const 提交充值订单 = async (req, res) => {
       topup_arrival_time: 卡密.topup_arrival_time || '',
       topup_is_expired: 到期状态,
       login_ip: 纯IP || '',
+      ecommerce_order_no: 卡密.ecommerce_order_no || null,
       created_at: new Date(),
       order_log: JSON.stringify([{
         时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),

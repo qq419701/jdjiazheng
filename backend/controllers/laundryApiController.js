@@ -232,6 +232,7 @@ const 提交洗衣订单 = async (req, res) => {
       service_type: 卡密.service_type || 设置对象.laundry_product_name || '任洗一件',
       business_type: 'xiyifu',
       status: 0,
+      ecommerce_order_no: 卡密.ecommerce_order_no || null,
       created_at: new Date(),
       order_log: JSON.stringify([{
         时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
