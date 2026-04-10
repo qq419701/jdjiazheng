@@ -204,6 +204,7 @@ const 初始化数据库 = async () => {
       { key_name: 'agiso_user_id',      key_value: '',  description: '奇所平台会员ID（校验下单方身份）' },
       { key_name: 'agiso_sup_enabled',  key_value: '0', description: 'SUP接口总开关（0=关闭，1=开启）' },
       { key_name: 'agiso_products',     key_value: '',  description: 'SUP商品列表配置（JSON数组，留空则自动从卡密表生成）' },
+      { key_name: 'agiso_refuse_proof', key_value: '',  description: '撤单失败时的拒绝凭证图片URL（必须是可访问的.jpg/.png/.gif，不超过127k）' },
     ];
     for (const 配置项 of 奇所SUP默认配置) {
       await Setting.findOrCreate({

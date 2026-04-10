@@ -21,7 +21,10 @@ const 分转元 = 100;
  */
 const 格式化过期时间 = (时间) => {
   if (!时间) return '';
-  return new Date(时间).toISOString().replace('T', ' ').slice(0, 19);
+  const d = new Date(时间);
+  // 转换为北京时间 (UTC+8)
+  const 北京时间 = new Date(d.getTime() + 8 * 60 * 60 * 1000);
+  return 北京时间.toISOString().replace('T', ' ').slice(0, 19);
 };
 
 /**
@@ -243,7 +246,7 @@ const 获取商品模板 = async (req, res) => {
  */
 const 卡密下单 = async (req, res) => {
   try {
-    const { orderNo, productNo, buyNum = 1, callbackUrl = '' } = req.body;
+    const { orderNo, productNo, buyNum = 1, maxAmount, callbackUrl = '' } = req.body;
 
     if (!orderNo) {
       return res.json({ code: 400, message: '订单号不能为空' });
@@ -336,6 +339,101 @@ const 卡密下单 = async (req, res) => {
     if (!商品) {
       return res.json({ code: 1100, message: '失败原因:商品不存在', data: null });
     }
+
+    // 购买数量
+    const 购买数量 = Math.max(1, parseInt(buyNum) || 1);
+
+    // 计算订单成本（4位小数，number类型）
+    const orderCost = Number(parseFloat((商品.cost_price || 0) * 购买数量).toFixed(4));
+
+    // maxAmount 校验（值非空时才校验）
+    if (maxAmount !== undefined && maxAmount !== '' && maxAmount !== null) {
+      const 最大金额 = parseFloat(maxAmount);
+      if (!isNaN(最大金额) && orderCost > 最大金额) {
+        return res.json({ code: 1220, message: '失败原因:超出订单金额限制', data: null });
+      }
+    }
+
+    // ===== buyNum > 1 时批量分配卡密（同步模式）=====
+    if (购买数量 > 1) {
+      const 目标卡密列表 = [];
+      let 库存不足 = false;
+      try {
+        await 数据库连接.transaction(async (t) => {
+          for (let i = 0; i < 购买数量; i++) {
+            const 候选卡密 = await Card.findOne({
+              where: { product_id: 商品.id, status: 0, agiso_order_no: null },
+              lock: t.LOCK.UPDATE,
+              transaction: t,
+            });
+            if (!候选卡密) {
+              throw Object.assign(new Error('库存不足'), { isStockError: true });
+            }
+            await 候选卡密.update({
+              status: 1,
+              agiso_order_no: i === 0 ? orderNo : `${orderNo}_${i}`,
+              sup_status: 1,
+              sup_product_no: productNo,
+              product_id: 商品.id,
+            }, { transaction: t });
+            目标卡密列表.push(候选卡密);
+          }
+        });
+      } catch (err) {
+        if (err.isStockError) {
+          库存不足 = true;
+        } else {
+          throw err;
+        }
+      }
+
+      if (库存不足 || 目标卡密列表.length === 0) {
+        return res.json({ code: 1230, message: '失败原因:库存不足', data: null });
+      }
+
+      const 卡密信息批量 = 目标卡密列表.map(c => ({
+        cardNo: c.code,
+        cardPwd: '',
+        expireTime: 格式化过期时间(c.expired_at),
+      }));
+      const 加密结果批量 = 加密卡密(卡密信息批量, appSecret);
+      const 批量响应数据 = {
+        orderNo: orderNo,
+        outTradeNo: 目标卡密列表[0].id.toString(),
+        orderStatus: 20,
+        orderCost,
+        cards: 加密结果批量,
+      };
+
+      try {
+        const reqCopy = { ...req.body };
+        delete reqCopy.sign;
+        await SupLog.create({
+          log_type: 'createPurchase',
+          order_no: orderNo,
+          out_trade_no: 目标卡密列表[0].id.toString(),
+          product_no: productNo,
+          buy_num: 购买数量,
+          user_id: req.body.userId || null,
+          request_data: JSON.stringify(reqCopy),
+          response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: 批量响应数据 }),
+          status_code: 200,
+          order_status: 20,
+          order_cost: orderCost,
+          result: 'success',
+        });
+      } catch (日志错误) {
+        console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+      }
+
+      return res.json({
+        code: 200,
+        message: '接口调用成功',
+        data: 批量响应数据,
+      });
+    }
+
+    // ===== buyNum = 1 单卡分配（含三级级联匹配，保留原有逻辑）=====
     // 使用事务+原子更新防止并发竞争：
     // 直接用 UPDATE SET agiso_order_no=orderNo WHERE agiso_order_no IS NULL AND status=0
     // 只有一个请求能成功更新，其他请求得到 affectedRows=0
@@ -389,9 +487,6 @@ const 卡密下单 = async (req, res) => {
         data: null,
       });
     }
-
-    // 计算订单成本（4位小数，number类型）
-    const orderCost = Number(parseFloat((商品.cost_price || 0) * (parseInt(buyNum) || 1)).toFixed(4));
 
     // ===== 异步发货模式（callbackUrl非空）=====
     if (callbackUrl) {
@@ -707,6 +802,10 @@ const 撤销订单 = async (req, res) => {
       return res.json({ code: 400, message: '订单号不能为空' });
     }
 
+    // 读取撤单拒绝凭证配置
+    const 撤单配置 = await 读取配置(['agiso_refuse_proof']);
+    const 拒绝凭证URL = 撤单配置.agiso_refuse_proof || '';
+
     // 先按 agiso_order_no 查找卡密记录
     let 卡密记录 = await Card.findOne({
       where: { agiso_order_no: orderNo },
@@ -721,7 +820,7 @@ const 撤销订单 = async (req, res) => {
 
     if (!卡密记录) {
       // 根据阿奇所文档：找不到订单时返回 code:200, cancelStatus:30
-      const 未找到响应 = { cancelStatus: 30, cancelErrMsg: '订单不存在' };
+      const 未找到响应 = { orderNo: orderNo, cancelStatus: 30, refuseReason: '订单不存在', refuseProof: 拒绝凭证URL };
       try {
         const reqCopy = { ...req.body };
         delete reqCopy.sign;
@@ -747,7 +846,7 @@ const 撤销订单 = async (req, res) => {
       return res.json({
         code: 200,
         message: '接口调用成功',
-        data: { cancelStatus: 20 },
+        data: { orderNo: orderNo, cancelStatus: 20 },
       });
     }
 
@@ -770,7 +869,7 @@ const 撤销订单 = async (req, res) => {
       return res.json({
         code: 200,
         message: '接口调用成功',
-        data: { cancelStatus: 20 },
+        data: { orderNo: orderNo, cancelStatus: 20 },
       });
     }
 
@@ -793,8 +892,10 @@ const 撤销订单 = async (req, res) => {
             code: 200,
             message: '接口调用成功',
             data: {
+              orderNo: orderNo,
               cancelStatus: 30,
-              cancelErrMsg: '家政服务已预约完成，无法撤单',
+              refuseReason: '家政服务已预约完成，无法撤单',
+              refuseProof: 拒绝凭证URL,
             },
           });
         }
@@ -843,8 +944,10 @@ const 撤销订单 = async (req, res) => {
             code: 200,
             message: '接口调用成功',
             data: {
+              orderNo: orderNo,
               cancelStatus: 30,
-              cancelErrMsg: `洗衣服务已在鲸蚁系统处理（${关联订单.laundry_status}），无法撤单`,
+              refuseReason: `洗衣服务已在鲸蚁系统处理（${关联订单.laundry_status}），无法撤单`,
+              refuseProof: 拒绝凭证URL,
             },
           });
         }
@@ -905,8 +1008,10 @@ const 撤销订单 = async (req, res) => {
           code: 200,
           message: '接口调用成功',
           data: {
+            orderNo: orderNo,
             cancelStatus: 30,
-            cancelErrMsg: '充值已完成，无法撤单',
+            refuseReason: '充值已完成，无法撤单',
+            refuseProof: 拒绝凭证URL,
           },
         });
       }
@@ -938,8 +1043,10 @@ const 撤销订单 = async (req, res) => {
           code: 200,
           message: '接口调用成功',
           data: {
+            orderNo: orderNo,
             cancelStatus: 30,
-            cancelErrMsg: '卡密已用于服务预约，无法退款',
+            refuseReason: '卡密已用于服务预约，无法退款',
+            refuseProof: 拒绝凭证URL,
           },
         });
       }
@@ -950,7 +1057,7 @@ const 撤销订单 = async (req, res) => {
     res.json({
       code: 200,
       message: '接口调用成功',
-      data: { cancelStatus: 20 },
+      data: { orderNo: orderNo, cancelStatus: 20 },
     });
 
     // 写入SUP日志（不影响主流程）
@@ -963,7 +1070,7 @@ const 撤销订单 = async (req, res) => {
         out_trade_no: 卡密记录.id.toString(),
         user_id: req.body.userId || null,
         request_data: JSON.stringify(reqCopy),
-        response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { cancelStatus: 20 } }),
+        response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { orderNo: orderNo, cancelStatus: 20 } }),
         status_code: 200,
         cancel_status: 20,
         result: 'success',
