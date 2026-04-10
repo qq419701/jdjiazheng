@@ -43,11 +43,14 @@ const 验证奇所签名 = async (req, res, next) => {
       return res.json({ code: 401, message: '签名错误' });
     }
 
-    // 验证时间戳（timestamp存在时才验证，超过10分钟返回408）
+    // 验证时间戳（timestamp存在且为有效数字时才验证，超过10分钟返回408）
     if (timestamp !== undefined && timestamp !== null && timestamp !== '') {
+      const 时间戳数值 = Number(timestamp);
+      if (!Number.isFinite(时间戳数值)) {
+        return res.json({ code: 408, message: '时间戳过期' });
+      }
       const 当前时间戳 = Math.floor(Date.now() / 1000);
-      const 时间差 = Math.abs(当前时间戳 - Number(timestamp));
-      if (时间差 > 600) {
+      if (当前时间戳 - 时间戳数值 > 600) {
         return res.json({ code: 408, message: '时间戳过期' });
       }
     }
