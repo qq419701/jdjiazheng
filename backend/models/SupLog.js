@@ -11,7 +11,7 @@ const SupLog = 数据库连接.define('SupLog', {
   log_type: {
     type: DataTypes.STRING(30),
     allowNull: false,
-    comment: '日志类型：createPurchase/cancelOrder/queryOrder/getList/getTemplate/callback',
+    comment: '日志类型：createPurchase/cancelOrder/queryOrder/getList/getTemplate/getAppId/callback',
   },
   order_no: {
     type: DataTypes.STRING(64),

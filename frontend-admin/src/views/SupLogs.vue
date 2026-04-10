@@ -38,6 +38,8 @@
             <el-option label="🔍 查询订单" value="queryOrder" />
             <el-option label="📞 异步回调" value="callback" />
             <el-option label="📋 商品列表" value="getList" />
+            <el-option label="📄 商品模板" value="getTemplate" />
+            <el-option label="🆔 获取AppID" value="getAppId" />
           </el-select>
         </el-form-item>
         <el-form-item label="结果">
@@ -171,6 +173,7 @@ const 类型名称 = {
   callback: '📞 异步回调',
   getList: '📋 商品列表',
   getTemplate: '📄 商品模板',
+  getAppId: '🆔 获取AppID',
 }
 const 类型颜色 = {
   createPurchase: 'primary',
@@ -179,6 +182,7 @@ const 类型颜色 = {
   callback: 'success',
   getList: 'info',
   getTemplate: 'info',
+  getAppId: 'info',
 }
 
 const 查询 = async () => {
@@ -194,9 +198,9 @@ const 查询 = async () => {
     if (筛选条件.value.dateRange?.[0]) params.start_date = 筛选条件.value.dateRange[0]
     if (筛选条件.value.dateRange?.[1]) params.end_date = 筛选条件.value.dateRange[1]
     const res = await 获取SUP日志列表API(params)
-    if (res.data?.code === 1) {
-      日志列表.value = res.data.data.items
-      总数量.value = res.data.data.total
+    if (res?.code === 1) {
+      日志列表.value = res.data.items
+      总数量.value = res.data.total
     }
   } finally {
     加载中.value = false
@@ -206,7 +210,7 @@ const 查询 = async () => {
 const 加载统计 = async () => {
   try {
     const res = await 获取SUP日志统计API()
-    if (res.data?.code === 1) stats.value = res.data.data
+    if (res?.code === 1) stats.value = res.data
   } catch {
     // 统计接口失败时静默忽略，不影响主列表加载
   }
