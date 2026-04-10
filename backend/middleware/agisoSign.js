@@ -10,24 +10,26 @@ const { 验证签名 } = require('../services/agisoService');
  * 验证流程：
  *   1. 从数据库读取 agiso_sup_enabled、agiso_app_secret、agiso_merchant_key、agiso_user_id
  *   2. 检查SUP接口总开关
- *   3. 检查 sign 是否存在
- *   4. 验证时间戳（timestamp存在且超过10分钟时返回408，不存在则跳过）
- *   5. 验证签名
- *   6. 验证 userId
+ *   3. 验证时间戳（超过5分钟的请求拒绝）
+ *   4. 验证签名
+ *   5. 验证 userId
  */
 const 验证奇所签名 = async (req, res, next) => {
   try {
+    // 从数据库读取SUP系统配置
     const 配置列表 = await Setting.findAll({
       where: {
         key_name: ['agiso_sup_enabled', 'agiso_app_secret', 'agiso_merchant_key', 'agiso_user_id'],
       },
     });
 
+    // 转换为键值对象
     const 配置 = {};
     配置列表.forEach(项 => {
       配置[项.key_name] = 项.key_value;
     });
 
+    // 检查SUP接口总开关
     if (配置.agiso_sup_enabled !== '1') {
       return res.json({ code: 9999, message: 'SUP接口未开启' });
     }
@@ -36,34 +38,35 @@ const 验证奇所签名 = async (req, res, next) => {
     const 商户密钥 = 配置.agiso_merchant_key || '';
     const 配置用户ID = 配置.agiso_user_id || '';
 
+    // 获取请求参数（POST body）
     const 请求体 = req.body || {};
-    const { userId, sign, timestamp } = 请求体;
+    const { userId, timestamp, sign } = 请求体;
 
+    // 验证时间戳（超过5分钟的请求拒绝）
+    if (!timestamp) {
+      return res.json({ code: 408, message: '时间戳已过期' });
+    }
+    const 当前时间戳 = Math.floor(Date.now() / 1000);
+    const 请求时间戳 = parseInt(timestamp);
+    if (Math.abs(当前时间戳 - 请求时间戳) > 5 * 60) {
+      return res.json({ code: 408, message: '时间戳已过期' });
+    }
+
+    // 验证签名
     if (!sign) {
       return res.json({ code: 401, message: '签名错误' });
     }
-
-    // 验证时间戳（timestamp存在且为有效数字时才验证，超过10分钟返回408）
-    if (timestamp !== undefined && timestamp !== null && timestamp !== '') {
-      const 时间戳数值 = Number(timestamp);
-      if (!Number.isFinite(时间戳数值)) {
-        return res.json({ code: 408, message: '时间戳过期' });
-      }
-      const 当前时间戳 = Math.floor(Date.now() / 1000);
-      if (当前时间戳 - 时间戳数值 > 600) {
-        return res.json({ code: 408, message: '时间戳过期' });
-      }
-    }
-
     const 签名有效 = 验证签名(请求体, appSecret, 商户密钥);
     if (!签名有效) {
       return res.json({ code: 401, message: '签名错误' });
     }
 
+    // 验证 userId（不匹配返回错误）
     if (配置用户ID && String(userId) !== String(配置用户ID)) {
       return res.json({ code: 1001, message: '无效的平台会员ID' });
     }
 
+    // 验证通过，继续处理请求
     next();
   } catch (错误) {
     console.error('奇所签名验证出错:', 错误);
