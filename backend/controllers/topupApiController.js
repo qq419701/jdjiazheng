@@ -435,7 +435,7 @@ const 提交充值订单 = async (req, res) => {
     });
 
     // 标记卡密为已使用
-    await 卡密.update({ status: 1, used_by_order: 新订单.id });
+    await 卡密.update({ status: 1, used_at: new Date(), used_by_order: 新订单.id });
 
     // 异步查询IP城市（不阻塞订单创建，后台写入）
     if (纯IP && 纯IP !== '127.0.0.1' && 纯IP !== '::1') {

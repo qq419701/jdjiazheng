@@ -34,7 +34,9 @@ const 执行字段迁移 = async () => {
         \`id\` INT NOT NULL AUTO_INCREMENT,
         \`log_type\` VARCHAR(30) NOT NULL COMMENT '日志类型',
         \`order_no\` VARCHAR(64) NULL COMMENT '阿奇所订单号',
+        \`ecommerce_order_no\` VARCHAR(100) NULL COMMENT '电商平台订单号',
         \`out_trade_no\` VARCHAR(64) NULL COMMENT '我方outTradeNo',
+        \`card_code\` VARCHAR(20) NULL COMMENT '关联卡密码',
         \`product_no\` VARCHAR(20) NULL COMMENT '商品编号',
         \`buy_num\` INT NULL COMMENT '购买数量',
         \`user_id\` VARCHAR(50) NULL COMMENT '奇所平台userId',
@@ -58,6 +60,86 @@ const 执行字段迁移 = async () => {
     console.log('✅ sup_logs 表确认存在（已创建或已存在）');
   } catch (e) {
     console.log('ℹ️ sup_logs 表迁移跳过:', e.message);
+  }
+  // cards 表新增 used_at 字段
+  try {
+    const [r] = await 数据库连接.query("SHOW COLUMNS FROM `cards` LIKE 'used_at'");
+    if (r.length === 0) {
+      await 数据库连接.query("ALTER TABLE `cards` ADD COLUMN `used_at` DATETIME NULL COMMENT '卡密使用时间' AFTER `status`");
+      console.log('✅ cards 表新增 used_at 字段');
+    }
+  } catch (e) {
+    console.log('ℹ️ cards.used_at 迁移跳过:', e.message);
+  }
+  // cards 表新增 invalidated_at 字段
+  try {
+    const [r] = await 数据库连接.query("SHOW COLUMNS FROM `cards` LIKE 'invalidated_at'");
+    if (r.length === 0) {
+      await 数据库连接.query("ALTER TABLE `cards` ADD COLUMN `invalidated_at` DATETIME NULL COMMENT '卡密作废时间' AFTER `used_at`");
+      console.log('✅ cards 表新增 invalidated_at 字段');
+    }
+  } catch (e) {
+    console.log('ℹ️ cards.invalidated_at 迁移跳过:', e.message);
+  }
+  // cards 表新增 ecommerce_order_no 字段
+  try {
+    const [r] = await 数据库连接.query("SHOW COLUMNS FROM `cards` LIKE 'ecommerce_order_no'");
+    if (r.length === 0) {
+      await 数据库连接.query("ALTER TABLE `cards` ADD COLUMN `ecommerce_order_no` VARCHAR(100) NULL COMMENT '电商平台订单号' AFTER `agiso_order_no`");
+      console.log('✅ cards 表新增 ecommerce_order_no 字段');
+    }
+  } catch (e) {
+    console.log('ℹ️ cards.ecommerce_order_no 迁移跳过:', e.message);
+  }
+  // cards 表新增索引 idx_ecommerce_order_no
+  try {
+    const [r] = await 数据库连接.query("SHOW INDEX FROM `cards` WHERE Key_name = 'idx_ecommerce_order_no'");
+    if (r.length === 0) {
+      await 数据库连接.query("ALTER TABLE `cards` ADD INDEX `idx_ecommerce_order_no` (`ecommerce_order_no`)");
+      console.log('✅ cards 表新增索引 idx_ecommerce_order_no');
+    }
+  } catch (e) {
+    console.log('ℹ️ cards.idx_ecommerce_order_no 索引跳过:', e.message);
+  }
+  // sup_logs 表新增 ecommerce_order_no 字段
+  try {
+    const [r] = await 数据库连接.query("SHOW COLUMNS FROM `sup_logs` LIKE 'ecommerce_order_no'");
+    if (r.length === 0) {
+      await 数据库连接.query("ALTER TABLE `sup_logs` ADD COLUMN `ecommerce_order_no` VARCHAR(100) NULL COMMENT '电商平台订单号' AFTER `order_no`");
+      console.log('✅ sup_logs 表新增 ecommerce_order_no 字段');
+    }
+  } catch (e) {
+    console.log('ℹ️ sup_logs.ecommerce_order_no 迁移跳过:', e.message);
+  }
+  // sup_logs 表新增 card_code 字段
+  try {
+    const [r] = await 数据库连接.query("SHOW COLUMNS FROM `sup_logs` LIKE 'card_code'");
+    if (r.length === 0) {
+      await 数据库连接.query("ALTER TABLE `sup_logs` ADD COLUMN `card_code` VARCHAR(20) NULL COMMENT '关联卡密码' AFTER `out_trade_no`");
+      console.log('✅ sup_logs 表新增 card_code 字段');
+    }
+  } catch (e) {
+    console.log('ℹ️ sup_logs.card_code 迁移跳过:', e.message);
+  }
+  // sup_logs 表新增索引 idx_ecommerce_order_no
+  try {
+    const [r] = await 数据库连接.query("SHOW INDEX FROM `sup_logs` WHERE Key_name = 'idx_ecommerce_order_no'");
+    if (r.length === 0) {
+      await 数据库连接.query("ALTER TABLE `sup_logs` ADD INDEX `idx_ecommerce_order_no` (`ecommerce_order_no`)");
+      console.log('✅ sup_logs 表新增索引 idx_ecommerce_order_no');
+    }
+  } catch (e) {
+    console.log('ℹ️ sup_logs.idx_ecommerce_order_no 索引跳过:', e.message);
+  }
+  // sup_logs 表新增索引 idx_card_code
+  try {
+    const [r] = await 数据库连接.query("SHOW INDEX FROM `sup_logs` WHERE Key_name = 'idx_card_code'");
+    if (r.length === 0) {
+      await 数据库连接.query("ALTER TABLE `sup_logs` ADD INDEX `idx_card_code` (`card_code`)");
+      console.log('✅ sup_logs 表新增索引 idx_card_code');
+    }
+  } catch (e) {
+    console.log('ℹ️ sup_logs.idx_card_code 索引跳过:', e.message);
   }
 };
 

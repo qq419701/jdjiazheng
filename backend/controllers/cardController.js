@@ -170,8 +170,7 @@ const 作废卡密 = async (req, res) => {
     if (卡密.status === 1) return res.json({ code: 0, message: '已使用的卡密不能作废' });
     if (卡密.status === 2) return res.json({ code: 0, message: '该卡密已经是失效状态' });
 
-    await 卡密.update({ status: 2 });
-    res.json({ code: 1, message: '卡密已作废' });
+    await 卡密.update({ status: 2, invalidated_at: new Date() });
   } catch (错误) {
     console.error('作废卡密出错:', 错误);
     res.status(500).json({ code: -1, message: '服务器错误' });

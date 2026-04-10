@@ -241,7 +241,7 @@ const 提交洗衣订单 = async (req, res) => {
     });
 
     // 标记卡密为已使用
-    await 卡密.update({ status: 1, used_by_order: 新订单.id });
+    await 卡密.update({ status: 1, used_at: new Date(), used_by_order: 新订单.id });
 
     // [说明] 自动下单开关（laundry_auto_order_enabled=1 时启用）
     // 使用 setImmediate 异步执行，不阻塞用户下单响应

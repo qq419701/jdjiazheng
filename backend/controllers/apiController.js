@@ -175,6 +175,7 @@ const 提交订单 = async (req, res) => {
     // 标记卡密为已使用
     await 卡密.update({
       status: 1,
+      used_at: new Date(),
       used_by_order: 新订单.id,
     });
 
