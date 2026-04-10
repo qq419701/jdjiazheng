@@ -199,7 +199,7 @@
         <!-- 通用字段 -->
         <el-form-item label="成本价（元）">
           <el-input-number v-model="表单数据.cost_price" :min="0" :precision="2" :step="1" />
-          <div class="字段提示块">💡 用于奇所SUP平台的商品成本价，影响奇所对账</div>
+          <div class="字段提示块">⚠️ 使用SUP系统必须设置成本价（不能为0），否则奇所平台验收不通过。建议按实际采购成本填写，如无特殊要求可填1。</div>
         </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="表单数据.remark" type="textarea" :rows="2" placeholder="内部备注（可选）" style="width:300px" />
@@ -263,7 +263,7 @@ const 表单数据 = reactive({
   product_name: '',
   service_type: '',
   service_hours: 0,
-  cost_price: 0,
+  cost_price: 1,
   status: 1,
   remark: '',
   topup_account_type: '',
@@ -366,7 +366,7 @@ const 打开编辑弹窗 = (行) => {
 const 重置表单 = () => {
   Object.assign(表单数据, {
     product_name: '', service_type: '', service_hours: 0,
-    cost_price: 0, status: 1, remark: '',
+    cost_price: 1, status: 1, remark: '',
     topup_account_type: '', topup_account_label: '', topup_member_name: '',
     topup_member_icon: '', topup_arrival_time: '', topup_show_expired: 0,
     topup_steps: '', topup_account_regex: '', topup_account_error_msg: '',
