@@ -14,6 +14,30 @@ const { 安全解析JSON } = require('../utils/helpers');
 const 分转元 = 100;
 
 /**
+ * 业务类型 → H5路径前缀映射
+ * 家政: /jz/  洗衣: /xi/  充值: /cz/
+ */
+const 业务路径前缀 = {
+  jiazheng: 'jz',
+  xiyifu:   'xi',
+  topup:    'cz',
+};
+
+/**
+ * 根据 site_url + business_type + code 构建完整可点击卡密链接
+ * 例如：https://jz.hebeiwanwu.com/jz/TJR93VDP9Q3Q9984
+ * @param {string} siteUrl - 站点域名（末尾不含斜线），来自 Setting.site_url
+ * @param {string} businessType - 业务类型（jiazheng/xiyifu/topup）
+ * @param {string} code - 卡密码
+ * @returns {string} 完整链接，siteUrl 未配置时降级为裸码
+ */
+const 构建卡密链接 = (siteUrl, businessType, code) => {
+  if (!siteUrl) return code;
+  const 前缀 = 业务路径前缀[businessType] || 'jz';
+  return `${siteUrl}/${前缀}/${code}`;
+};
+
+/**
  * 格式化过期时间为字符串
  * @param {Date|null} 时间 - 过期时间
  * @returns {string} 格式化后的时间字符串，如 '2024-12-31 23:59:59'
@@ -338,7 +362,7 @@ const 卡密下单 = async (req, res) => {
       // 重复请求，直接返回已有订单状态（加密卡密返回）
       const 卡密信息 = [
         {
-          cardNo: siteUrl ? `${siteUrl}/${已有卡密.code}` : 已有卡密.code,
+          cardNo: 构建卡密链接(siteUrl, 已有卡密.business_type, 已有卡密.code),
           cardPwd: '',
           expireTime: 格式化过期时间(已有卡密.expired_at),
         },
@@ -436,7 +460,7 @@ const 卡密下单 = async (req, res) => {
       }
 
       const 卡密信息批量 = 目标卡密列表.map(c => ({
-        cardNo: siteUrl ? `${siteUrl}/${c.code}` : c.code,
+        cardNo: 构建卡密链接(siteUrl, c.business_type, c.code),
         cardPwd: '',
         expireTime: 格式化过期时间(c.expired_at),
       }));
@@ -606,7 +630,7 @@ const 卡密下单 = async (req, res) => {
     // AES加密卡密信息
     const 卡密信息 = [
       {
-        cardNo: siteUrl ? `${siteUrl}/${目标卡密.code}` : 目标卡密.code,
+        cardNo: 构建卡密链接(siteUrl, 目标卡密.business_type, 目标卡密.code),
         cardPwd: '',
         expireTime: 格式化过期时间(目标卡密.expired_at),
       },
@@ -669,7 +693,7 @@ const 卡密下单 = async (req, res) => {
 const 发送异步回调 = async (callbackUrl, orderNo, outTradeNo, 卡密, 商品, buyNum, appSecret, merchantKey, siteUrl = '') => {
   try {
     const 卡密信息 = [{
-      cardNo: siteUrl ? `${siteUrl}/${卡密.code}` : 卡密.code,
+      cardNo: 构建卡密链接(siteUrl, 卡密.business_type, 卡密.code),
       cardPwd: '',
       expireTime: 格式化过期时间(卡密.expired_at),
     }];
@@ -796,7 +820,7 @@ const 查询订单 = async (req, res) => {
     // 格式化过期时间并加密卡密
     const 卡密信息 = [
       {
-        cardNo: siteUrl ? `${siteUrl}/${卡密记录.code}` : 卡密记录.code,
+        cardNo: 构建卡密链接(siteUrl, 卡密记录.business_type, 卡密记录.code),
         cardPwd: '',
         expireTime: 格式化过期时间(卡密记录.expired_at),
       },
