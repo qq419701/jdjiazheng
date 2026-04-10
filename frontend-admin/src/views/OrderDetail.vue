@@ -44,6 +44,11 @@
             <el-descriptions-item v-if="订单.remark" label="备注" :span="2">
               <span style="white-space: pre-wrap; color: #555;">{{ 订单.remark }}</span>
             </el-descriptions-item>
+            <!-- 电商平台单号（有值时显示） -->
+            <el-descriptions-item v-if="订单.ecommerce_order_no" label="电商平台单号" :span="2">
+              <span style="color:#409eff;font-weight:600">{{ 订单.ecommerce_order_no }}</span>
+              <el-tag size="small" style="margin-left:8px">电商平台</el-tag>
+            </el-descriptions-item>
           </el-descriptions>
         </el-card>
 

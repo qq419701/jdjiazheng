@@ -23,7 +23,7 @@ const 获取订单列表 = async (req, res) => {
 
     const 条件 = {};
 
-    // 关键词搜索（支持订单号/姓名/手机号/卡密/备注）
+    // 关键词搜索（支持订单号/姓名/手机号/卡密/备注/电商平台单号）
     if (keyword) {
       条件[Op.or] = [
         { order_no: { [Op.like]: `%${keyword}%` } },
@@ -31,6 +31,7 @@ const 获取订单列表 = async (req, res) => {
         { phone: { [Op.like]: `%${keyword}%` } },
         { card_code: { [Op.like]: `%${keyword}%` } },
         { remark: { [Op.like]: `%${keyword}%` } }, // 支持备注关键词搜索
+        { ecommerce_order_no: { [Op.like]: `%${keyword}%` } }, // 支持电商平台单号搜索
       ];
     }
 
@@ -315,6 +316,7 @@ const 导出订单 = async (req, res) => {
         { phone: { [Op.like]: `%${keyword}%` } },
         { card_code: { [Op.like]: `%${keyword}%` } },
         { remark: { [Op.like]: `%${keyword}%` } },
+        { ecommerce_order_no: { [Op.like]: `%${keyword}%` } },
       ];
     }
     if (status !== undefined && status !== '') 条件.status = parseInt(status);

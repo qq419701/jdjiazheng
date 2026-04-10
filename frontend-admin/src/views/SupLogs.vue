@@ -49,9 +49,6 @@
             <el-option label="⏳ 处理中" value="pending" />
           </el-select>
         </el-form-item>
-        <el-form-item label="订单号">
-          <el-input v-model="筛选条件.order_no" placeholder="阿奇所订单号" clearable style="width:180px" @keyup.enter="查询" />
-        </el-form-item>
         <el-form-item label="电商单号">
           <el-input v-model="筛选条件.ecommerce_order_no" placeholder="电商平台订单号" clearable style="width:200px" @keyup.enter="查询" />
         </el-form-item>
@@ -88,9 +85,14 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="ecommerce_order_no" label="电商平台单号" min-width="180" show-overflow-tooltip />
+        <el-table-column label="电商平台单号" min-width="185" show-overflow-tooltip>
+          <template #default="{ row }">
+            <span v-if="row.ecommerce_order_no" style="color:#409eff">{{ row.ecommerce_order_no }}</span>
+            <span v-else-if="row.order_no" style="color:#aaa">{{ row.order_no }}</span>
+            <span v-else style="color:#ccc">-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="card_code" label="卡密" width="150" show-overflow-tooltip />
-        <el-table-column prop="order_no" label="阿奇所订单号" width="155" show-overflow-tooltip />
         <el-table-column prop="out_trade_no" label="outTradeNo" width="120" show-overflow-tooltip />
         <el-table-column prop="product_no" label="商品编号" width="90" />
         <el-table-column label="订单成本" width="100">
@@ -174,7 +176,7 @@ const 弹窗显示 = ref(false)
 const 当前详情 = ref(null)
 const stats = ref({ todayTotal: 0, todaySuccess: 0, todayPurchase: 0, todayCancel: 0 })
 
-const 筛选条件 = ref({ log_type: '', result: '', order_no: '', ecommerce_order_no: '', card_code: '', dateRange: [] })
+const 筛选条件 = ref({ log_type: '', result: '', ecommerce_order_no: '', card_code: '', dateRange: [] })
 
 const 类型名称 = {
   createPurchase: '📦 卡密下单',
@@ -204,7 +206,6 @@ const 查询 = async () => {
     }
     if (筛选条件.value.log_type) params.log_type = 筛选条件.value.log_type
     if (筛选条件.value.result) params.result = 筛选条件.value.result
-    if (筛选条件.value.order_no) params.order_no = 筛选条件.value.order_no
     if (筛选条件.value.ecommerce_order_no) params.ecommerce_order_no = 筛选条件.value.ecommerce_order_no
     if (筛选条件.value.card_code) params.card_code = 筛选条件.value.card_code
     if (筛选条件.value.dateRange?.[0]) params.start_date = 筛选条件.value.dateRange[0]
@@ -229,7 +230,7 @@ const 加载统计 = async () => {
 }
 
 const 重置 = () => {
-  筛选条件.value = { log_type: '', result: '', order_no: '', ecommerce_order_no: '', card_code: '', dateRange: [] }
+  筛选条件.value = { log_type: '', result: '', ecommerce_order_no: '', card_code: '', dateRange: [] }
   当前页.value = 1
   查询()
 }

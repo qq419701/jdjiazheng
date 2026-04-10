@@ -164,6 +164,7 @@ const 提交订单 = async (req, res) => {
       service_type: 卡密.service_type || '日常保洁',
       service_hours: 卡密.service_hours || 2,
       status: 0,
+      ecommerce_order_no: 卡密.ecommerce_order_no || null,
       created_at: new Date(),
       order_log: JSON.stringify([{
         时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),

@@ -141,6 +141,66 @@ const 执行字段迁移 = async () => {
   } catch (e) {
     console.log('ℹ️ sup_logs.idx_card_code 索引跳过:', e.message);
   }
+  // 迁移1：orders 表新增 ecommerce_order_no 字段
+  try {
+    const [结果] = await 数据库连接.query("SHOW COLUMNS FROM `orders` LIKE 'ecommerce_order_no'");
+    if (结果.length === 0) {
+      await 数据库连接.query("ALTER TABLE `orders` ADD COLUMN `ecommerce_order_no` VARCHAR(100) NULL COMMENT '电商平台订单号（从卡密的ecommerce_order_no自动带入，如小红书单号P791381403338389551）' AFTER `login_ip`");
+      await 数据库连接.query("ALTER TABLE `orders` ADD INDEX `idx_ecommerce_order_no` (`ecommerce_order_no`)");
+      console.log('✅ orders 表新增 ecommerce_order_no 字段');
+    }
+  } catch (e) {
+    console.log('ℹ️ orders.ecommerce_order_no 迁移跳过:', e.message);
+  }
+  // 迁移2：修复历史 cards 数据，ecommerce_order_no 去掉 -数字 后缀
+  try {
+    await 数据库连接.query(`
+      UPDATE cards
+      SET ecommerce_order_no = REGEXP_REPLACE(agiso_order_no, '-[0-9]+$', '')
+      WHERE agiso_order_no IS NOT NULL
+        AND (ecommerce_order_no IS NULL OR ecommerce_order_no = agiso_order_no)
+    `);
+    console.log('✅ cards 历史数据 ecommerce_order_no 修复完成（去掉 -XX 后缀）');
+  } catch (e) {
+    console.log('ℹ️ cards.ecommerce_order_no 历史数据修复跳过:', e.message);
+  }
+  // 迁移3：修复历史 sup_logs 数据，card_code 从 cards 表补充
+  try {
+    await 数据库连接.query(`
+      UPDATE sup_logs sl
+      JOIN cards c ON c.agiso_order_no = sl.order_no
+      SET sl.card_code = c.code
+      WHERE sl.card_code IS NULL AND sl.order_no IS NOT NULL
+    `);
+    console.log('✅ sup_logs 历史数据 card_code 修复完成');
+  } catch (e) {
+    console.log('ℹ️ sup_logs.card_code 历史数据修复跳过:', e.message);
+  }
+  // 迁移4：修复历史 sup_logs 数据，ecommerce_order_no 去掉 -数字 后缀
+  try {
+    await 数据库连接.query(`
+      UPDATE sup_logs
+      SET ecommerce_order_no = REGEXP_REPLACE(order_no, '-[0-9]+$', '')
+      WHERE order_no IS NOT NULL
+        AND (ecommerce_order_no IS NULL OR ecommerce_order_no = order_no)
+    `);
+    console.log('✅ sup_logs 历史数据 ecommerce_order_no 修复完成（去掉 -XX 后缀）');
+  } catch (e) {
+    console.log('ℹ️ sup_logs.ecommerce_order_no 历史数据修复跳过:', e.message);
+  }
+  // 迁移5：修复历史 orders 数据，从关联卡密补充 ecommerce_order_no
+  try {
+    await 数据库连接.query(`
+      UPDATE orders o
+      JOIN cards c ON c.code = o.card_code
+      SET o.ecommerce_order_no = c.ecommerce_order_no
+      WHERE o.ecommerce_order_no IS NULL
+        AND c.ecommerce_order_no IS NOT NULL
+    `);
+    console.log('✅ orders 历史数据 ecommerce_order_no 修复完成');
+  } catch (e) {
+    console.log('ℹ️ orders.ecommerce_order_no 历史数据修复跳过:', e.message);
+  }
 };
 
 /**
