@@ -275,6 +275,24 @@ const 卡密下单 = async (req, res) => {
       where: { product_no: productNo, status: 1 },
     });
     if (!商品) {
+      try {
+        const reqCopy = { ...req.body };
+        delete reqCopy.sign;
+        await SupLog.create({
+          log_type: 'createPurchase',
+          order_no: orderNo,
+          product_no: productNo,
+          buy_num: parseInt(buyNum) || 1,
+          user_id: req.body.userId || null,
+          request_data: JSON.stringify(reqCopy),
+          response_data: JSON.stringify({ code: 1100, message: '失败原因:商品不存在', data: null }),
+          status_code: 1100,
+          result: 'fail',
+          error_msg: '商品不存在',
+        });
+      } catch (日志错误) {
+        console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+      }
       return res.json({ code: 1100, message: '失败原因:商品不存在', data: null });
     }
 
@@ -288,6 +306,25 @@ const 卡密下单 = async (req, res) => {
     if (maxAmount !== undefined && maxAmount !== '' && maxAmount !== null) {
       const 最大金额 = parseFloat(maxAmount);
       if (!isNaN(最大金额) && orderCost > 最大金额) {
+        try {
+          const reqCopy = { ...req.body };
+          delete reqCopy.sign;
+          await SupLog.create({
+            log_type: 'createPurchase',
+            order_no: orderNo,
+            product_no: productNo,
+            buy_num: 购买数量,
+            user_id: req.body.userId || null,
+            request_data: JSON.stringify(reqCopy),
+            response_data: JSON.stringify({ code: 1220, message: '失败原因:超出订单金额限制', data: null }),
+            status_code: 1220,
+            order_cost: orderCost,
+            result: 'fail',
+            error_msg: `超出订单金额限制：orderCost=${orderCost} > maxAmount=${maxAmount}`,
+          });
+        } catch (日志错误) {
+          console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+        }
         return res.json({ code: 1220, message: '失败原因:超出订单金额限制', data: null });
       }
     }
@@ -375,6 +412,25 @@ const 卡密下单 = async (req, res) => {
       }
 
       if (库存不足 || 目标卡密列表.length === 0) {
+        try {
+          const reqCopy = { ...req.body };
+          delete reqCopy.sign;
+          await SupLog.create({
+            log_type: 'createPurchase',
+            order_no: orderNo,
+            product_no: productNo,
+            buy_num: 购买数量,
+            user_id: req.body.userId || null,
+            request_data: JSON.stringify(reqCopy),
+            response_data: JSON.stringify({ code: 1230, message: '失败原因:库存不足', data: null }),
+            status_code: 1230,
+            order_cost: orderCost,
+            result: 'fail',
+            error_msg: `库存不足（批量${购买数量}件）`,
+          });
+        } catch (日志错误) {
+          console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+        }
         return res.json({ code: 1230, message: '失败原因:库存不足', data: null });
       }
 
@@ -468,6 +524,25 @@ const 卡密下单 = async (req, res) => {
     });
 
     if (!目标卡密) {
+      try {
+        const reqCopy = { ...req.body };
+        delete reqCopy.sign;
+        await SupLog.create({
+          log_type: 'createPurchase',
+          order_no: orderNo,
+          product_no: productNo,
+          buy_num: 1,
+          user_id: req.body.userId || null,
+          request_data: JSON.stringify(reqCopy),
+          response_data: JSON.stringify({ code: 1230, message: '失败原因:库存不足', data: null }),
+          status_code: 1230,
+          order_cost: orderCost,
+          result: 'fail',
+          error_msg: '库存不足',
+        });
+      } catch (日志错误) {
+        console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+      }
       return res.json({
         code: 1230,
         message: '失败原因:库存不足',
@@ -831,6 +906,24 @@ const 撤销订单 = async (req, res) => {
 
     // 幂等处理：如果已经是已撤单状态，直接返回成功
     if (卡密记录.sup_status === 2) {
+      try {
+        const reqCopy = { ...req.body };
+        delete reqCopy.sign;
+        await SupLog.create({
+          log_type: 'cancelOrder',
+          order_no: orderNo,
+          out_trade_no: 卡密记录.id.toString(),
+          user_id: req.body.userId || null,
+          request_data: JSON.stringify(reqCopy),
+          response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { orderNo: orderNo, cancelStatus: 20 } }),
+          status_code: 200,
+          cancel_status: 20,
+          result: 'success',
+          error_msg: '幂等：订单已撤单',
+        });
+      } catch (日志错误) {
+        console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+      }
       return res.json({
         code: 200,
         message: '接口调用成功',
@@ -876,13 +969,32 @@ const 撤销订单 = async (req, res) => {
       if (关联订单) {
         // 预约完成（status>=6）：不允许撤单
         if (关联订单.status >= 6) {
+          const 拒绝原因 = '家政服务已预约完成，无法撤单';
+          try {
+            const reqCopy = { ...req.body };
+            delete reqCopy.sign;
+            await SupLog.create({
+              log_type: 'cancelOrder',
+              order_no: orderNo,
+              out_trade_no: 卡密记录.id.toString(),
+              user_id: req.body.userId || null,
+              request_data: JSON.stringify(reqCopy),
+              response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { orderNo: orderNo, cancelStatus: 30, refuseReason: 拒绝原因, refuseProof: 拒绝凭证URL } }),
+              status_code: 200,
+              cancel_status: 30,
+              result: 'fail',
+              error_msg: 拒绝原因,
+            });
+          } catch (日志错误) {
+            console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+          }
           return res.json({
             code: 200,
             message: '接口调用成功',
             data: {
               orderNo: orderNo,
               cancelStatus: 30,
-              refuseReason: '家政服务已预约完成，无法撤单',
+              refuseReason: 拒绝原因,
               refuseProof: 拒绝凭证URL,
             },
           });
@@ -928,13 +1040,32 @@ const 撤销订单 = async (req, res) => {
       if (关联订单) {
         // 已在鲸蚁系统处理中（有laundry_order_id且laundry_status不为空/已取消）：拒绝撤单
         if (关联订单.laundry_order_id && 关联订单.laundry_status && !['已取消'].includes(关联订单.laundry_status)) {
+          const 拒绝原因 = `洗衣服务已在鲸蚁系统处理（${关联订单.laundry_status}），无法撤单`;
+          try {
+            const reqCopy = { ...req.body };
+            delete reqCopy.sign;
+            await SupLog.create({
+              log_type: 'cancelOrder',
+              order_no: orderNo,
+              out_trade_no: 卡密记录.id.toString(),
+              user_id: req.body.userId || null,
+              request_data: JSON.stringify(reqCopy),
+              response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { orderNo: orderNo, cancelStatus: 30, refuseReason: 拒绝原因, refuseProof: 拒绝凭证URL } }),
+              status_code: 200,
+              cancel_status: 30,
+              result: 'fail',
+              error_msg: 拒绝原因,
+            });
+          } catch (日志错误) {
+            console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+          }
           return res.json({
             code: 200,
             message: '接口调用成功',
             data: {
               orderNo: orderNo,
               cancelStatus: 30,
-              refuseReason: `洗衣服务已在鲸蚁系统处理（${关联订单.laundry_status}），无法撤单`,
+              refuseReason: 拒绝原因,
               refuseProof: 拒绝凭证URL,
             },
           });
@@ -992,13 +1123,32 @@ const 撤销订单 = async (req, res) => {
 
       // 已完成充值（status=2）：拒绝撤单
       if (关联订单 && 关联订单.status === 2) {
+        const 拒绝原因 = '充值已完成，无法撤单';
+        try {
+          const reqCopy = { ...req.body };
+          delete reqCopy.sign;
+          await SupLog.create({
+            log_type: 'cancelOrder',
+            order_no: orderNo,
+            out_trade_no: 卡密记录.id.toString(),
+            user_id: req.body.userId || null,
+            request_data: JSON.stringify(reqCopy),
+            response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { orderNo: orderNo, cancelStatus: 30, refuseReason: 拒绝原因, refuseProof: 拒绝凭证URL } }),
+            status_code: 200,
+            cancel_status: 30,
+            result: 'fail',
+            error_msg: 拒绝原因,
+          });
+        } catch (日志错误) {
+          console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+        }
         return res.json({
           code: 200,
           message: '接口调用成功',
           data: {
             orderNo: orderNo,
             cancelStatus: 30,
-            refuseReason: '充值已完成，无法撤单',
+            refuseReason: 拒绝原因,
             refuseProof: 拒绝凭证URL,
           },
         });
