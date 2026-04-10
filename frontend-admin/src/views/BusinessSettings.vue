@@ -929,6 +929,11 @@
               </div>
               <div class="接口地址行">
                 <span class="接口方法">POST</span>
+                <code>/agisoAcprSupplierApi/order/get</code>
+                <span class="接口备注">订单查询（兼容路径，与 queryOrder 功能相同）</span>
+              </div>
+              <div class="接口地址行">
+                <span class="接口方法">POST</span>
                 <code>/agisoAcprSupplierApi/order/cancelOrder</code>
                 <span class="接口备注">撤单（退款）</span>
               </div>
