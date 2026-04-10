@@ -155,6 +155,13 @@ const routes = [
         component: () => import('../views/OrderCenter.vue'),
         meta: { 标题: '订单中心', 权限Key: 'order_center' },
       },
+      // ===== 阿奇所SUP日志 =====
+      {
+        path: 'sup-logs',
+        name: 'SupLogs',
+        component: () => import('../views/SupLogs.vue'),
+        meta: { 标题: '阿奇所SUP日志', 权限Key: 'sup_logs' },
+      },
       // ===== 业务设置（预留）=====
       {
         path: 'business-settings',
@@ -205,6 +212,7 @@ router.beforeEach((to, from, next) => {
         { key: 'card_workbench', name: 'CardWorkbench' },
         { key: 'template_manager', name: 'TemplateManager' },
         { key: 'business_settings', name: 'BusinessSettings' },
+        { key: 'sup_logs', name: 'SupLogs' },
         { key: 'regions', name: 'Regions' },
         { key: 'jd_accounts', name: 'JdAccounts' },
         { key: 'sub_accounts', name: 'SubAccounts' },

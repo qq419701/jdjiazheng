@@ -9,6 +9,7 @@ const Admin = require('./Admin');
 const Setting = require('./Setting');
 const Region = require('./Region');
 const Product = require('./Product');
+const SupLog = require('./SupLog');
 
 // 建立批次与卡密的关联关系
 CardBatch.hasMany(Card, { foreignKey: 'batch_id', as: '卡密列表' });
@@ -32,4 +33,5 @@ module.exports = {
   Setting,
   Region,
   Product,
+  SupLog,
 };

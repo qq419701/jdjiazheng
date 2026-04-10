@@ -37,6 +37,10 @@
             <el-icon><List /></el-icon>
             <span>📋 订单中心</span>
           </el-menu-item>
+          <el-menu-item v-if="authStore.有权限('sup_logs')" index="/admin/sup-logs">
+            <el-icon><Document /></el-icon>
+            <span>🗂️ SUP日志</span>
+          </el-menu-item>
           <el-menu-item v-if="authStore.有权限('business_settings')" index="/admin/business-settings">
             <el-icon><Setting /></el-icon>
             <span>⚙️ 业务设置</span>
@@ -82,7 +86,7 @@
 import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
-import { DataAnalysis, List, Ticket, UserFilled, Setting, MapLocation, Goods } from '@element-plus/icons-vue'
+import { DataAnalysis, List, Ticket, UserFilled, Setting, MapLocation, Goods, Document } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
 
 const router = useRouter()
@@ -97,7 +101,7 @@ const 当前页标题 = computed(() => route.meta?.标题 || '京东代下单系
 
 // 分组可见性：有任意菜单项可见则显示该分组
 const 显示卡密管理分组 = computed(() => ['card_workbench', 'template_manager'].some(k => authStore.有权限(k)))
-const 显示业务管理分组 = computed(() => ['order_center', 'business_settings'].some(k => authStore.有权限(k)))
+const 显示业务管理分组 = computed(() => ['order_center', 'business_settings', 'sup_logs'].some(k => authStore.有权限(k)))
 const 显示系统分组 = computed(() => ['regions', 'sub_accounts'].some(k => authStore.有权限(k)))
 
 // 退出登录
