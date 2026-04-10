@@ -1055,4 +1055,93 @@ router.get('/order-center/badge-counts', 验证Token, async (req, res) => {
   }
 });
 
+// ===== 阿奇所SUP日志管理 =====
+
+// 获取SUP日志列表（分页+筛选）
+router.get('/sup-logs', 验证Token, async (req, res) => {
+  try {
+    const { Op } = require('sequelize');
+    const { SupLog } = require('../models');
+    const {
+      page = 1,
+      pageSize = 20,
+      log_type,
+      result,
+      order_no,
+      start_date,
+      end_date,
+    } = req.query;
+
+    const 条件 = {};
+    if (log_type) 条件.log_type = log_type;
+    if (result) 条件.result = result;
+    if (order_no) 条件.order_no = { [Op.like]: `%${order_no}%` };
+    if (start_date || end_date) {
+      条件.created_at = {};
+      // 使用 YYYY-MM-DD 格式安全解析日期，防止非法日期字符串导致查询异常
+      if (start_date && /^\d{4}-\d{2}-\d{2}$/.test(start_date)) {
+        const [y, m, d] = start_date.split('-').map(Number);
+        条件.created_at[Op.gte] = new Date(y, m - 1, d, 0, 0, 0);
+      }
+      if (end_date && /^\d{4}-\d{2}-\d{2}$/.test(end_date)) {
+        const [y, m, d] = end_date.split('-').map(Number);
+        条件.created_at[Op.lte] = new Date(y, m - 1, d, 23, 59, 59);
+      }
+    }
+
+    const { count, rows } = await SupLog.findAndCountAll({
+      where: 条件,
+      order: [['created_at', 'DESC']],
+      limit: parseInt(pageSize),
+      offset: (parseInt(page) - 1) * parseInt(pageSize),
+    });
+
+    res.json({
+      code: 1,
+      message: '获取成功',
+      data: {
+        items: rows,
+        total: count,
+        page: parseInt(page),
+        pageSize: parseInt(pageSize),
+      },
+    });
+  } catch (错误) {
+    console.error('获取SUP日志列表出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+// 获取SUP日志统计（今日）
+router.get('/sup-logs/stats', 验证Token, async (req, res) => {
+  try {
+    const { Op } = require('sequelize');
+    const { SupLog } = require('../models');
+
+    const 今天开始 = new Date();
+    今天开始.setHours(0, 0, 0, 0);
+
+    const [今日总数, 今日成功, 今日下单, 今日撤单] = await Promise.all([
+      SupLog.count({ where: { created_at: { [Op.gte]: 今天开始 } } }),
+      SupLog.count({ where: { created_at: { [Op.gte]: 今天开始 }, result: 'success' } }),
+      SupLog.count({ where: { created_at: { [Op.gte]: 今天开始 }, log_type: 'createPurchase' } }),
+      SupLog.count({ where: { created_at: { [Op.gte]: 今天开始 }, log_type: 'cancelOrder' } }),
+    ]);
+
+    res.json({
+      code: 1,
+      message: '获取成功',
+      data: {
+        todayTotal: 今日总数,
+        todaySuccess: 今日成功,
+        todayPurchase: 今日下单,
+        todayCancel: 今日撤单,
+      },
+    });
+  } catch (错误) {
+    console.error('获取SUP日志统计出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
 module.exports = router;

@@ -6,7 +6,7 @@
 //   - 商品编号来自 Product 表的 product_no 字段
 
 const { Op } = require('sequelize');
-const { Card, Order, Setting, Product } = require('../models');
+const { Card, Order, Setting, Product, SupLog } = require('../models');
 const 数据库连接 = require('../config/database');
 const { 加密卡密 } = require('../services/agisoService');
 const { 安全解析JSON } = require('../utils/helpers');
@@ -236,13 +236,14 @@ const 获取商品模板 = async (req, res) => {
  * 响应格式：{ code: 200, message: '接口调用成功', data: { orderStatus: 20, cards: '加密后的Base64字符串' } }
  * 业务说明：
  *   - orderStatus说明：10=处理中，20=成功，30=失败
- *   - 同步发货模式：下单后直接返回加密卡密
+ *   - 同步发货模式（callbackUrl为空）：下单后直接返回加密卡密
+ *   - 异步发货模式（callbackUrl非空）：先返回orderStatus:10，后台异步推送卡密到callbackUrl
  *   - 防重复下单：若 agiso_order_no 已存在则返回已有订单状态
  *   - 卡密AES加密：cardNo=卡密code，cardPwd为空，expireTime=过期时间
  */
 const 卡密下单 = async (req, res) => {
   try {
-    const { orderNo, productNo, buyNum = 1 } = req.body;
+    const { orderNo, productNo, buyNum = 1, callbackUrl = '' } = req.body;
 
     if (!orderNo) {
       return res.json({ code: 400, message: '订单号不能为空' });
@@ -250,10 +251,22 @@ const 卡密下单 = async (req, res) => {
     if (!productNo) {
       return res.json({ code: 400, message: '商品编号不能为空' });
     }
+    // 校验 callbackUrl：仅允许 http/https 协议，防止 SSRF
+    if (callbackUrl) {
+      try {
+        const 回调URL对象 = new URL(callbackUrl);
+        if (!['http:', 'https:'].includes(回调URL对象.protocol)) {
+          return res.json({ code: 400, message: 'callbackUrl协议不合法' });
+        }
+      } catch {
+        return res.json({ code: 400, message: 'callbackUrl格式不合法' });
+      }
+    }
 
     // 读取 AppSecret 配置（用于AES加密）
-    const 配置 = await 读取配置(['agiso_app_secret']);
+    const 配置 = await 读取配置(['agiso_app_secret', 'agiso_merchant_key']);
     const appSecret = 配置.agiso_app_secret || '';
+    const merchantKey = 配置.agiso_merchant_key || '';
 
     // 防重复下单：先查 agiso_order_no 是否已存在
     const 已有卡密 = await Card.findOne({
@@ -273,18 +286,42 @@ const 卡密下单 = async (req, res) => {
       let orderCost = 0;
       if (已有卡密.product_id) {
         const 关联商品 = await Product.findByPk(已有卡密.product_id);
-        if (关联商品) orderCost = parseFloat(关联商品.cost_price) || 0;
+        if (关联商品) {
+          orderCost = Number(parseFloat((关联商品.cost_price || 0) * (parseInt(buyNum) || 1)).toFixed(4));
+        }
+      }
+      const 重复响应数据 = {
+        orderNo: orderNo,
+        outTradeNo: 已有卡密.id.toString(),
+        orderStatus: 20,
+        orderCost,
+        cards: 加密结果,
+      };
+      // 写入SUP日志（不影响主流程）
+      try {
+        const reqCopy = { ...req.body };
+        delete reqCopy.sign;
+        await SupLog.create({
+          log_type: 'createPurchase',
+          order_no: orderNo,
+          out_trade_no: 已有卡密.id.toString(),
+          product_no: productNo,
+          buy_num: parseInt(buyNum) || 1,
+          user_id: req.body.userId || null,
+          request_data: JSON.stringify(reqCopy),
+          response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: 重复响应数据 }),
+          status_code: 200,
+          order_status: 20,
+          order_cost: orderCost,
+          result: 'success',
+        });
+      } catch (日志错误) {
+        console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
       }
       return res.json({
         code: 200,
         message: '接口调用成功',
-        data: {
-          orderNo: orderNo,
-          outTradeNo: 已有卡密.id.toString(),
-          orderStatus: 20,
-          orderCost,
-          cards: 加密结果,
-        },
+        data: 重复响应数据,
       });
     }
 
@@ -315,9 +352,9 @@ const 卡密下单 = async (req, res) => {
 
       // 在事务内更新（原子操作）
       await 候选卡密.update({
-        status: 1,
+        status: callbackUrl ? 0 : 1, // 异步模式下暂不标记已使用，等回调成功后再更新；同步模式直接标记已使用
         agiso_order_no: orderNo,
-        sup_status: 1,  // 1=已发货
+        sup_status: callbackUrl ? 0 : 1,  // 异步：0=未发货（等待回调），同步：1=已发货
         sup_product_no: productNo,
         product_id: 商品.id,
       }, { transaction: t });
@@ -333,6 +370,61 @@ const 卡密下单 = async (req, res) => {
       });
     }
 
+    // 计算订单成本（4位小数，number类型）
+    const orderCost = Number(parseFloat((商品.cost_price || 0) * (parseInt(buyNum) || 1)).toFixed(4));
+
+    // ===== 异步发货模式（callbackUrl非空）=====
+    if (callbackUrl) {
+      const 异步响应数据 = {
+        orderNo: orderNo,
+        outTradeNo: 目标卡密.id.toString(),
+        orderStatus: 10, // 处理中
+        orderCost,
+        cards: '',
+      };
+
+      // 写入SUP日志（不影响主流程）
+      try {
+        const reqCopy = { ...req.body };
+        delete reqCopy.sign;
+        await SupLog.create({
+          log_type: 'createPurchase',
+          order_no: orderNo,
+          out_trade_no: 目标卡密.id.toString(),
+          product_no: productNo,
+          buy_num: parseInt(buyNum) || 1,
+          user_id: req.body.userId || null,
+          request_data: JSON.stringify(reqCopy),
+          response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: 异步响应数据 }),
+          status_code: 200,
+          order_status: 10,
+          order_cost: orderCost,
+          result: 'pending',
+        });
+      } catch (日志错误) {
+        console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+      }
+
+      // 先返回处理中状态
+      res.json({
+        code: 200,
+        message: '接口调用成功',
+        data: 异步响应数据,
+      });
+
+      // 后台异步发送回调
+      setImmediate(async () => {
+        try {
+          await 发送异步回调(callbackUrl, orderNo, 目标卡密.id.toString(), 目标卡密, 商品, buyNum, appSecret, merchantKey);
+        } catch (未捕获错误) {
+          console.error(`SUP异步回调未捕获异常: orderNo=${orderNo}`, 未捕获错误.message);
+        }
+      });
+
+      return;
+    }
+
+    // ===== 同步发货模式（callbackUrl为空）=====
     // AES加密卡密信息
     const 卡密信息 = [
       {
@@ -343,20 +435,122 @@ const 卡密下单 = async (req, res) => {
     ];
     const 加密结果 = 加密卡密(卡密信息, appSecret);
 
+    const 同步响应数据 = {
+      orderNo: orderNo,
+      outTradeNo: 目标卡密.id.toString(),
+      orderStatus: 20,
+      orderCost,
+      cards: 加密结果,
+    };
+
+    // 写入SUP日志（不影响主流程）
+    try {
+      const reqCopy = { ...req.body };
+      delete reqCopy.sign;
+      await SupLog.create({
+        log_type: 'createPurchase',
+        order_no: orderNo,
+        out_trade_no: 目标卡密.id.toString(),
+        product_no: productNo,
+        buy_num: parseInt(buyNum) || 1,
+        user_id: req.body.userId || null,
+        request_data: JSON.stringify(reqCopy),
+        response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: 同步响应数据 }),
+        status_code: 200,
+        order_status: 20,
+        order_cost: orderCost,
+        result: 'success',
+      });
+    } catch (日志错误) {
+      console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+    }
+
     res.json({
       code: 200,
       message: '接口调用成功',
-      data: {
-        orderNo: orderNo,
-        outTradeNo: 目标卡密.id.toString(),
-        orderStatus: 20, // 20=成功
-        orderCost: parseFloat(商品.cost_price) || 0,
-        cards: 加密结果,
-      },
+      data: 同步响应数据,
     });
   } catch (错误) {
     console.error('SUP卡密下单出错:', 错误);
     res.status(500).json({ code: -1, message: '服务器内部错误' });
+  }
+};
+
+/**
+ * 异步回调函数：发货完成后向callbackUrl推送卡密结果
+ * @param {string} callbackUrl - 阿奇所提供的回调地址
+ * @param {string} orderNo - 阿奇所订单号
+ * @param {string} outTradeNo - 我方卡密ID字符串
+ * @param {Object} 卡密 - Card模型实例
+ * @param {Object} 商品 - Product模型实例
+ * @param {number|string} buyNum - 购买数量
+ * @param {string} appSecret - 阿奇所appSecret（用于AES加密和签名）
+ * @param {string} merchantKey - 商户密钥（用于签名）
+ */
+const 发送异步回调 = async (callbackUrl, orderNo, outTradeNo, 卡密, 商品, buyNum, appSecret, merchantKey) => {
+  try {
+    const 卡密信息 = [{
+      cardNo: 卡密.code,
+      cardPwd: '',
+      expireTime: 格式化过期时间(卡密.expired_at),
+    }];
+    const 加密结果 = 加密卡密(卡密信息, appSecret);
+    const orderCost = Number(parseFloat((商品.cost_price || 0) * (parseInt(buyNum) || 1)).toFixed(4));
+
+    const 回调数据 = {
+      orderNo,
+      outTradeNo,
+      orderStatus: 20,
+      orderCost,
+      cards: 加密结果,
+    };
+
+    // 计算签名（按阿奇所规则：appSecret + 排序后的key=value&... + appSecret，MD5大写）
+    const crypto = require('crypto');
+    const 参数键列表 = Object.keys(回调数据).sort();
+    const 查询字符串 = 参数键列表.map(key => `${key}=${回调数据[key] ?? ''}`).join('&');
+    const 密钥串 = appSecret + (merchantKey || '');
+    const sign = crypto.createHash('md5').update(密钥串 + 查询字符串 + 密钥串, 'utf8').digest('hex').toUpperCase();
+
+    const axios = require('axios');
+    await axios.post(callbackUrl, { ...回调数据, sign }, {
+      headers: { 'Content-Type': 'application/json;charset=utf-8' },
+      timeout: 10000,
+    });
+
+    // 回调成功后更新卡密状态为已发货
+    await 卡密.update({ status: 1, sup_status: 1 });
+
+    // 写入回调成功日志
+    try {
+      await SupLog.create({
+        log_type: 'callback',
+        order_no: orderNo,
+        out_trade_no: outTradeNo,
+        order_status: 20,
+        order_cost: orderCost,
+        result: 'success',
+        response_data: JSON.stringify(回调数据),
+      });
+    } catch (日志错误) {
+      console.error('SUP回调日志写入失败:', 日志错误.message);
+    }
+
+    console.log(`SUP异步回调成功: orderNo=${orderNo}`);
+  } catch (回调错误) {
+    console.error(`SUP异步回调失败: orderNo=${orderNo}`, 回调错误.message);
+    // 写入回调失败日志
+    try {
+      await SupLog.create({
+        log_type: 'callback',
+        order_no: orderNo,
+        out_trade_no: outTradeNo,
+        result: 'fail',
+        error_msg: 回调错误.message,
+      });
+    } catch (日志错误) {
+      console.error('SUP回调失败日志写入失败:', 日志错误.message);
+    }
   }
 };
 
@@ -409,11 +603,13 @@ const 查询订单 = async (req, res) => {
       orderStatus = 10; // 处理中
     }
 
-    // 查询关联商品获取成本价
+    // 查询关联商品获取成本价（查单接口为单件查询，buyNum固定为1）
     let orderCost = 0;
     if (卡密记录.product_id) {
       const 关联商品 = await Product.findByPk(卡密记录.product_id);
-      if (关联商品) orderCost = parseFloat(关联商品.cost_price) || 0;
+      if (关联商品) {
+        orderCost = Number(parseFloat(关联商品.cost_price || 0).toFixed(4));
+      }
     }
 
     // 格式化过期时间并加密卡密
@@ -426,18 +622,40 @@ const 查询订单 = async (req, res) => {
     ];
     const 加密结果 = 加密卡密(卡密信息, appSecret);
 
+    const 查询响应数据 = {
+      orderNo: orderNo,
+      outTradeNo: 卡密记录.id.toString(),
+      orderStatus,
+      failCode,
+      failReason,
+      orderCost,
+      cards: 加密结果,
+    };
+
+    // 写入SUP日志（不影响主流程）
+    try {
+      const reqCopy = { ...req.body };
+      delete reqCopy.sign;
+      await SupLog.create({
+        log_type: 'queryOrder',
+        order_no: orderNo,
+        out_trade_no: 卡密记录.id.toString(),
+        user_id: req.body.userId || null,
+        request_data: JSON.stringify(reqCopy),
+        response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: 查询响应数据 }),
+        status_code: 200,
+        order_status: orderStatus,
+        order_cost: orderCost,
+        result: orderStatus === 20 ? 'success' : orderStatus === 10 ? 'pending' : 'fail',
+      });
+    } catch (日志错误) {
+      console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+    }
+
     res.json({
       code: 200,
       message: '接口调用成功',
-      data: {
-        orderNo: orderNo,
-        outTradeNo: 卡密记录.id.toString(),
-        orderStatus,
-        failCode,
-        failReason,
-        orderCost,
-        cards: 加密结果,
-      },
+      data: 查询响应数据,
     });
   } catch (错误) {
     console.error('SUP订单查询出错:', 错误);
@@ -469,13 +687,39 @@ const 撤销订单 = async (req, res) => {
       return res.json({ code: 400, message: '订单号不能为空' });
     }
 
-    // 根据奇所订单号查找卡密记录
-    const 卡密记录 = await Card.findOne({
+    // 先按 agiso_order_no 查找卡密记录
+    let 卡密记录 = await Card.findOne({
       where: { agiso_order_no: orderNo },
     });
 
+    // 找不到时，再按 outTradeNo（cards.id）查找
+    if (!卡密记录 && req.body.outTradeNo) {
+      卡密记录 = await Card.findOne({
+        where: { id: req.body.outTradeNo },
+      });
+    }
+
     if (!卡密记录) {
-      return res.json({ code: 404, message: '订单不存在' });
+      // 根据阿奇所文档：找不到订单时返回 code:200, cancelStatus:30
+      const 未找到响应 = { cancelStatus: 30, cancelErrMsg: '订单不存在' };
+      try {
+        const reqCopy = { ...req.body };
+        delete reqCopy.sign;
+        await SupLog.create({
+          log_type: 'cancelOrder',
+          order_no: orderNo,
+          user_id: req.body.userId || null,
+          request_data: JSON.stringify(reqCopy),
+          response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: 未找到响应 }),
+          status_code: 200,
+          cancel_status: 30,
+          result: 'fail',
+          error_msg: '订单不存在',
+        });
+      } catch (日志错误) {
+        console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+      }
+      return res.json({ code: 200, message: '接口调用成功', data: 未找到响应 });
     }
 
     // 幂等处理：如果已经是已撤单状态，直接返回成功
@@ -688,6 +932,25 @@ const 撤销订单 = async (req, res) => {
       message: '接口调用成功',
       data: { cancelStatus: 20 },
     });
+
+    // 写入SUP日志（不影响主流程）
+    try {
+      const reqCopy = { ...req.body };
+      delete reqCopy.sign;
+      await SupLog.create({
+        log_type: 'cancelOrder',
+        order_no: orderNo,
+        out_trade_no: 卡密记录.id.toString(),
+        user_id: req.body.userId || null,
+        request_data: JSON.stringify(reqCopy),
+        response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { cancelStatus: 20 } }),
+        status_code: 200,
+        cancel_status: 20,
+        result: 'success',
+      });
+    } catch (日志错误) {
+      console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+    }
   } catch (错误) {
     console.error('SUP撤单出错:', 错误);
     res.status(500).json({ code: -1, message: '服务器内部错误' });

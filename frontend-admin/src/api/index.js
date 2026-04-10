@@ -180,3 +180,7 @@ export const 套餐生成卡密API = (数据) => 请求实例.post('/card-templa
 
 // ===== 订单中心 =====
 export const 获取订单角标数量API = () => 请求实例.get('/order-center/badge-counts')
+
+// ===== 阿奇所SUP日志 =====
+export const 获取SUP日志列表API = (参数) => 请求实例.get('/sup-logs', { params: 参数 })
+export const 获取SUP日志统计API = () => 请求实例.get('/sup-logs/stats')
