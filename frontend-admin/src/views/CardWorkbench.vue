@@ -653,7 +653,7 @@ const 删除卡密 = async (行) => {
       结果 = await 删除卡密API(行.id)
     }
     // 检查响应 code
-    const data = 结果?.data || 结果
+    const data = 结果?.data ?? 结果
     if (data?.code === 1) {
       ElMessage.success('卡密已删除')
       搜索卡密()
@@ -799,7 +799,7 @@ const 批量删除卡密 = async () => {
         } else {
           结果 = await 删除卡密API(卡密.id)
         }
-        const data = 结果?.data || 结果
+        const data = 结果?.data ?? 结果
         if (data?.code === 1) 成功数++
         else 跳过数++
       } catch {
