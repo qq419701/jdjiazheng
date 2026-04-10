@@ -890,7 +890,7 @@
             <div style="display: flex; flex-direction: column; gap: 8px; width: 100%">
               <div style="display: flex; gap: 8px; align-items: center">
                 <el-input v-model="设置表单.agiso_refuse_proof" placeholder="撤单失败时返回的凭证图片URL（.jpg/.png/.gif，不超过127k）" style="flex: 1" />
-                <el-button :loading="凭证图片上传中" @click="$refs.凭证图片输入.click()">📁 上传图片</el-button>
+                <el-button :loading="凭证图片上传中" @click="凭证图片输入.click()">📁 上传图片</el-button>
                 <input ref="凭证图片输入" type="file" accept="image/*" style="display: none" @change="处理凭证图片选择" />
               </div>
               <img
@@ -985,6 +985,7 @@ const 测试洗衣结果 = ref(null)
 const 测试定位中 = ref(false)
 const 定位测试结果 = ref(null)
 const 凭证图片上传中 = ref(false)
+const 凭证图片输入 = ref(null)
 
 const 上传凭证图片 = async (文件) => {
   凭证图片上传中.value = true
@@ -998,7 +999,7 @@ const 上传凭证图片 = async (文件) => {
     } else {
       ElMessage.warning(r.message || '上传失败')
     }
-  } catch { ElMessage.error('图片上传失败') } finally { 凭证图片上传中.value = false }
+  } catch (err) { ElMessage.error(`图片上传失败: ${err.message || '未知错误'}`) } finally { 凭证图片上传中.value = false }
 }
 
 const 处理凭证图片选择 = (e) => {
