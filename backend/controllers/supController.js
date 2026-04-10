@@ -117,11 +117,20 @@ const 获取应用ID = async (req, res) => {
   try {
     const 配置 = await Setting.findOne({ where: { key_name: 'agiso_app_id' } });
     const appId = 配置 ? 配置.key_value : '';
-    res.json({
-      code: 200,
-      message: '接口调用成功',
-      data: { appId },
-    });
+    const 响应数据 = { code: 200, message: '接口调用成功', data: { appId } };
+    res.json(响应数据);
+    // 写入SUP日志（不影响主流程）
+    try {
+      await SupLog.create({
+        log_type: 'getAppId',
+        request_data: JSON.stringify(req.body || {}),
+        response_data: JSON.stringify(响应数据),
+        status_code: 200,
+        result: 'success',
+      });
+    } catch (日志错误) {
+      console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+    }
   } catch (错误) {
     console.error('获取应用ID出错:', 错误);
     res.status(500).json({ code: -1, message: '服务器内部错误' });
@@ -185,6 +194,22 @@ const 获取商品列表 = async (req, res) => {
       serviceHours: 商品.service_hours,
     }));
 
+    // 写入SUP日志（不影响主流程）
+    try {
+      const reqCopy = { ...req.body };
+      delete reqCopy.sign;
+      await SupLog.create({
+        log_type: 'getList',
+        user_id: req.body.userId || null,
+        request_data: JSON.stringify(reqCopy),
+        response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { items: 商品列表, hasNextPage } }),
+        status_code: 200,
+        result: 'success',
+      });
+    } catch (日志错误) {
+      console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+    }
+
     res.json({
       code: 200,
       message: '接口调用成功',
@@ -229,10 +254,27 @@ const 获取商品模板 = async (req, res) => {
     });
 
     if (!商品) {
+      // 写入SUP日志（不影响主流程）
+      try {
+        const reqCopy = { ...req.body };
+        delete reqCopy.sign;
+        await SupLog.create({
+          log_type: 'getTemplate',
+          product_no: productNo,
+          user_id: req.body.userId || null,
+          request_data: JSON.stringify(reqCopy),
+          response_data: JSON.stringify({ code: 1100, message: '失败原因:商品不存在', data: null }),
+          status_code: 1100,
+          result: 'fail',
+          error_msg: '商品不存在',
+        });
+      } catch (日志错误) {
+        console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+      }
       return res.json({ code: 1100, message: '失败原因:商品不存在', data: null });
     }
 
-    res.json({
+    const 响应数据 = {
       code: 200,
       message: '接口调用成功',
       data: {
@@ -242,7 +284,24 @@ const 获取商品模板 = async (req, res) => {
         productCost: parseFloat(商品.cost_price) || 0,
         attach: [],        // 卡密商品不需要额外参数
       },
-    });
+    };
+    // 写入SUP日志（不影响主流程）
+    try {
+      const reqCopy = { ...req.body };
+      delete reqCopy.sign;
+      await SupLog.create({
+        log_type: 'getTemplate',
+        product_no: productNo,
+        user_id: req.body.userId || null,
+        request_data: JSON.stringify(reqCopy),
+        response_data: JSON.stringify(响应数据),
+        status_code: 200,
+        result: 'success',
+      });
+    } catch (日志错误) {
+      console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+    }
+    res.json(响应数据);
   } catch (错误) {
     console.error('获取SUP商品模板出错:', 错误);
     res.status(500).json({ code: -1, message: '服务器内部错误' });
