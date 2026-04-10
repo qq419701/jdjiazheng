@@ -175,6 +175,9 @@ const 初始化数据库 = async () => {
     // 逐条插入洗衣和快递API默认配置（findOrCreate保证全新部署时也能初始化）
     const 洗衣快递默认配置 = [
       { key_name: 'laundry_banner_url',       key_value: '',                          description: '洗衣服Banner图片URL' },
+      { key_name: 'laundry_title',             key_value: '优米拉洗衣服务',              description: '洗衣H5顶部主标题' },
+      { key_name: 'laundry_subtitle1',         key_value: '京东快递免费取送 专业洗护',    description: '洗衣H5顶部副标题第1行' },
+      { key_name: 'laundry_subtitle2',         key_value: '',                          description: '洗衣H5顶部副标题第2行' },
       { key_name: 'laundry_notice',           key_value: '1. 请在取件时间段内保持手机畅通\n2. 快递员上门取衣后将送往工厂洗护\n3. 洗护完成后将寄回您填写的收件地址', description: '洗衣下单须知' },
       { key_name: 'laundry_product_name',     key_value: '任洗一件',                  description: '洗衣商品名称' },
       { key_name: 'laundry_product_price',    key_value: '0',                         description: '洗衣商品价格（分）' },

@@ -9,8 +9,9 @@
         <span class="品牌图标">优</span>
       </div>
       <div class="Banner文字区">
-        <div class="Banner主标题">优米拉洗衣服务</div>
-        <div class="Banner副标题">京东快递免费取送 专业洗护</div>
+        <div class="Banner主标题">{{ 洗衣Store.主标题 }}</div>
+        <div class="Banner副标题">{{ 洗衣Store.副标题1 }}</div>
+        <div v-if="洗衣Store.副标题2 && 洗衣Store.副标题2.trim()" class="Banner副标题">{{ 洗衣Store.副标题2 }}</div>
       </div>
       <img v-if="banner图URL" :src="banner图URL" class="Banner图片" alt="优米拉洗衣" />
     </div>

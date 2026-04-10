@@ -362,6 +362,16 @@
             <el-input v-model="设置表单.laundry_banner_url" placeholder="Banner图片地址（可选）" />
             <div class="字段说明">显示在洗衣H5前端顶部的横幅图片</div>
           </el-form-item>
+          <el-form-item label="顶部主标题">
+            <el-input v-model="设置表单.laundry_title" placeholder="如：优米拉洗衣服务" />
+            <div class="字段说明">显示在洗衣H5前端顶部Banner的主标题</div>
+          </el-form-item>
+          <el-form-item label="副标题第1行">
+            <el-input v-model="设置表单.laundry_subtitle1" placeholder="如：京东快递免费取送 专业洗护" />
+          </el-form-item>
+          <el-form-item label="副标题第2行">
+            <el-input v-model="设置表单.laundry_subtitle2" placeholder="可选，第2行副标题" />
+          </el-form-item>
           <el-form-item label="下单须知">
             <el-input
               v-model="设置表单.laundry_notice"
@@ -1034,7 +1044,9 @@ const 设置表单 = ref({
   jz_popup2_bg_color: '#ffffff', jz_popup2_btn_text: '我已知晓', jz_popup2_btn_color: '#e54635',
   jz_popup2_btn_size: 'large', jz_popup2_auto_close: 0,
   // 洗衣
-  laundry_banner_url: '', laundry_notice: '', laundry_product_name: '任洗一件',
+  laundry_banner_url: '', laundry_title: '优米拉洗衣服务',
+  laundry_subtitle1: '京东快递免费取送 专业洗护', laundry_subtitle2: '',
+  laundry_notice: '', laundry_product_name: '任洗一件',
   laundry_product_price: 0, laundry_service_content: '', laundry_auto_order_enabled: '0',
   laundry_order_type: '50', laundry_api_url: '', laundry_app_id: '', laundry_app_secret: '',
   laundry_tenant_id: '', laundry_token_expire_at: '0',
@@ -1153,6 +1165,9 @@ const 加载设置 = async () => {
         jz_popup2_auto_close: parseInt(数据.jz_popup2_auto_close) || 0,
         // 洗衣
         laundry_banner_url: 数据.laundry_banner_url || '',
+        laundry_title: 数据.laundry_title || '优米拉洗衣服务',
+        laundry_subtitle1: 数据.laundry_subtitle1 || '京东快递免费取送 专业洗护',
+        laundry_subtitle2: 数据.laundry_subtitle2 || '',
         laundry_notice: 数据.laundry_notice || '',
         laundry_product_name: 数据.laundry_product_name || '任洗一件',
         laundry_product_price: parseInt(数据.laundry_product_price) || 0,

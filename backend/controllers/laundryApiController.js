@@ -43,6 +43,9 @@ const 验证洗衣卡密 = async (req, res) => {
         product_name: 结果.卡密.service_type || 设置对象.laundry_product_name || '任洗一件',
         product_price: parseInt(设置对象.laundry_product_price) || 0,
         banner_url: 设置对象.laundry_banner_url || '',
+        title: 设置对象.laundry_title || '优米拉洗衣服务',
+        subtitle1: 设置对象.laundry_subtitle1 || '京东快递免费取送 专业洗护',
+        subtitle2: 设置对象.laundry_subtitle2 || '',
         notice: 设置对象.laundry_notice || '',
         service_content: 安全解析JSON(设置对象.laundry_service_content, []),
         popup_config: {
