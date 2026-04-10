@@ -40,6 +40,16 @@ const Card = 数据库连接.define('Card', {
     defaultValue: 0,
     comment: '状态：0未使用 1已使用 2已失效',
   },
+  used_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: '卡密使用时间（客户提交订单时记录）',
+  },
+  invalidated_at: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    comment: '卡密作废时间（手动作废或SUP撤单时记录）',
+  },
   created_by: {
     type: DataTypes.INTEGER,
     allowNull: true,
@@ -120,6 +130,11 @@ const Card = 数据库连接.define('Card', {
     type: DataTypes.STRING(64),
     allowNull: true,
     comment: '奇所平台订单号（用于撤单和查单）',
+  },
+  ecommerce_order_no: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: '电商平台订单号（从阿奇索attach字段解析，如 P791381403338389551-00）',
   },
   sup_status: {
     type: DataTypes.TINYINT,

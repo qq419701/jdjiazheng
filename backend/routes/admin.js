@@ -750,7 +750,7 @@ router.post('/topup-orders/:id/confirm-refund', 验证Token, async (req, res) =>
     // 作废对应卡密
     if (订单.card_code) {
       const { Card } = require('../models');
-      await Card.update({ status: 2 }, { where: { code: 订单.card_code } });
+      await Card.update({ status: 2, invalidated_at: new Date() }, { where: { code: 订单.card_code } });
     }
 
     // 更新订单状态为已取消
@@ -1068,6 +1068,8 @@ router.get('/sup-logs', 验证Token, async (req, res) => {
       log_type,
       result,
       order_no,
+      ecommerce_order_no,
+      card_code,
       start_date,
       end_date,
     } = req.query;
@@ -1076,6 +1078,8 @@ router.get('/sup-logs', 验证Token, async (req, res) => {
     if (log_type) 条件.log_type = log_type;
     if (result) 条件.result = result;
     if (order_no) 条件.order_no = { [Op.like]: `%${order_no}%` };
+    if (ecommerce_order_no) 条件.ecommerce_order_no = { [Op.like]: `%${ecommerce_order_no}%` };
+    if (card_code) 条件.card_code = { [Op.like]: `%${card_code.toUpperCase()}%` };
     if (start_date || end_date) {
       条件.created_at = {};
       // 使用 YYYY-MM-DD 格式安全解析日期，防止非法日期字符串导致查询异常

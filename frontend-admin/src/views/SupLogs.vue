@@ -52,6 +52,12 @@
         <el-form-item label="订单号">
           <el-input v-model="筛选条件.order_no" placeholder="阿奇所订单号" clearable style="width:180px" @keyup.enter="查询" />
         </el-form-item>
+        <el-form-item label="电商单号">
+          <el-input v-model="筛选条件.ecommerce_order_no" placeholder="电商平台订单号" clearable style="width:200px" @keyup.enter="查询" />
+        </el-form-item>
+        <el-form-item label="卡密">
+          <el-input v-model="筛选条件.card_code" placeholder="关联卡密码" clearable style="width:160px" @keyup.enter="查询" />
+        </el-form-item>
         <el-form-item label="日期">
           <el-date-picker v-model="筛选条件.dateRange" type="daterange" range-separator="至"
             start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD" style="width:230px" />
@@ -66,6 +72,9 @@
     <!-- 表格 -->
     <el-card shadow="never">
       <el-table :data="日志列表" stripe border v-loading="加载中" style="width:100%">
+        <el-table-column label="时间" width="165">
+          <template #default="{ row }">{{ 格式化时间(row.created_at) }}</template>
+        </el-table-column>
         <el-table-column prop="id" label="ID" width="65" />
         <el-table-column label="类型" width="110">
           <template #default="{ row }">
@@ -79,6 +88,8 @@
             </el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="ecommerce_order_no" label="电商平台单号" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="card_code" label="卡密" width="150" show-overflow-tooltip />
         <el-table-column prop="order_no" label="阿奇所订单号" width="155" show-overflow-tooltip />
         <el-table-column prop="out_trade_no" label="outTradeNo" width="120" show-overflow-tooltip />
         <el-table-column prop="product_no" label="商品编号" width="90" />
@@ -104,9 +115,6 @@
           </template>
         </el-table-column>
         <el-table-column prop="error_msg" label="错误信息" min-width="140" show-overflow-tooltip />
-        <el-table-column label="时间" width="165">
-          <template #default="{ row }">{{ 格式化时间(row.created_at) }}</template>
-        </el-table-column>
         <el-table-column label="操作" width="75" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="查看详情(row)">详情</el-button>
@@ -130,7 +138,9 @@
           <el-descriptions-item label="结果">{{ 当前详情.result }}</el-descriptions-item>
           <el-descriptions-item label="响应Code">{{ 当前详情.status_code }}</el-descriptions-item>
           <el-descriptions-item label="阿奇所订单号">{{ 当前详情.order_no || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="电商平台单号">{{ 当前详情.ecommerce_order_no || '-' }}</el-descriptions-item>
           <el-descriptions-item label="outTradeNo">{{ 当前详情.out_trade_no || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="关联卡密">{{ 当前详情.card_code || '-' }}</el-descriptions-item>
           <el-descriptions-item label="商品编号">{{ 当前详情.product_no || '-' }}</el-descriptions-item>
           <el-descriptions-item label="购买数量">{{ 当前详情.buy_num || '-' }}</el-descriptions-item>
           <el-descriptions-item label="订单成本">{{ 当前详情.order_cost != null ? '¥' + parseFloat(当前详情.order_cost).toFixed(4) : '-' }}</el-descriptions-item>
@@ -164,7 +174,7 @@ const 弹窗显示 = ref(false)
 const 当前详情 = ref(null)
 const stats = ref({ todayTotal: 0, todaySuccess: 0, todayPurchase: 0, todayCancel: 0 })
 
-const 筛选条件 = ref({ log_type: '', result: '', order_no: '', dateRange: [] })
+const 筛选条件 = ref({ log_type: '', result: '', order_no: '', ecommerce_order_no: '', card_code: '', dateRange: [] })
 
 const 类型名称 = {
   createPurchase: '📦 卡密下单',
@@ -195,6 +205,8 @@ const 查询 = async () => {
     if (筛选条件.value.log_type) params.log_type = 筛选条件.value.log_type
     if (筛选条件.value.result) params.result = 筛选条件.value.result
     if (筛选条件.value.order_no) params.order_no = 筛选条件.value.order_no
+    if (筛选条件.value.ecommerce_order_no) params.ecommerce_order_no = 筛选条件.value.ecommerce_order_no
+    if (筛选条件.value.card_code) params.card_code = 筛选条件.value.card_code
     if (筛选条件.value.dateRange?.[0]) params.start_date = 筛选条件.value.dateRange[0]
     if (筛选条件.value.dateRange?.[1]) params.end_date = 筛选条件.value.dateRange[1]
     const res = await 获取SUP日志列表API(params)
@@ -217,7 +229,7 @@ const 加载统计 = async () => {
 }
 
 const 重置 = () => {
-  筛选条件.value = { log_type: '', result: '', order_no: '', dateRange: [] }
+  筛选条件.value = { log_type: '', result: '', order_no: '', ecommerce_order_no: '', card_code: '', dateRange: [] }
   当前页.value = 1
   查询()
 }

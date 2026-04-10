@@ -18,10 +18,20 @@ const SupLog = 数据库连接.define('SupLog', {
     allowNull: true,
     comment: '阿奇所订单号（对应cards.agiso_order_no）',
   },
+  ecommerce_order_no: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: '电商平台订单号（从阿奇索attach字段解析，如 P791381403338389551-00）',
+  },
   out_trade_no: {
     type: DataTypes.STRING(64),
     allowNull: true,
     comment: '我方outTradeNo（cards.id字符串）',
+  },
+  card_code: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    comment: '关联卡密码（便于按卡密搜索日志）',
   },
   product_no: {
     type: DataTypes.STRING(20),

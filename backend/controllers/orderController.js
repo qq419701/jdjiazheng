@@ -438,7 +438,7 @@ const 确认退款完成 = async (req, res) => {
     if (订单.card_code) {
       const 卡密 = await Card.findOne({ where: { code: 订单.card_code } });
       if (卡密) {
-        await 卡密.update({ status: 2 });
+        await 卡密.update({ status: 2, invalidated_at: new Date() });
         卡密作废成功 = true;
       }
     }
