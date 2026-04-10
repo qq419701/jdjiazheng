@@ -886,6 +886,11 @@
             <div class="字段说明">奇所分配的平台会员ID，用于校验下单方身份</div>
           </el-form-item>
 
+          <el-form-item label="撤单拒绝凭证图片">
+            <el-input v-model="设置表单.agiso_refuse_proof" placeholder="撤单失败时返回的凭证图片URL（.jpg/.png/.gif，不超过127k）" />
+            <div class="字段说明">撤单失败（cancelStatus=30）时必须返回的凭证图片URL，须为可公开访问的图片链接</div>
+          </el-form-item>
+
           <el-form-item label="SUP商品配置">
             <div style="font-size: 13px; color: #606266">
               商品管理已独立为单独页面，请前往
@@ -1038,6 +1043,7 @@ const 设置表单 = ref({
   // SUP
   agiso_sup_enabled: '0', agiso_app_id: '', agiso_app_secret: '',
   agiso_merchant_key: '', agiso_user_id: '', agiso_products: '',
+  agiso_refuse_proof: '',
 })
 
 // 洗衣回调地址（自动拼接 site_url + /api/laundry/callback）
@@ -1198,6 +1204,7 @@ const 加载设置 = async () => {
         agiso_merchant_key: 数据.agiso_merchant_key || '',
         agiso_user_id: 数据.agiso_user_id || '',
         agiso_products: 数据.agiso_products || '',
+        agiso_refuse_proof: 数据.agiso_refuse_proof || '',
       }
     }
   } finally {
