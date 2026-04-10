@@ -634,19 +634,34 @@ const 作废卡密 = async (行) => {
 }
 
 const 删除卡密 = async (行) => {
-  await ElMessageBox.confirm(`确认删除卡密 ${行.code}？`, '确认删除', { type: 'warning' })
+  // 已使用的卡密直接提示，不发请求
+  if (行.status === 1) {
+    ElMessage.warning('已使用的卡密不能删除')
+    return
+  }
   try {
+    await ElMessageBox.confirm(`确认删除卡密 ${行.code}？`, '确认删除', { type: 'warning' })
+  } catch { return }
+
+  try {
+    let 结果
     if (行.business_type === 'xiyifu') {
-      await 删除洗衣卡密API(行.id)
+      结果 = await 删除洗衣卡密API(行.id)
     } else if (行.business_type === 'topup') {
-      await 删除充值卡密API(行.id)
+      结果 = await 删除充值卡密API(行.id)
     } else {
-      await 删除卡密API(行.id)
+      结果 = await 删除卡密API(行.id)
     }
-    ElMessage.success('卡密已删除')
-    搜索卡密()
+    // 检查响应 code
+    const data = 结果?.data ?? 结果
+    if (data?.code === 1) {
+      ElMessage.success('卡密已删除')
+      搜索卡密()
+    } else {
+      ElMessage.error(data?.message || '删除失败')
+    }
   } catch {
-    ElMessage.error('删除失败')
+    ElMessage.error('删除请求失败，请重试')
   }
 }
 
@@ -770,20 +785,28 @@ const 批量删除卡密 = async () => {
     let 成功数 = 0
     let 跳过数 = 0
     for (const 卡密 of 卡密选中列表.value) {
+      // 已使用的卡密直接跳过，不发请求
+      if (卡密.status === 1) {
+        跳过数++
+        continue
+      }
       try {
+        let 结果
         if (卡密.business_type === 'xiyifu') {
-          await 删除洗衣卡密API(卡密.id)
+          结果 = await 删除洗衣卡密API(卡密.id)
         } else if (卡密.business_type === 'topup') {
-          await 删除充值卡密API(卡密.id)
+          结果 = await 删除充值卡密API(卡密.id)
         } else {
-          await 删除卡密API(卡密.id)
+          结果 = await 删除卡密API(卡密.id)
         }
-        成功数++
+        const data = 结果?.data ?? 结果
+        if (data?.code === 1) 成功数++
+        else 跳过数++
       } catch {
         跳过数++
       }
     }
-    ElMessage.success(`删除完成：成功 ${成功数} 条${跳过数 > 0 ? `，跳过 ${跳过数} 条（已使用）` : ''}`)
+    ElMessage.success(`删除完成：成功 ${成功数} 条${跳过数 > 0 ? `，跳过 ${跳过数} 条（已使用或失败）` : ''}`)
     搜索卡密()
     加载统计()
   } catch {}

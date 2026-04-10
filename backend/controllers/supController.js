@@ -282,13 +282,17 @@ const 卡密下单 = async (req, res) => {
         },
       ];
       const 加密结果 = 加密卡密(卡密信息, appSecret);
-      // 查询关联商品以获取成本价
+      // 查询关联商品以获取成本价（先按 product_id，兜底按 productNo）
       let orderCost = 0;
+      let 关联商品 = null;
       if (已有卡密.product_id) {
-        const 关联商品 = await Product.findByPk(已有卡密.product_id);
-        if (关联商品) {
-          orderCost = Number(parseFloat((关联商品.cost_price || 0) * (parseInt(buyNum) || 1)).toFixed(4));
-        }
+        关联商品 = await Product.findByPk(已有卡密.product_id);
+      }
+      if (!关联商品) {
+        关联商品 = await Product.findOne({ where: { product_no: productNo } });
+      }
+      if (关联商品) {
+        orderCost = Number(parseFloat((关联商品.cost_price || 0) * (parseInt(buyNum) || 1)).toFixed(4));
       }
       const 重复响应数据 = {
         orderNo: orderNo,
@@ -337,8 +341,8 @@ const 卡密下单 = async (req, res) => {
     // 只有一个请求能成功更新，其他请求得到 affectedRows=0
     let 目标卡密 = null;
     await 数据库连接.transaction(async (t) => {
-      // 先在事务内查找可用卡密（加行锁），直接用商品ID关联精准匹配
-      const 候选卡密 = await Card.findOne({
+      // 第一级：精确匹配 product_id（正常情况）
+      let 候选卡密 = await Card.findOne({
         where: {
           product_id: 商品.id,
           status: 0,
@@ -348,15 +352,31 @@ const 卡密下单 = async (req, res) => {
         transaction: t,
       });
 
+      // 第二级：business_type + service_type + service_hours 匹配（旧接口生成的卡密 product_id 为 null）
+      if (!候选卡密) {
+        const 条件2 = { status: 0, agiso_order_no: null, business_type: 商品.business_type, product_id: null };
+        if (商品.service_type) 条件2.service_type = 商品.service_type;
+        if (商品.service_hours > 0) 条件2.service_hours = 商品.service_hours;
+        候选卡密 = await Card.findOne({ where: 条件2, lock: t.LOCK.UPDATE, transaction: t });
+      }
+
+      // 第三级：只按 business_type 匹配（最宽松兜底，product_id 为 null 的旧卡密）
+      if (!候选卡密 && 商品.business_type) {
+        候选卡密 = await Card.findOne({
+          where: { status: 0, agiso_order_no: null, business_type: 商品.business_type, product_id: null },
+          lock: t.LOCK.UPDATE, transaction: t,
+        });
+      }
+
       if (!候选卡密) return; // 库存不足
 
-      // 在事务内更新（原子操作）
+      // 在事务内更新（原子操作），同时修正 product_id 关联
       await 候选卡密.update({
         status: callbackUrl ? 0 : 1, // 异步模式下暂不标记已使用，等回调成功后再更新；同步模式直接标记已使用
         agiso_order_no: orderNo,
         sup_status: callbackUrl ? 0 : 1,  // 异步：0=未发货（等待回调），同步：1=已发货
         sup_product_no: productNo,
-        product_id: 商品.id,
+        product_id: 商品.id,  // 修正关联（兜底匹配时补齐 product_id）
       }, { transaction: t });
 
       目标卡密 = 候选卡密;
@@ -592,7 +612,7 @@ const 查询订单 = async (req, res) => {
     // sup_status: 0=未发货, 1=已发货, 2=已撤单
     let orderStatus;
     let failCode = 0;
-    let failReason = '';
+    let failReason = null;
     if (卡密记录.sup_status === 1) {
       orderStatus = 20; // 成功
     } else if (卡密记录.sup_status === 2) {
@@ -654,7 +674,7 @@ const 查询订单 = async (req, res) => {
 
     res.json({
       code: 200,
-      message: '接口调用成功',
+      message: null,
       data: 查询响应数据,
     });
   } catch (错误) {
