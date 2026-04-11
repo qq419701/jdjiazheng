@@ -337,6 +337,27 @@ router.post('/time-rules', 验证Token, 新增规则);
 router.put('/time-rules/:id', 验证Token, 更新规则);
 router.delete('/time-rules/:id', 验证Token, 删除规则);
 
+// 公开接口：获取登录页所需的站点配置（无需鉴权，供登录页加载标题）
+router.get('/public/site-config', async (req, res) => {
+  try {
+    const { Setting } = require('../models');
+    const 列表 = await Setting.findAll({
+      where: { key_name: ['admin_site_title', 'admin_site_name'] },
+    });
+    const 配置 = {};
+    列表.forEach(s => { 配置[s.key_name] = s.key_value; });
+    res.json({
+      code: 1,
+      data: {
+        admin_site_title: 配置.admin_site_title || '京东家政代下单系统',
+        admin_site_name: 配置.admin_site_name || '京东代下单系统',
+      },
+    });
+  } catch {
+    res.json({ code: 1, data: { admin_site_title: '京东家政代下单系统', admin_site_name: '京东代下单系统' } });
+  }
+});
+
 // 系统设置
 router.get('/settings', 验证Token, 获取所有设置);
 router.put('/settings', 验证Token, 批量更新设置);
