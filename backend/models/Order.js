@@ -71,7 +71,7 @@ const Order = 数据库连接.define('Order', {
   status: {
     type: DataTypes.TINYINT,
     defaultValue: 0,
-    comment: '状态：0待处理 1下单中 2已下单 3失败 4已取消 5安排中 6预约完成 7预约失败',
+    comment: '状态：0待处理 1处理中 2服务中 3已完成 4已取消 5失败 6拒绝退款(SUP拒绝撤单)',
   },
   jd_order_id: {
     type: DataTypes.STRING(50),

@@ -1108,9 +1108,16 @@ const 撤销订单 = async (req, res) => {
       });
 
       if (关联订单) {
-        // 预约完成（status>=6）：不允许撤单
-        if (关联订单.status >= 6) {
-          const 拒绝原因 = '家政服务已预约完成，无法撤单';
+        // 服务中（status=2，已成功对接京东预约）：不允许撤单，返回凭证并标记为拒绝退款
+        if (关联订单.status === 2) {
+          const 拒绝原因 = '家政服务已预约进行中，无法撤单';
+          const 拒绝日志 = 安全解析JSON(关联订单.order_log, []);
+          拒绝日志.push({
+            时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+            操作: `阿奇所平台撤单被拒绝：${拒绝原因}，已返回拒绝凭证`,
+            状态: 'error',
+          });
+          await 关联订单.update({ status: 6, order_log: JSON.stringify(拒绝日志) });
           try {
             const reqCopy = { ...req.body };
             delete reqCopy.sign;
@@ -1140,7 +1147,7 @@ const 撤销订单 = async (req, res) => {
             },
           });
         }
-        // 其他状态（待处理/下单中/失败等）：允许撤单，取消订单
+        // 其他状态（待处理/处理中/失败等）：允许撤单，取消订单
         const 现有日志 = 安全解析JSON(关联订单.order_log, []);
         现有日志.push({
           时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
@@ -1153,25 +1160,6 @@ const 撤销订单 = async (req, res) => {
       // 将卡密状态设为已失效，sup_status 设为已撤单
       await 卡密记录.update({ status: 2, sup_status: 2, invalidated_at: new Date() });
 
-      // 撤单成功后，自动将关联的预约订单改为"退款处理中(8)"
-      try {
-        const 更新条数 = await Order.update(
-          { status: 8 },
-          {
-            where: {
-              card_code: 卡密记录.code,
-              status: { [Op.in]: [0, 1, 2, 5] },
-            },
-          }
-        );
-        if (更新条数[0] > 0) {
-          console.log(`SUP撤单自动退款：卡密 ${卡密记录.code} 关联的 ${更新条数[0]} 个订单已标记为退款处理中`);
-        }
-      } catch (退款错误) {
-        console.error('SUP撤单自动更新订单状态出错:', 退款错误);
-        // 不影响撤单结果返回
-      }
-
     } else if (业务类型 === 'xiyifu') {
       // ===== 洗衣业务 =====
       const 关联订单 = await Order.findOne({
@@ -1179,9 +1167,16 @@ const 撤销订单 = async (req, res) => {
       });
 
       if (关联订单) {
-        // 已在鲸蚁系统处理中（有laundry_order_id且laundry_status不为空/已取消）：拒绝撤单
-        if (关联订单.laundry_order_id && 关联订单.laundry_status && !['已取消'].includes(关联订单.laundry_status)) {
-          const 拒绝原因 = `洗衣服务已在鲸蚁系统处理（${关联订单.laundry_status}），无法撤单`;
+        // 服务中（status=2，鲸蚁已受理）：不允许撤单，返回凭证并标记为拒绝退款
+        if (关联订单.status === 2) {
+          const 拒绝原因 = `洗衣服务处理中（${关联订单.laundry_status || '进行中'}），无法撤单`;
+          const 拒绝日志 = 安全解析JSON(关联订单.order_log, []);
+          拒绝日志.push({
+            时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+            操作: `阿奇所平台撤单被拒绝：${拒绝原因}，已返回拒绝凭证`,
+            状态: 'error',
+          });
+          await 关联订单.update({ status: 6, order_log: JSON.stringify(拒绝日志) });
           try {
             const reqCopy = { ...req.body };
             delete reqCopy.sign;
@@ -1212,7 +1207,7 @@ const 撤销订单 = async (req, res) => {
           });
         }
 
-        // 如果已推送到鲸蚁（有 laundry_order_id 但已取消状态），尝试通知鲸蚁取消
+        // 如果已推送到鲸蚁（有 laundry_order_id），尝试通知鲸蚁取消
         if (关联订单.laundry_order_id) {
           try {
             const { 同步订单状态 } = require('../services/laundryApiService');
@@ -1236,25 +1231,6 @@ const 撤销订单 = async (req, res) => {
 
       // 将卡密状态设为已失效，sup_status 设为已撤单
       await 卡密记录.update({ status: 2, sup_status: 2, invalidated_at: new Date() });
-
-      // 撤单成功后，自动将关联的预约订单改为"退款处理中(8)"
-      try {
-        const 更新条数 = await Order.update(
-          { status: 8 },
-          {
-            where: {
-              card_code: 卡密记录.code,
-              status: { [Op.in]: [0, 1, 2, 5] },
-            },
-          }
-        );
-        if (更新条数[0] > 0) {
-          console.log(`SUP撤单自动退款：卡密 ${卡密记录.code} 关联的 ${更新条数[0]} 个订单已标记为退款处理中`);
-        }
-      } catch (退款错误) {
-        console.error('SUP撤单自动更新订单状态出错:', 退款错误);
-        // 不影响撤单结果返回
-      }
 
     } else if (业务类型 === 'topup') {
       // ===== 充值业务 =====
