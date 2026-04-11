@@ -183,7 +183,7 @@
             </el-table-column>
             <el-table-column prop="service_type" label="服务类型" width="100" show-overflow-tooltip />
             <el-table-column prop="card_code" label="卡密" width="150" show-overflow-tooltip v-if="false" />
-            <el-table-column label="电商单号" width="170" show-overflow-tooltip>
+            <el-table-column label="电商单号" width="170" show-overflow-tooltip v-if="false">
               <template #default="{ row }">
                 <span v-if="row.ecommerce_order_no" style="color:#409eff;font-size:12px;font-weight:500">{{ row.ecommerce_order_no }}</span>
                 <span v-else style="color:#bbb;font-size:12px">-</span>
@@ -292,11 +292,11 @@
                 <span v-else style="color:#bbb;font-size:12px">-</span>
               </template>
             </el-table-column>
-            <el-table-column label="取件快递单号" width="140" show-overflow-tooltip>
+            <el-table-column label="取件快递单号" width="140" show-overflow-tooltip v-if="false">
               <template #default="{ row }">{{ row.express_order_id || '-' }}</template>
             </el-table-column>
             <el-table-column prop="card_code" label="卡密" width="150" show-overflow-tooltip v-if="false" />
-            <el-table-column label="电商单号" width="170" show-overflow-tooltip>
+            <el-table-column label="电商单号" width="170" show-overflow-tooltip v-if="false">
               <template #default="{ row }">
                 <span v-if="row.ecommerce_order_no" style="color:#409eff;font-size:12px;font-weight:500">{{ row.ecommerce_order_no }}</span>
                 <span v-else style="color:#bbb;font-size:12px">-</span>
@@ -428,7 +428,7 @@
               </template>
             </el-table-column>
             <el-table-column prop="card_code" label="卡密" width="150" show-overflow-tooltip v-if="false" />
-            <el-table-column label="电商单号" width="170" show-overflow-tooltip>
+            <el-table-column label="电商单号" width="170" show-overflow-tooltip v-if="false">
               <template #default="{ row }">
                 <span v-if="row.ecommerce_order_no" style="color:#409eff;font-size:12px;font-weight:500">{{ row.ecommerce_order_no }}</span>
                 <span v-else style="color:#bbb;font-size:12px">-</span>
@@ -1092,7 +1092,7 @@ const 打开前端预览 = async (businessType) => {
     xiyifu: 获取洗衣预览卡密API,
     topup: 获取充值预览卡密API,
   }
-  const pathMap = { jiazheng: '/', xiyifu: '/xi/', topup: '/cz/' }
+  const pathMap = { jiazheng: '/jz/', xiyifu: '/xi/', topup: '/cz/' }
   try {
     const 结果 = await apiMap[businessType]()
     if (结果.code === 1 && 结果.data?.code) {
