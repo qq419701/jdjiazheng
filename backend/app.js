@@ -109,8 +109,8 @@ const authMe限流 = rateLimit({
 
 // 后台管理接口（登录接口独立限流 + 所有管理接口通用限流）
 // 注意：/admin/api 必须在 /api 之前注册，避免路由冲突
-// auth/me 注册在通用限流之前，使用独立宽松限流
-app.use('/admin/api/auth/me', authMe限流);
+// auth/me 使用独立宽松限流，单独注册在通用限流之前（含路由处理器，确保请求不再继续走通用限流）
+app.use('/admin/api/auth/me', authMe限流, adminRouter);
 app.use('/admin/api/login', 登录限流);
 app.use('/admin/api', 管理API限流, adminRouter);
 
