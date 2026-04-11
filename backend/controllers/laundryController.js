@@ -313,12 +313,12 @@ const 查询洗衣物流 = async (req, res) => {
 
     const { 查询物流轨迹 } = require('../services/laundryApiService');
 
-    let pickup_route_数据 = null;
-    let return_route_数据 = null;
+    let pickup_route_data = null;
+    let return_route_data = null;
 
     if (取件单号) {
       try {
-        pickup_route_数据 = await 查询物流轨迹(取件单号);
+        pickup_route_data = await 查询物流轨迹(取件单号);
       } catch (e) {
         console.error('查取件物流失败:', e.message);
       }
@@ -326,7 +326,7 @@ const 查询洗衣物流 = async (req, res) => {
 
     if (回寄单号) {
       try {
-        return_route_数据 = await 查询物流轨迹(回寄单号);
+        return_route_data = await 查询物流轨迹(回寄单号);
       } catch (e) {
         console.error('查回寄物流失败:', e.message);
       }
@@ -338,19 +338,19 @@ const 查询洗衣物流 = async (req, res) => {
       data: {
         // 兼容旧版字段（取件快递信息）
         express_waybill_code: 取件单号 || '',
-        collectorName: pickup_route_数据?.collectorName || '',
-        collectorPhone: pickup_route_数据?.collectorPhone || '',
-        routes: pickup_route_数据?.routes || [],
+        collectorName: pickup_route_data?.collectorName || '',
+        collectorPhone: pickup_route_data?.collectorPhone || '',
+        routes: pickup_route_data?.routes || [],
         // 新增：结构化双段数据
         pickup_route: {
           waybillCode: 取件单号 || '',
-          collectorName: pickup_route_数据?.collectorName || '',
-          collectorPhone: pickup_route_数据?.collectorPhone || '',
-          routes: pickup_route_数据?.routes || [],
+          collectorName: pickup_route_data?.collectorName || '',
+          collectorPhone: pickup_route_data?.collectorPhone || '',
+          routes: pickup_route_data?.routes || [],
         },
         return_route: {
           waybillCode: 回寄单号 || '',
-          routes: return_route_数据?.routes || [],
+          routes: return_route_data?.routes || [],
         },
       },
     });

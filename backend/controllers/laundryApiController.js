@@ -24,7 +24,9 @@ const 验证洗衣卡密 = async (req, res) => {
             attributes: ['order_no'],
           })
           if (关联订单) order_no = 关联订单.order_no
-        } catch {}
+        } catch (e) {
+          console.error('查询关联订单号失败:', e.message)
+        }
         return res.json({ code: 2, message: '卡密已被使用', data: { used: true, card_code: 结果.卡密?.code || '', order_no } });
       }
       if (结果.原因 === '卡密已失效') {
