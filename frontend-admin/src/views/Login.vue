@@ -70,7 +70,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
-import { 登录API, 获取验证码API, 获取设置API, 获取站点配置API } from '../api/index'
+import { 登录API, 获取验证码API, 获取站点配置API } from '../api/index'
 
 const router = useRouter()
 const authStore = useAuthStore()

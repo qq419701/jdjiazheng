@@ -340,9 +340,10 @@ router.delete('/time-rules/:id', 验证Token, 删除规则);
 // 公开接口：获取登录页所需的站点配置（无需鉴权，供登录页加载标题）
 router.get('/public/site-config', async (req, res) => {
   try {
+    const { Op } = require('sequelize');
     const { Setting } = require('../models');
     const 列表 = await Setting.findAll({
-      where: { key_name: ['admin_site_title', 'admin_site_name'] },
+      where: { key_name: { [Op.in]: ['admin_site_title', 'admin_site_name'] } },
     });
     const 配置 = {};
     列表.forEach(s => { 配置[s.key_name] = s.key_value; });
@@ -353,7 +354,8 @@ router.get('/public/site-config', async (req, res) => {
         admin_site_name: 配置.admin_site_name || '京东代下单系统',
       },
     });
-  } catch {
+  } catch (错误) {
+    console.error('[public/site-config] 获取站点配置出错:', 错误);
     res.json({ code: 1, data: { admin_site_title: '京东家政代下单系统', admin_site_name: '京东代下单系统' } });
   }
 });
