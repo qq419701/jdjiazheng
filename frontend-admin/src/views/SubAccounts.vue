@@ -179,8 +179,13 @@ const 格式化时间 = (isoStr) => {
   return fmt.format(d).replace(', ', ' ')
 }
 
+const 有效权限列表 = Object.keys(权限模块标签)
+
 const 解析权限 = (permissionsJson) => {
-  try { return JSON.parse(permissionsJson || '[]') } catch { return [] }
+  try {
+    const list = JSON.parse(permissionsJson || '[]')
+    return list.filter(k => 有效权限列表.includes(k))
+  } catch { return [] }
 }
 
 const 加载中 = ref(false)
