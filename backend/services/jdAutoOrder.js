@@ -75,7 +75,7 @@ const 执行自动下单 = async (订单ID) => {
   // 获取可用账号
   使用账号 = await 获取可用账号();
   if (!使用账号) {
-    await 订单.update({ status: 3, fail_reason: '没有可用的京东账号' });
+    await 订单.update({ status: 5, fail_reason: '没有可用的京东账号' });
     await 添加操作日志(订单ID, '没有可用的京东账号', 'error');
     return { 成功: false, 原因: '没有可用的京东账号' };
   }
@@ -175,7 +175,7 @@ const 执行自动下单 = async (订单ID) => {
       if (重试次数 >= 最大重试) {
         // 最终失败
         await 订单.update({
-          status: 3,
+          status: 5,
           fail_reason: `自动下单失败（已重试${最大重试}次）：${错误.message}`,
         });
 

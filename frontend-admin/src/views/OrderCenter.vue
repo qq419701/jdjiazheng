@@ -95,6 +95,21 @@
       </template>
     </el-dialog>
 
+    <!-- 拒绝退款预警横幅 -->
+    <el-alert
+      v-if="拒绝退款订单数 > 0"
+      :title="`⚠️ 当前有 ${拒绝退款订单数} 个订单被SUP拒绝退款，需客服人工处理`"
+      type="warning"
+      :closable="false"
+      show-icon
+      style="margin-bottom:12px; cursor:pointer;"
+      @click="快速筛选拒绝退款订单"
+    >
+      <template #default>
+        <span>点击此处快速筛选所有拒绝退款订单</span>
+      </template>
+    </el-alert>
+
     <!-- 自定义 Tab 切换栏 -->
     <div class="订单Tab栏">
       <div
@@ -125,14 +140,12 @@
             <el-form-item label="状态">
               <el-select v-model="jz搜索条件.status" clearable placeholder="全部状态" style="width:130px">
                 <el-option label="待处理" value="0" />
-                <el-option label="下单中" value="1" />
-                <el-option label="已下单" value="2" />
-                <el-option label="失败" value="3" />
+                <el-option label="处理中" value="1" />
+                <el-option label="服务中" value="2" />
+                <el-option label="已完成" value="3" />
                 <el-option label="已取消" value="4" />
-                <el-option label="安排中" value="5" />
-                <el-option label="预约完成" value="6" />
-                <el-option label="预约失败" value="7" />
-                <el-option label="退款处理中" value="8" />
+                <el-option label="失败" value="5" />
+                <el-option label="拒绝退款" value="6" />
               </el-select>
             </el-form-item>
             <el-form-item label="日期范围">
@@ -147,7 +160,7 @@
 
         <!-- 家政表格 -->
         <el-card>
-          <el-table :data="jz订单列表" v-loading="jz加载中" stripe>
+          <el-table :data="jz订单列表" v-loading="jz加载中" stripe :row-class-name="获取订单行样式">
             <el-table-column prop="id" label="ID" width="60" />
             <el-table-column label="创建时间" width="145">
               <template #default="{ row }">{{ 格式化北京时间(row.created_at) }}</template>
@@ -208,7 +221,7 @@
             <el-table-column label="状态" width="130">
               <template #default="{ row }">
                 <el-tag :type="jz获取状态类型(row.status)" size="small">{{ jz获取状态文字(row.status) }}</el-tag>
-                <el-button v-if="(row.status === 3 || row.status === 7) && row.fail_reason" link size="small" style="color:#f56c6c;font-size:11px;padding:0 2px" @click="查看家政失败原因(row)">查看原因</el-button>
+                <el-button v-if="row.status === 5 && row.fail_reason" link size="small" style="color:#f56c6c;font-size:11px;padding:0 2px" @click="查看家政失败原因(row)">查看原因</el-button>
               </template>
             </el-table-column>
             <!-- 操作列 -->
@@ -216,14 +229,14 @@
               <template #default="{ row }">
                 <el-button size="small" @click="jz查看详情(row.id)">详情</el-button>
                 <el-button size="small" type="info" plain @click="打开备注弹窗(row, 'jiazheng')">备注</el-button>
-                <el-button v-if="row.status === 0 || row.status === 3 || row.status === 7" size="small" type="primary" @click="jz触发下单(row.id)">自动下单</el-button>
-                <el-button v-if="row.status === 0" size="small" type="warning" @click="jz手动标记(row, 5)">安排中</el-button>
-                <el-button v-if="row.status === 5" size="small" type="success" @click="jz手动标记(row, 6)">完成</el-button>
-                <el-button v-if="row.status === 0 || row.status === 5" size="small" type="danger" plain @click="jz标记预约失败(row)">预约失败</el-button>
+                <el-button v-if="row.status === 0 || row.status === 5" size="small" type="primary" @click="jz触发下单(row.id)">自动下单</el-button>
+                <el-button v-if="row.status === 0 || row.status === 1" size="small" type="success" @click="jz手动标记(row, 2)">服务中</el-button>
+                <el-button v-if="row.status === 2" size="small" type="success" @click="jz手动标记(row, 3)">完成</el-button>
+                <el-button v-if="row.status === 0 || row.status === 1 || row.status === 2" size="small" type="danger" plain @click="jz标记预约失败(row)">标记失败</el-button>
                 <el-button v-if="row.status === 0" size="small" type="info" plain @click="jz标记取消(row.id)">取消</el-button>
-                <el-button v-if="row.status === 3 || row.status === 7" size="small" type="warning" plain @click="jz执行重置(row.id)">重置</el-button>
-                <el-button v-if="row.status !== 4 && row.status !== 8" size="small" type="warning" @click="jz申请退款(row)">申请退款</el-button>
-                <el-button v-if="row.status === 8" size="small" type="danger" @click="jz确认退款完成(row)">确认退款完成</el-button>
+                <el-button v-if="row.status === 5" size="small" type="warning" plain @click="jz执行重置(row.id)">重置</el-button>
+                <el-button v-if="row.status !== 4 && row.status !== 6" size="small" type="warning" @click="jz申请退款(row)">申请退款</el-button>
+                <el-button v-if="row.status === 6" size="small" type="danger" @click="jz确认退款完成(row)">确认退款完成</el-button>
                 <el-button size="small" @click="jz复制订单(row)">复制</el-button>
               </template>
             </el-table-column>
@@ -247,12 +260,12 @@
             <el-form-item label="状态">
               <el-select v-model="xi搜索条件.status" clearable placeholder="全部状态" style="width:130px">
                 <el-option label="待处理" value="0" />
-                <el-option label="下单中" value="1" />
-                <el-option label="已下单" value="2" />
-                <el-option label="失败" value="3" />
+                <el-option label="处理中" value="1" />
+                <el-option label="服务中" value="2" />
+                <el-option label="已完成" value="3" />
                 <el-option label="已取消" value="4" />
-                <el-option label="已送达" value="6" />
-                <el-option label="退款处理中" value="8" />
+                <el-option label="失败" value="5" />
+                <el-option label="拒绝退款" value="6" />
               </el-select>
             </el-form-item>
             <el-form-item label="日期范围">
@@ -267,7 +280,7 @@
 
         <!-- 洗衣表格 -->
         <el-card>
-          <el-table :data="xi订单列表" v-loading="xi加载中" stripe>
+          <el-table :data="xi订单列表" v-loading="xi加载中" stripe :row-class-name="获取订单行样式">
             <el-table-column prop="id" label="ID" width="60" />
             <el-table-column label="创建时间" width="145">
               <template #default="{ row }">{{ 格式化北京时间(row.created_at) }}</template>
@@ -333,11 +346,11 @@
                 <el-button size="small" type="info" plain @click="打开备注弹窗(row, 'xiyifu')">备注</el-button>
                 <el-button size="small" type="success" plain @click="xi打开物流弹窗(row)">📋 物流</el-button>
                 <el-button size="small" type="warning" plain @click="xi打开修改预约弹窗(row)">✏️ 修改</el-button>
-                <el-button v-if="row.status === 0 || row.status === 3" size="small" type="primary" @click="xi触发下单(row.id)">触发下单</el-button>
+                <el-button v-if="row.status === 0 || row.status === 5" size="small" type="primary" @click="xi触发下单(row.id)">触发下单</el-button>
                 <el-button v-if="row.status !== 4" size="small" type="danger" plain @click="xi取消订单(row.id)">取消</el-button>
-                <el-button v-if="row.status === 3" size="small" type="warning" plain @click="xi执行重置(row.id)">重置</el-button>
-                <el-button v-if="row.status !== 4 && row.status !== 8" size="small" type="warning" @click="xi申请退款(row)">申请退款</el-button>
-                <el-button v-if="row.status === 8" size="small" type="danger" @click="xi确认退款完成(row)">确认退款完成</el-button>
+                <el-button v-if="row.status === 5" size="small" type="warning" plain @click="xi执行重置(row.id)">重置</el-button>
+                <el-button v-if="row.status !== 4 && row.status !== 6" size="small" type="warning" @click="xi申请退款(row)">申请退款</el-button>
+                <el-button v-if="row.status === 6" size="small" type="danger" @click="xi确认退款完成(row)">确认退款完成</el-button>
                 <el-button size="small" @click="xi复制订单(row)">复制</el-button>
               </template>
             </el-table-column>
@@ -364,8 +377,7 @@
             <el-form-item label="状态">
               <el-select v-model="tp搜索条件.status" clearable placeholder="全部状态" style="width:120px">
                 <el-option label="待处理" value="0" />
-                <el-option label="已完成" value="2" />
-                <el-option label="退款处理中" value="8" />
+                <el-option label="拒绝退款" value="6" />
                 <el-option label="已取消" value="4" />
               </el-select>
             </el-form-item>
@@ -381,7 +393,7 @@
 
         <!-- 充值表格 -->
         <el-card>
-          <el-table :data="tp订单列表" v-loading="tp加载中" stripe>
+          <el-table :data="tp订单列表" v-loading="tp加载中" stripe :row-class-name="获取订单行样式">
             <el-table-column prop="id" label="ID" width="60" />
             <el-table-column label="创建时间" width="145">
               <template #default="{ row }">{{ 格式化北京时间(row.created_at) }}</template>
@@ -466,8 +478,8 @@
                 <el-button size="small" @click="tp查看详情(row.id)">详情</el-button>
                 <el-button size="small" type="info" plain @click="打开备注弹窗(row, 'topup')">备注</el-button>
                 <el-button v-if="row.status === 0" size="small" type="success" plain @click="tp标记完成(row)">标记完成</el-button>
-                <el-button v-if="row.status !== 4 && row.status !== 8" size="small" type="warning" plain @click="tp申请退款(row)">申请退款</el-button>
-                <el-button v-if="row.status === 8" size="small" type="danger" @click="tp确认退款完成(row)">确认退款完成</el-button>
+                <el-button v-if="row.status !== 4 && row.status !== 6" size="small" type="warning" plain @click="tp申请退款(row)">申请退款</el-button>
+                <el-button v-if="row.status === 6" size="small" type="danger" @click="tp确认退款完成(row)">确认退款完成</el-button>
                 <!-- 复制下拉：仅账号 / 完整信息 -->
                 <el-dropdown @command="(cmd) => tp处理复制命令(cmd, row)" trigger="click">
                   <el-button size="small">复制 <el-icon><ArrowDown /></el-icon></el-button>
@@ -799,7 +811,7 @@
       <template #footer>
         <el-button @click="显示家政详情弹窗 = false">关闭</el-button>
         <el-button
-          v-if="家政详情数据.status === 0 || 家政详情数据.status === 3 || 家政详情数据.status === 7"
+          v-if="家政详情数据.status === 0 || 家政详情数据.status === 5"
           type="primary"
           @click="jz触发下单(家政详情数据.id); 显示家政详情弹窗 = false"
         >🤖 自动下单</el-button>
@@ -893,20 +905,20 @@ const 安全解析JSON = (str, 默认值) => {
 // ==================== 状态工具 ====================
 
 const jz获取状态类型 = (status) => {
-  const m = { 0: 'info', 1: 'primary', 2: 'success', 3: 'danger', 4: 'warning', 5: 'primary', 6: 'success', 7: 'danger', 8: 'warning' }
+  const m = { 0: 'info', 1: 'primary', 2: 'success', 3: 'success', 4: 'info', 5: 'danger', 6: 'warning' }
   return m[status] || 'info'
 }
 const jz获取状态文字 = (status) => {
-  const m = { 0: '待处理', 1: '下单中', 2: '已下单', 3: '失败', 4: '已取消', 5: '安排中', 6: '预约完成', 7: '预约失败', 8: '退款处理中' }
+  const m = { 0: '待处理', 1: '处理中', 2: '服务中', 3: '已完成', 4: '已取消', 5: '失败', 6: '拒绝退款' }
   return m[status] || '未知'
 }
 
 const xi获取状态类型 = (status) => {
-  const m = { 0: 'info', 1: 'primary', 2: 'success', 3: 'danger', 4: 'warning', 6: 'success', 8: 'warning' }
+  const m = { 0: 'info', 1: 'primary', 2: 'success', 3: 'success', 4: 'info', 5: 'danger', 6: 'warning' }
   return m[status] || 'info'
 }
 const xi获取状态文字 = (status) => {
-  const m = { 0: '待处理', 1: '下单中', 2: '已下单', 3: '失败', 4: '已取消', 6: '已送达', 8: '退款处理中' }
+  const m = { 0: '待处理', 1: '处理中', 2: '服务中', 3: '已完成', 4: '已取消', 5: '失败', 6: '拒绝退款' }
   return m[status] || '未知'
 }
 
@@ -918,11 +930,11 @@ const 获取洗衣状态类型 = (laundryStatus) => {
 }
 
 const tp获取状态类型 = (status) => {
-  const m = { 0: 'info', 2: 'success', 4: 'warning', 8: 'warning' }
+  const m = { 0: 'info', 4: 'info', 6: 'warning' }
   return m[status] || 'info'
 }
 const tp获取状态文字 = (status) => {
-  const m = { 0: '待处理', 2: '已完成', 4: '已取消', 8: '退款处理中' }
+  const m = { 0: '待处理', 4: '已取消', 6: '拒绝退款' }
   return m[status] || '未知'
 }
 
@@ -948,6 +960,36 @@ const 站点域名 = ref('')
 const 预览链接 = ref('')
 const 角标数量 = ref({ jiazheng: 0, xiyifu: 0, topup: 0 })
 const 导出中 = ref(false)
+const 拒绝退款订单数 = ref(0)
+
+// 加载拒绝退款(status=6)订单总数（统计全部业务类型）
+const 加载拒绝退款订单数 = async () => {
+  try {
+    const [r1, r2, r3] = await Promise.allSettled([
+      获取订单列表API({ business_type: 'jiazheng', status: 6, page: 1, limit: 1 }),
+      获取洗衣订单列表API({ status: 6, page: 1, limit: 1 }),
+      获取充值订单列表API({ status: 6, page: 1, limit: 1 }),
+    ])
+    let total = 0
+    if (r1.status === 'fulfilled' && r1.value?.code === 1) total += r1.value.data?.total || 0
+    if (r2.status === 'fulfilled' && r2.value?.code === 1) total += r2.value.data?.total || 0
+    if (r3.status === 'fulfilled' && r3.value?.code === 1) total += r3.value.data?.total || 0
+    拒绝退款订单数.value = total
+  } catch {}
+}
+
+// 订单行样式：status=6 的订单高亮为橙色
+const 获取订单行样式 = ({ row }) => {
+  return row.status === 6 ? '拒绝退款行' : ''
+}
+
+// 快速筛选拒绝退款订单（切换到家政Tab并筛选status=6）
+const 快速筛选拒绝退款订单 = () => {
+  jz搜索条件.value.status = '6'
+  当前Tab.value = 'jiazheng'
+  jz当前页.value = 1
+  加载家政订单()
+}
 
 // Tab 列表（含第4个空调订单预留位）
 const Tab列表 = computed(() => [
@@ -1160,7 +1202,7 @@ const jz触发下单 = async (id) => {
 }
 
 const jz手动标记 = async (行, 状态) => {
-  const 文字Map = { 5: '安排中', 6: '预约完成' }
+  const 文字Map = { 2: '服务中', 3: '已完成' }
   try {
     await ElMessageBox.confirm(`确认将订单标记为"${文字Map[状态]}"？`, '确认', { type: 'success' })
     const 结果 = await 更新订单状态API(行.id, { status: 状态 })
@@ -1178,9 +1220,9 @@ const jz标记预约失败 = (行) => {
 const jz确认标记失败 = async () => {
   if (!当前失败行.value) return
   try {
-    const 结果 = await 更新订单状态API(当前失败行.value.id, { status: 7, fail_reason: 失败原因表单.value.原因 })
+    const 结果 = await 更新订单状态API(当前失败行.value.id, { status: 5, fail_reason: 失败原因表单.value.原因 })
     if (结果.code === 1) {
-      ElMessage.success('已标记为预约失败')
+      ElMessage.success('已标记为失败')
       显示失败原因输入弹窗.value = false
       加载家政订单()
     } else {
@@ -1632,6 +1674,9 @@ onMounted(async () => {
     if (r.code === 1) 角标数量.value = r.data
   } catch {}
 
+  // 加载拒绝退款订单数
+  加载拒绝退款订单数()
+
   // 加载默认Tab数据
   加载家政订单()
 })
@@ -1733,5 +1778,13 @@ onMounted(async () => {
   height: 3px;
   border-radius: 2px 2px 0 0;
   background: #1989fa;
+}
+
+/* ===== 拒绝退款订单行高亮 ===== */
+:deep(.拒绝退款行) {
+  background-color: #fff3e0 !important;
+}
+:deep(.拒绝退款行:hover > td) {
+  background-color: #ffe0b2 !important;
 }
 </style>

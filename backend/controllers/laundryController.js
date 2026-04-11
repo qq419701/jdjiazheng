@@ -370,15 +370,15 @@ const 获取洗衣Token状态 = async (req, res) => {
  * POST /api/laundry/callback（无需JWT鉴权，鲸蚁直接回调）
  *
  * 各状态码处理逻辑：
- * - status=1（已分配）：记录取件快递单号（按前缀识别快递公司）、工厂名称/代码，order.status→2
+ * - status=1（已分配）：记录取件快递单号（按前缀识别快递公司）、工厂名称/代码，order.status→2（服务中）
  * - status=2（已取件）：更新 laundry_status，无其他字段变更
  * - status=3（已入厂）：更新 laundry_status，无其他字段变更
  * - status=4（预检中）：保存衣物图片（优先用 images_v2，兼容旧版 images）
  * - status=5（已回寄）：记录回寄快递单号到 return_waybill_code
- * - status=6（已送达）：order.status→6
- * - status=10（完成）：order.status→6
+ * - status=6（已送达）：order.status→3（已完成）
+ * - status=10（完成）：order.status→3（已完成）
  * - status=11（质检中）：更新 laundry_status，无其他字段变更
- * - status=-1（已取消）：order.status→4，laundry_status→已取消
+ * - status=-1（已取消）：order.status→4（已取消），laundry_status→已取消
  *
  * 鲸蚁要求始终返回 { code: 0 }，无论成功或异常
  */
@@ -465,11 +465,11 @@ const 接收鲸蚁回调 = async (req, res) => {
         更新数据.return_waybill_code = waybillCode;
       }
     } else if (状态数值 === 6) {
-      // 已送达：主状态改为6
-      更新数据.status = 6;
+      // 已送达：主状态改为3（已完成）
+      更新数据.status = 3;
     } else if (状态数值 === 10) {
-      // 完成：主状态改为6
-      更新数据.status = 6;
+      // 完成：主状态改为3（已完成）
+      更新数据.status = 3;
     } else if (状态数值 === -1) {
       // 已取消
       更新数据.status = 4;
@@ -511,8 +511,8 @@ const 确认洗衣退款完成 = async (req, res) => {
       return res.json({ code: 0, message: '洗衣订单不存在' });
     }
 
-    if (订单.status !== 8) {
-      return res.json({ code: 0, message: '只有退款处理中的订单才能确认退款完成' });
+    if (订单.status !== 6) {
+      return res.json({ code: 0, message: '只有拒绝退款的订单才能确认退款完成' });
     }
 
     // 通过 card_code 找到对应的卡密记录
