@@ -262,8 +262,8 @@ const 取消洗衣订单 = async (req, res) => {
     if (!订单) return res.json({ code: 0, message: '洗衣订单不存在' });
     if (订单.status === 4) return res.json({ code: 0, message: '订单已取消' });
 
-    // 如果已有鲸蚁订单号，同步取消状态
-    if (订单.laundry_order_id) {
+    // 如果已推送到鲸蚁（status=1已提交 或 status=2已分配），同步取消状态
+    if (订单.status === 1 || 订单.status === 2) {
       try {
         await 同步订单状态(订单.order_no, `B${订单.order_no}`, -1);
       } catch (同步错误) {
