@@ -5,7 +5,7 @@
     <aside class="侧边栏">
       <div class="系统标志">
         <span class="系统图标">🛒</span>
-        <span class="系统名称">京东代下单系统</span>
+        <span class="系统名称">{{ 系统名称 }}</span>
       </div>
 
       <el-menu
@@ -83,15 +83,27 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { DataAnalysis, List, Ticket, UserFilled, Setting, MapLocation, Goods, Document } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
+import { 获取设置API } from '../api/index'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+
+const 系统名称 = ref('京东代下单系统')
+
+onMounted(async () => {
+  try {
+    const res = await 获取设置API()
+    if (res?.code === 1 && res.data?.admin_site_name) {
+      系统名称.value = res.data.admin_site_name
+    }
+  } catch {}
+})
 
 // 当前路由路径
 const 当前路由 = computed(() => route.path)

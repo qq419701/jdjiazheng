@@ -10,6 +10,14 @@
             <el-input v-model="设置表单.site_url" placeholder="http://域名或IP:端口" />
             <div class="字段说明">填写后卡密管理页可一键复制带域名的完整链接</div>
           </el-form-item>
+          <el-form-item label="后台登录页标题">
+            <el-input v-model="设置表单.admin_site_title" placeholder="京东家政代下单系统" />
+            <div class="字段说明">显示在后台登录页面顶部的系统标题</div>
+          </el-form-item>
+          <el-form-item label="后台系统名称">
+            <el-input v-model="设置表单.admin_site_name" placeholder="京东代下单系统" />
+            <div class="字段说明">显示在后台左侧导航栏顶部的系统名称</div>
+          </el-form-item>
           <el-form-item label="快速跳转">
             <el-button @click="router.push('/admin/regions')">🗺️ 地区管理</el-button>
             <el-button @click="router.push('/admin/sub-accounts')" style="margin-left:8px">👥 子账号管理</el-button>
@@ -1129,6 +1137,8 @@ const 加载设置 = async () => {
       设置表单.value = {
         // 通用
         site_url: 数据.site_url || '',
+        admin_site_title: 数据.admin_site_title || '',
+        admin_site_name: 数据.admin_site_name || '',
         // 家政
         banner_url: 数据.banner_url || '',
         service_type: 数据.service_type || '日常保洁',
@@ -1338,7 +1348,7 @@ const jz时间规则列表 = ref([])
 const jz规则加载中 = ref(false)
 const jz显示规则弹窗 = ref(false)
 const jz当前编辑ID = ref(null)
-const jz所有时间段 = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00']
+const jz所有时间段 = ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00']
 const jz星期名称 = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 const jz默认表单 = () => ({
   rule_type: 'city',

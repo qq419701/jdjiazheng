@@ -5,7 +5,7 @@
       <!-- 标题 -->
       <div class="登录标题">
         <span class="标题图标">🏠</span>
-        <h2>京东家政代下单系统</h2>
+        <h2>{{ 站点标题 }}</h2>
       </div>
 
       <!-- 登录表单 -->
@@ -70,11 +70,12 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
-import { 登录API, 获取验证码API } from '../api/index'
+import { 登录API, 获取验证码API, 获取设置API } from '../api/index'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
+const 站点标题 = ref('京东家政代下单系统')
 const 表单引用 = ref(null)
 const 登录中 = ref(false)
 const 验证码图片 = ref('')
@@ -135,7 +136,6 @@ const 提交登录 = async () => {
           { key: 'template_manager', name: 'TemplateManager' },
           { key: 'business_settings', name: 'BusinessSettings' },
           { key: 'regions', name: 'Regions' },
-          { key: 'jd_accounts', name: 'JdAccounts' },
           { key: 'sub_accounts', name: 'SubAccounts' },
         ]
         const 目标 = 路由优先级.find(r => permissions.includes(r.key))
@@ -153,7 +153,15 @@ const 提交登录 = async () => {
   }
 }
 
-onMounted(() => { 刷新验证码() })
+onMounted(async () => {
+  刷新验证码()
+  try {
+    const 设置结果 = await 获取设置API()
+    if (设置结果?.code === 1 && 设置结果.data?.admin_site_title) {
+      站点标题.value = 设置结果.data.admin_site_title
+    }
+  } catch {}
+})
 </script>
 
 <style scoped>

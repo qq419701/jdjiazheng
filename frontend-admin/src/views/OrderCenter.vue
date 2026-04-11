@@ -132,10 +132,7 @@
         <el-card class="搜索卡片">
           <el-form :inline="true" :model="jz搜索条件">
             <el-form-item label="关键词">
-              <el-input v-model="jz搜索条件.keyword" placeholder="订单号/姓名/手机号/卡密/备注" clearable style="width:200px" />
-            </el-form-item>
-            <el-form-item label="城市">
-              <el-input v-model="jz搜索条件.city" placeholder="城市" clearable style="width:100px" />
+              <el-input v-model="jz搜索条件.keyword" placeholder="可搜索：订单号 / 姓名 / 手机号 / 卡密 / 城市 / 备注" clearable style="width:360px" />
             </el-form-item>
             <el-form-item label="状态">
               <el-select v-model="jz搜索条件.status" clearable placeholder="全部状态" style="width:130px">
@@ -185,7 +182,7 @@
               </template>
             </el-table-column>
             <el-table-column prop="service_type" label="服务类型" width="100" show-overflow-tooltip />
-            <el-table-column prop="card_code" label="卡密" width="150" show-overflow-tooltip />
+            <el-table-column prop="card_code" label="卡密" width="150" show-overflow-tooltip v-if="false" />
             <el-table-column label="电商单号" width="170" show-overflow-tooltip>
               <template #default="{ row }">
                 <span v-if="row.ecommerce_order_no" style="color:#409eff;font-size:12px;font-weight:500">{{ row.ecommerce_order_no }}</span>
@@ -252,10 +249,7 @@
         <el-card class="搜索卡片">
           <el-form :inline="true" :model="xi搜索条件">
             <el-form-item label="关键词">
-              <el-input v-model="xi搜索条件.keyword" placeholder="订单号/姓名/手机/卡密/备注" clearable style="width:200px" />
-            </el-form-item>
-            <el-form-item label="城市">
-              <el-input v-model="xi搜索条件.city" placeholder="城市" clearable style="width:100px" />
+              <el-input v-model="xi搜索条件.keyword" placeholder="可搜索：订单号 / 姓名 / 手机 / 卡密 / 城市 / 快递单号 / 备注" clearable style="width:360px" />
             </el-form-item>
             <el-form-item label="状态">
               <el-select v-model="xi搜索条件.status" clearable placeholder="全部状态" style="width:130px">
@@ -301,7 +295,7 @@
             <el-table-column label="取件快递单号" width="140" show-overflow-tooltip>
               <template #default="{ row }">{{ row.express_order_id || '-' }}</template>
             </el-table-column>
-            <el-table-column prop="card_code" label="卡密" width="150" show-overflow-tooltip />
+            <el-table-column prop="card_code" label="卡密" width="150" show-overflow-tooltip v-if="false" />
             <el-table-column label="电商单号" width="170" show-overflow-tooltip>
               <template #default="{ row }">
                 <span v-if="row.ecommerce_order_no" style="color:#409eff;font-size:12px;font-weight:500">{{ row.ecommerce_order_no }}</span>
@@ -366,10 +360,7 @@
         <el-card class="搜索卡片">
           <el-form :inline="true" :model="tp搜索条件">
             <el-form-item label="关键词">
-              <el-input v-model="tp搜索条件.keyword" placeholder="订单号/充值账号/卡密/备注" clearable style="width:200px" />
-            </el-form-item>
-            <el-form-item label="城市">
-              <el-input v-model="tp搜索条件.city" placeholder="城市" clearable style="width:100px" />
+              <el-input v-model="tp搜索条件.keyword" placeholder="可搜索：订单号 / 充值账号 / 卡密 / 城市 / 备注" clearable style="width:360px" />
             </el-form-item>
             <el-form-item label="充值会员">
               <el-input v-model="tp搜索条件.member_name" placeholder="如：优酷年卡" clearable style="width:120px" />
@@ -402,16 +393,13 @@
             <el-table-column label="创建时间" width="145">
               <template #default="{ row }">{{ 格式化北京时间(row.created_at) }}</template>
             </el-table-column>
-            <!-- 充值账号：脱敏+👁切换+📋复制 -->
+            <!-- 充值账号：明文显示+📋复制 -->
             <el-table-column label="充值账号" width="165">
               <template #default="{ row }">
                 <div v-if="row.topup_account" style="display:flex;align-items:center;gap:2px">
                   <span style="font-family:monospace;font-size:13px">
-                    {{ tp账号显示状态[row.id] ? row.topup_account : 脱敏账号(row.topup_account, row.topup_account_type) }}
+                    {{ row.topup_account }}
                   </span>
-                  <el-button link size="small" style="color:#aaa;padding:0 2px;min-height:auto" title="显示/隐藏完整账号" @click="tp切换账号显示(row.id)">
-                    {{ tp账号显示状态[row.id] ? '🙈' : '👁' }}
-                  </el-button>
                   <el-button link size="small" style="color:#409eff;padding:0 2px;min-height:auto" title="复制充值账号" @click="tp复制账号(row)">📋</el-button>
                 </div>
                 <span v-else style="color:#bbb;font-size:12px">-</span>
@@ -439,8 +427,7 @@
                 <span v-else style="color:#bbb;font-size:12px">-</span>
               </template>
             </el-table-column>
-            <el-table-column prop="card_code" label="卡密" width="150" show-overflow-tooltip />
-            <el-table-column label="电商单号" width="170" show-overflow-tooltip>
+            <el-table-column prop="card_code" label="卡密" width="150" show-overflow-tooltip v-if="false" />
               <template #default="{ row }">
                 <span v-if="row.ecommerce_order_no" style="color:#409eff;font-size:12px;font-weight:500">{{ row.ecommerce_order_no }}</span>
                 <span v-else style="color:#bbb;font-size:12px">-</span>
@@ -1153,7 +1140,7 @@ const 切换Tab = (tabName) => {
 
 // ==================== 家政订单状态 ====================
 
-const jz搜索条件 = ref({ keyword: '', city: '', status: '' })
+const jz搜索条件 = ref({ keyword: '', status: '' })
 const jz日期范围 = ref([])
 const jz订单列表 = ref([])
 const jz总数 = ref(0)
@@ -1199,7 +1186,7 @@ const 加载家政订单 = async () => {
 
 const jz搜索 = () => { jz当前页.value = 1; 加载家政订单() }
 const jz重置 = () => {
-  jz搜索条件.value = { keyword: '', city: '', status: '' }
+  jz搜索条件.value = { keyword: '', status: '' }
   jz日期范围.value = []
   jz当前页.value = 1
   加载家政订单()
@@ -1316,7 +1303,7 @@ const jz复制订单 = (行) => {
 
 // ==================== 洗衣订单状态 ====================
 
-const xi搜索条件 = ref({ keyword: '', city: '', status: '' })
+const xi搜索条件 = ref({ keyword: '', status: '' })
 const xi日期范围 = ref([])
 const xi订单列表 = ref([])
 const xi总数 = ref(0)
@@ -1367,7 +1354,7 @@ const 加载洗衣订单 = async () => {
 
 const xi搜索 = () => { xi当前页.value = 1; 加载洗衣订单() }
 const xi重置 = () => {
-  xi搜索条件.value = { keyword: '', city: '', status: '' }
+  xi搜索条件.value = { keyword: '', status: '' }
   xi日期范围.value = []
   xi当前页.value = 1
   加载洗衣订单()
@@ -1490,7 +1477,7 @@ const xi复制订单 = (行) => {
 
 // ==================== 充值订单状态 ====================
 
-const tp搜索条件 = ref({ keyword: '', city: '', member_name: '', status: '' })
+const tp搜索条件 = ref({ keyword: '', member_name: '', status: '' })
 const tp日期范围 = ref([])
 const tp订单列表 = ref([])
 const tp总数 = ref(0)
@@ -1527,7 +1514,7 @@ const 加载充值订单 = async () => {
 
 const tp搜索 = () => { tp当前页.value = 1; 加载充值订单() }
 const tp重置 = () => {
-  tp搜索条件.value = { keyword: '', city: '', member_name: '', status: '' }
+  tp搜索条件.value = { keyword: '', member_name: '', status: '' }
   tp日期范围.value = []
   tp当前页.value = 1
   加载充值订单()

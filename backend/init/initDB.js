@@ -391,6 +391,19 @@ const 初始化数据库 = async () => {
     }
     console.log('✅ 奇所SUP默认配置初始化完成（共', 奇所SUP默认配置.length, '项）');
 
+    // 后台自定义标题/名称默认配置
+    const 后台自定义配置 = [
+      { key_name: 'admin_site_title', key_value: '京东家政代下单系统', description: '后台登录页系统标题' },
+      { key_name: 'admin_site_name',  key_value: '京东代下单系统',    description: '后台左侧导航栏系统名称' },
+    ]
+    for (const 配置项 of 后台自定义配置) {
+      await Setting.findOrCreate({
+        where: { key_name: 配置项.key_name },
+        defaults: { ...配置项, updated_at: new Date() },
+      })
+    }
+    console.log('✅ 后台自定义标题默认配置初始化完成')
+
     console.log('\n🎉 数据库初始化完成！');
     console.log('管理员账号：admin');
     console.log('管理员密码：可通过环境变量 ADMIN_DEFAULT_PASSWORD 设置（首次初始化时生效）');
