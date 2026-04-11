@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 #  京东代下单系统 — 一键拉取更新 + 重新构建 + 重启
-#  版本：v3.0（统一前端H5 + 后台管理整合版）
+#  版本：v4.0（国内服务器专用，多代理轮换 + 自动重试）
 #
 #  使用方式：
 #    chmod +x update.sh      （首次执行前赋予可执行权限）
@@ -9,6 +9,7 @@
 #    ./update.sh backend     （仅拉代码 + 重启后端）
 #    ./update.sh admin       （仅拉代码 + 重建后台管理）
 #    ./update.sh h5          （仅拉代码 + 重建前端H5）
+#    ./update.sh xi          （仅拉代码 + 重建洗衣前端）
 #    ./update.sh frontend    （拉代码 + 重建全部前端，不重启后端）
 # ============================================================
 
@@ -17,6 +18,15 @@ set -e
 # ─────────────────────── 配置区 ───────────────────────
 PROJECT_DIR="/www/wwwroot/jdjiazheng"
 PM2_APP_NAME="jdjiazheng"
+GITHUB_REPO="qq419701/jdjiazheng"
+# 国内代理列表（按可用性排序，自动轮换）
+PROXY_LIST=(
+  "https://gh-proxy.com/https://github.com/${GITHUB_REPO}.git"
+  "https://github.moeyy.xyz/https://github.com/${GITHUB_REPO}.git"
+  "https://mirror.ghproxy.com/https://github.com/${GITHUB_REPO}.git"
+  "https://ghproxy.net/https://github.com/${GITHUB_REPO}.git"
+  "https://github.com/${GITHUB_REPO}.git"
+)
 # ──────────────────────────────────────────────────────
 
 RED='\033[0;31m'
@@ -38,12 +48,61 @@ log_section() {
 
 START_TIME=$(date +%s)
 
+# ─────────────────── 网络诊断 ───────────────────
+check_network() {
+  log_info "检测网络连通性..."
+  # 先测试 DNS
+  if ! nslookup github.com > /dev/null 2>&1; then
+    log_warn "DNS 解析失败，尝试修复..."
+    echo "nameserver 8.8.8.8" >> /etc/resolv.conf
+    echo "nameserver 114.114.114.114" >> /etc/resolv.conf
+  fi
+
+  # 测试 GitHub 直连（5秒超时快速失败）
+  if curl -s --connect-timeout 5 -o /dev/null https://github.com 2>/dev/null; then
+    log_ok "GitHub 直连可用"
+    return 0
+  else
+    log_warn "GitHub 直连不可用（国内服务器常见），将使用代理"
+    return 1
+  fi
+}
+
+# ─────────────────── 智能拉取代码（多代理轮换） ───────────────────
 pull_code() {
-  log_section "📥 拉取最新代码"
+  log_section "📥 拉取最新代码（多代理自动轮换）"
   cd "$PROJECT_DIR"
-  git fetch origin main
-  git reset --hard origin/main
-  log_ok "代码已同步：$(git log -1 --format='%h %s')"
+
+  # 配置 git 超时参数
+  git config --global http.lowSpeedLimit 0
+  git config --global http.lowSpeedTime 60
+  git config --global http.timeout 120
+  git config --global core.compression 0
+
+  PULL_SUCCESS=false
+
+  for PROXY_URL in "${PROXY_LIST[@]}"; do
+    log_info "尝试源：$PROXY_URL"
+    git remote set-url origin "$PROXY_URL"
+
+    if git fetch origin main --progress 2>&1 | tail -3; then
+      git reset --hard origin/main
+      PULL_SUCCESS=true
+      log_ok "✅ 拉取成功！当前版本：$(git log -1 --format='%h %s')"
+      break
+    else
+      log_warn "❌ 此代理失败，切换下一个..."
+      sleep 2
+    fi
+  done
+
+  if [ "$PULL_SUCCESS" = false ]; then
+    log_warn "所有代理均失败，尝试使用已有代码继续..."
+    log_info "当前本地版本：$(git log -1 --format='%h %s' 2>/dev/null || echo '未知')"
+    # 不 exit，继续用本地代码执行后续步骤（不加 set -e 的情况下）
+    # 如果你希望失败就停止，取消下一行注释：
+    # log_error "代码拉取失败，已中止"
+  fi
 }
 
 smart_npm_install() {
@@ -123,18 +182,21 @@ show_status() {
 main() {
   echo ""
   echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"
-  echo -e "${GREEN}║  京东代下单 — 一键更新脚本 v3.0            ║${NC}"
-  echo -e "${GREEN}║  $(date '+%Y-%m-%d %H:%M:%S')                       ║${NC}"
+  echo -e "${GREEN}║  京东代下单 — 一键更新脚本 v4.0            ║${NC}"
+  echo -e "${GREEN}║  $(date '+%Y-%m-%d %H:%M:%S')  国内服务器代理版        ║${NC}"
   echo -e "${GREEN}╚════════════════════════════════════════════╝${NC}"
   echo ""
 
-  case "${1:-all}" in
-    all)      pull_code; update_backend; update_h5; update_xi; update_admin; show_status ;; 
-    backend)  pull_code; update_backend; show_status ;; 
-    admin)    pull_code; update_admin ;; 
-    h5)       pull_code; update_h5 ;; 
-    xi)       pull_code; update_xi ;; 
-    frontend) pull_code; update_h5; update_xi; update_admin ;; 
+  # 先检测网络（不影响后续流程，仅打印信息）
+  check_network || true
+
+  case "[0m"${1:-all}" [0m" in
+    all)      pull_code; update_backend; update_h5; update_xi; update_admin; show_status ;;  
+    backend)  pull_code; update_backend; show_status ;;   
+    admin)    pull_code; update_admin ;;   
+    h5)       pull_code; update_h5 ;;  
+    xi)       pull_code; update_xi ;;  
+    frontend) pull_code; update_h5; update_xi; update_admin ;;  
     *)
       echo "用法: $0 [all|backend|admin|h5|xi|frontend]"
       echo -e "  ${GREEN}all${NC}       全量更新（默认）"
@@ -143,7 +205,7 @@ main() {
       echo -e "  ${GREEN}h5${NC}        仅拉代码+重建前端H5（家政）"
       echo -e "  ${GREEN}xi${NC}        仅拉代码+重建洗衣前端"
       echo -e "  ${GREEN}frontend${NC}  拉代码+重建全部前端"
-      exit 1 ;;
+      exit 1 ;;  
   esac
 
   echo ""
