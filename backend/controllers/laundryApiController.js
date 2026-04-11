@@ -16,7 +16,18 @@ const 验证洗衣卡密 = async (req, res) => {
 
     if (!结果.有效) {
       if (结果.原因 === '卡密已被使用') {
-        return res.json({ code: 2, message: '卡密已被使用', data: { used: true, card_code: 结果.卡密?.code || '' } });
+        let order_no = ''
+        try {
+          const 关联订单 = await Order.findOne({
+            where: { card_code: 结果.卡密?.code, business_type: 'xiyifu' },
+            order: [['created_at', 'DESC']],
+            attributes: ['order_no'],
+          })
+          if (关联订单) order_no = 关联订单.order_no
+        } catch (e) {
+          console.error('查询关联订单号失败:', e.message)
+        }
+        return res.json({ code: 2, message: '卡密已被使用', data: { used: true, card_code: 结果.卡密?.code || '', order_no } });
       }
       if (结果.原因 === '卡密已失效') {
         return res.json({ code: 3, message: '卡密已作废', data: null });
@@ -398,6 +409,29 @@ const 查询洗衣订单状态 = async (req, res) => {
     if (!订单) return res.json({ code: 0, message: '订单不存在' });
 
     const { 安全解析JSON: 解析 } = require('../utils/helpers');
+    const { 查询物流轨迹 } = require('../services/laundryApiService');
+
+    const 取件单号 = 订单.express_waybill_code || 订单.express_order_id || null;
+    const 回寄单号 = 订单.return_waybill_code || null;
+
+    let pickup_route = null;
+    let return_route = null;
+
+    if (取件单号) {
+      try {
+        pickup_route = await 查询物流轨迹(取件单号);
+      } catch (e) {
+        console.error('H5查取件物流失败:', e.message);
+      }
+    }
+
+    if (回寄单号) {
+      try {
+        return_route = await 查询物流轨迹(回寄单号);
+      } catch (e) {
+        console.error('H5查回寄物流失败:', e.message);
+      }
+    }
 
     const 结果 = {
       order_no: 订单.order_no,
@@ -408,6 +442,10 @@ const 查询洗衣订单状态 = async (req, res) => {
       laundry_status: 订单.laundry_status,
       factory_name: 订单.factory_name,
       laundry_images: 解析(订单.laundry_images, []),
+      express_order_id: 取件单号,
+      return_waybill_code: 回寄单号,
+      pickup_route,
+      return_route,
     };
 
     res.json({ code: 1, message: '查询成功', data: 结果 });

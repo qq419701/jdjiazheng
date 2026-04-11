@@ -645,3 +645,78 @@ SF3194056617460
 "waybillCode": "SF3194056617460"
 
 
+9. 系统内部物流查询接口（双段轨迹封装）
+
+概述
+    本系统在鲸蚁第7号接口（api/out-express/get-route-by-waybill-code/:waybillCode）基础上封装了两个内部物流查询接口，支持同时返回取件快递和回寄快递两段轨迹。
+
+9.1 H5前端物流查询接口
+  地址：GET /api/xi/orders/:orderNo/express-routes
+  方式：GET
+  鉴权：无需鉴权
+  参数：
+    orderNo（路径参数）：订单号
+  返回：
+    {
+      "code": 1,
+      "message": "查询成功",
+      "data": {
+        "order_no": "250702054711259504607",
+        "name": "张三",
+        "service_type": "任洗一件",
+        "visit_date": "2025-07-10",
+        "visit_time": "09:00-10:00",
+        "laundry_status": "已取件",
+        "factory_name": "测试工厂",
+        "laundry_images": [],
+        "express_order_id": "SF3194056617460",        // 取件快递单号（express_waybill_code 或 express_order_id）
+        "return_waybill_code": "SF3194056617461",      // 回寄快递单号
+        "pickup_route": {                              // 取件物流轨迹（查询失败时为 null）
+          "collectorName": "谭勇",
+          "collectorPhone": "15182268867",
+          "routes": [...]
+        },
+        "return_route": {                              // 回寄物流轨迹（查询失败时为 null）
+          "collectorName": "谭勇",
+          "collectorPhone": "15182268867",
+          "routes": [...]
+        }
+      }
+    }
+  说明：
+    - pickup_route 通过取件单号（express_waybill_code || express_order_id）调用鲸蚁第7号接口查询
+    - return_route 通过回寄单号（return_waybill_code）调用鲸蚁第7号接口查询
+    - 两段轨迹均有 try/catch 保护，查询失败时对应字段返回 null，不影响主流程
+
+9.2 管理后台物流查询接口
+  地址：GET /admin/api/laundry-orders/:id/express-routes
+  方式：GET
+  鉴权：需要管理员 Token
+  参数：
+    id（路径参数）：订单数据库 ID
+  返回：
+    {
+      "code": 1,
+      "message": "查询成功",
+      "data": {
+        "express_waybill_code": "SF3194056617460",    // 取件快递单号（兼容字段）
+        "collectorName": "谭勇",                       // 取件快递员姓名（兼容字段）
+        "collectorPhone": "15182268867",               // 取件快递员电话（兼容字段）
+        "routes": [...],                               // 取件物流轨迹（兼容字段）
+        "pickup_route": {                              // 取件快递结构化数据
+          "waybillCode": "SF3194056617460",
+          "collectorName": "谭勇",
+          "collectorPhone": "15182268867",
+          "routes": [...]
+        },
+        "return_route": {                              // 回寄快递结构化数据
+          "waybillCode": "SF3194056617461",
+          "routes": [...]
+        }
+      }
+    }
+  说明：
+    - pickup_route 和 return_route 分别调用鲸蚁第7号接口（api/out-express/get-route-by-waybill-code/:waybillCode）查询
+    - 取件单号不存在且回寄单号也不存在时返回 code: 0
+    - 两段轨迹均有 try/catch 保护，查询失败时对应字段的 routes 为空数组
+

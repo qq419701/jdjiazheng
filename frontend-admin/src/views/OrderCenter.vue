@@ -611,26 +611,69 @@
     </el-dialog>
 
     <!-- 洗衣：物流查询弹窗 -->
-    <el-dialog v-model="显示物流弹窗" title="📋 物流追踪" width="600px" :close-on-click-modal="false">
+    <el-dialog v-model="显示物流弹窗" title="📋 物流追踪" width="620px" :close-on-click-modal="false">
       <div v-if="物流加载中" style="text-align:center;padding:40px 0">
         <div style="color:#999;font-size:14px">正在查询物流信息…</div>
       </div>
-      <div v-else-if="物流信息 && (物流信息.collectorName || (物流信息.routes && 物流信息.routes.length))">
-        <el-descriptions v-if="物流信息.collectorName" :column="2" border style="margin-bottom:16px">
-          <el-descriptions-item label="快递员">{{ 物流信息.collectorName }}</el-descriptions-item>
-          <el-descriptions-item label="快递员电话">{{ 物流信息.collectorPhone }}</el-descriptions-item>
-          <el-descriptions-item label="物流单号" :span="2">{{ 物流信息.logisticsNumber }}</el-descriptions-item>
-        </el-descriptions>
-        <el-timeline v-if="物流信息.routes && 物流信息.routes.length">
-          <el-timeline-item v-for="(路由, 索引) in 物流信息.routes" :key="索引" :timestamp="路由.operationTime" placement="top">
-            <el-card shadow="never">
-              <div style="font-weight:bold">{{ 路由.title }}</div>
-              <div style="color:#666;margin-top:4px;font-size:13px">{{ 路由.remark }}</div>
-            </el-card>
-          </el-timeline-item>
-        </el-timeline>
-        <el-empty v-else description="暂无物流轨迹" />
-      </div>
+      <template v-else-if="物流信息">
+        <!-- 取件快递信息 -->
+        <div v-if="物流信息.pickup_route && 物流信息.pickup_route.waybillCode" style="margin-bottom:20px">
+          <div style="font-weight:600;font-size:14px;margin-bottom:8px;color:#333">🚚 取件快递</div>
+          <el-descriptions :column="2" border size="small" style="margin-bottom:10px">
+            <el-descriptions-item label="快递单号" :span="2">
+              <span style="font-family:monospace;color:#409eff">{{ 物流信息.pickup_route.waybillCode }}</span>
+            </el-descriptions-item>
+            <el-descriptions-item v-if="物流信息.pickup_route.collectorName" label="快递员姓名">
+              {{ 物流信息.pickup_route.collectorName }}
+            </el-descriptions-item>
+            <el-descriptions-item v-if="物流信息.pickup_route.collectorPhone" label="快递员电话">
+              {{ 物流信息.pickup_route.collectorPhone }}
+            </el-descriptions-item>
+          </el-descriptions>
+          <el-timeline v-if="物流信息.pickup_route.routes && 物流信息.pickup_route.routes.length">
+            <el-timeline-item
+              v-for="(路由, i) in 物流信息.pickup_route.routes"
+              :key="i"
+              :timestamp="路由.operationTime || 路由.time || ''"
+              placement="top"
+            >
+              <el-card shadow="never" style="font-size:13px">
+                <div style="font-weight:bold">{{ 路由.title || '' }}</div>
+                <div style="color:#666;margin-top:4px">{{ 路由.remark || 路由.desc || '' }}</div>
+              </el-card>
+            </el-timeline-item>
+          </el-timeline>
+          <el-empty v-else description="取件物流轨迹暂无" :image-size="60" />
+        </div>
+        <el-empty v-else description="取件快递单号暂未分配" :image-size="60" />
+
+        <el-divider v-if="物流信息.return_route" />
+
+        <!-- 回寄快递信息 -->
+        <div v-if="物流信息.return_route && 物流信息.return_route.waybillCode" style="margin-bottom:8px">
+          <div style="font-weight:600;font-size:14px;margin-bottom:8px;color:#333">📦 回寄快递</div>
+          <el-descriptions :column="2" border size="small" style="margin-bottom:10px">
+            <el-descriptions-item label="快递单号" :span="2">
+              <span style="font-family:monospace;color:#409eff">{{ 物流信息.return_route.waybillCode }}</span>
+            </el-descriptions-item>
+          </el-descriptions>
+          <el-timeline v-if="物流信息.return_route.routes && 物流信息.return_route.routes.length">
+            <el-timeline-item
+              v-for="(路由, i) in 物流信息.return_route.routes"
+              :key="i"
+              :timestamp="路由.operationTime || 路由.time || ''"
+              placement="top"
+            >
+              <el-card shadow="never" style="font-size:13px">
+                <div style="font-weight:bold">{{ 路由.title || '' }}</div>
+                <div style="color:#666;margin-top:4px">{{ 路由.remark || 路由.desc || '' }}</div>
+              </el-card>
+            </el-timeline-item>
+          </el-timeline>
+          <el-empty v-else description="回寄物流轨迹暂无（尚未回寄）" :image-size="60" />
+        </div>
+        <div v-else style="color:#bbb;font-size:13px;text-align:center;padding:8px 0">回寄快递单号暂未分配</div>
+      </template>
       <el-empty v-else description="暂无物流信息，请等待快递分配" />
       <template #footer>
         <el-button @click="显示物流弹窗 = false">关闭</el-button>
