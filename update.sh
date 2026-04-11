@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 #  京东代下单系统 — 一键拉取更新 + 重新构建 + 重启
-#  版本：v4.0（国内服务器专用，多代理轮换 + 自动重试）
+#  版本：v4.1（国内服务器专用，多代理轮换 + 自动重试）
 #
 #  使用方式：
 #    chmod +x update.sh      （首次执行前赋予可执行权限）
@@ -43,7 +43,7 @@ log_error()   { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 log_section() {
   echo -e "\n${CYAN}══════════════════════════════════════${NC}"
   echo -e "${CYAN}  $1${NC}"
-  echo -e "${CYAN}══════════════════════════════════════${NC}"
+  echo -e "${CYAN}════════════════════════════════════��═${NC}"
 }
 
 START_TIME=$(date +%s)
@@ -51,20 +51,17 @@ START_TIME=$(date +%s)
 # ─────────────────── 网络诊断 ───────────────────
 check_network() {
   log_info "检测网络连通性..."
-  # 先测试 DNS
   if ! nslookup github.com > /dev/null 2>&1; then
     log_warn "DNS 解析失败，尝试修复..."
     echo "nameserver 8.8.8.8" >> /etc/resolv.conf
     echo "nameserver 114.114.114.114" >> /etc/resolv.conf
   fi
-
-  # 测试 GitHub 直连（5秒超时快速失败）
   if curl -s --connect-timeout 5 -o /dev/null https://github.com 2>/dev/null; then
     log_ok "GitHub 直连可用"
-    return 0
+    return 0;
   else
     log_warn "GitHub 直连不可用（国内服务器常见），将使用代理"
-    return 1
+    return 1;
   fi
 }
 
@@ -73,7 +70,6 @@ pull_code() {
   log_section "📥 拉取最新代码（多代理自动轮换）"
   cd "$PROJECT_DIR"
 
-  # 配置 git 超时参数
   git config --global http.lowSpeedLimit 0
   git config --global http.lowSpeedTime 60
   git config --global http.timeout 120
@@ -84,24 +80,20 @@ pull_code() {
   for PROXY_URL in "${PROXY_LIST[@]}"; do
     log_info "尝试源：$PROXY_URL"
     git remote set-url origin "$PROXY_URL"
-
     if git fetch origin main --progress 2>&1 | tail -3; then
       git reset --hard origin/main
       PULL_SUCCESS=true
       log_ok "✅ 拉取成功！当前版本：$(git log -1 --format='%h %s')"
-      break
+      break;
     else
       log_warn "❌ 此代理失败，切换下一个..."
-      sleep 2
+      sleep 2;
     fi
   done
 
   if [ "$PULL_SUCCESS" = false ]; then
-    log_warn "所有代理均失败，尝试使用已有代码继续..."
+    log_warn "所有代理均失败，使用本地已有代码继续..."
     log_info "当前本地版本：$(git log -1 --format='%h %s' 2>/dev/null || echo '未知')"
-    # 不 exit，继续用本地代码执行后续步骤（不加 set -e 的情况下）
-    # 如果你希望失败就停止，取消下一行注释：
-    # log_error "代码拉取失败，已中止"
   fi
 }
 
@@ -115,7 +107,8 @@ smart_npm_install() {
   local PKG_HASH_FILE="$DIR/.pkg_hash"
   local CURRENT_HASH
   CURRENT_HASH=$(md5sum package.json | awk '{print $1}')
-  if [ -f "$PKG_HASH_FILE" ] && [ "$(cat "$PKG_HASH_FILE")" = "$CURRENT_HASH" ] && [ -d "node_modules" ]; then
+  if [ -f "$PKG_HASH_FILE" ] && [ "
+$(cat "$PKG_HASH_FILE")" = "$CURRENT_HASH" ] && [ -d "node_modules" ]; then
     log_ok "$LABEL 依赖无变化，跳过 npm install"
   else
     log_info "$LABEL 安装依赖..."
@@ -182,21 +175,46 @@ show_status() {
 main() {
   echo ""
   echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"
-  echo -e "${GREEN}║  京东代下单 — 一键更新脚本 v4.0            ║${NC}"
+  echo -e "${GREEN}║  京东代下单 — 一键更新脚本 v4.1            ║${NC}"
   echo -e "${GREEN}║  $(date '+%Y-%m-%d %H:%M:%S')  国内服务器代理版        ║${NC}"
   echo -e "${GREEN}╚════════════════════════════════════════════╝${NC}"
   echo ""
 
-  # 先检测网络（不影响后续流程，仅打印信息）
   check_network || true
 
-  case "[0m"${1:-all}" [0m" in
-    all)      pull_code; update_backend; update_h5; update_xi; update_admin; show_status ;;  
-    backend)  pull_code; update_backend; show_status ;;   
-    admin)    pull_code; update_admin ;;   
-    h5)       pull_code; update_h5 ;;  
-    xi)       pull_code; update_xi ;;  
-    frontend) pull_code; update_h5; update_xi; update_admin ;;  
+  local CMD="${1:-all}"
+  case "$CMD" in
+    all)
+      pull_code
+      update_backend
+      update_h5
+      update_xi
+      update_admin
+      show_status
+      ;;
+    backend)
+      pull_code
+      update_backend
+      show_status
+      ;;
+    admin)
+      pull_code
+      update_admin
+      ;;
+    h5)
+      pull_code
+      update_h5
+      ;;
+    xi)
+      pull_code
+      update_xi
+      ;;
+    frontend)
+      pull_code
+      update_h5
+      update_xi
+      update_admin
+      ;;
     *)
       echo "用法: $0 [all|backend|admin|h5|xi|frontend]"
       echo -e "  ${GREEN}all${NC}       全量更新（默认）"
@@ -205,7 +223,8 @@ main() {
       echo -e "  ${GREEN}h5${NC}        仅拉代码+重建前端H5（家政）"
       echo -e "  ${GREEN}xi${NC}        仅拉代码+重建洗衣前端"
       echo -e "  ${GREEN}frontend${NC}  拉代码+重建全部前端"
-      exit 1 ;;  
+      exit 1;
+      ;;
   esac
 
   echo ""
