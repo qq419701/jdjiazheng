@@ -157,7 +157,9 @@ const 端口 = 配置.端口;
 app.listen(端口, async () => {
   console.log(`\n🚀 京东家政预约代下单系统启动成功`);
   console.log(`📡 服务端口：${端口}`);
-  console.log(`🌐 前端H5：http://localhost:${端口}/{卡密}`);
+  console.log(`🏠 家政H5：http://localhost:${端口}/jz/{卡密}`);
+  console.log(`🧺 洗衣H5：http://localhost:${端口}/xi/{卡密}`);
+  console.log(`💳 充值H5：http://localhost:${端口}/cz/{卡密}`);
   console.log(`🖥️  后台管理：http://localhost:${端口}/admin`);
   console.log(`📋 后端接口：http://localhost:${端口}/api`);
   console.log(`🔗 SUP接口：http://localhost:${端口}/agisoAcprSupplierApi/...\n`);

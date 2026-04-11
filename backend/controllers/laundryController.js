@@ -453,6 +453,12 @@ const 接收鲸蚁回调 = async (req, res) => {
       if (factory_name) 更新数据.factory_name = factory_name;
       if (factory_code) 更新数据.factory_code = factory_code;
       更新数据.status = 2;
+    } else if (状态数值 === 2) {
+      // 已取件：如果回调带了waybillCode，同样写入（保险起见）
+      if (waybillCode) {
+        更新数据.express_waybill_code = waybillCode;
+        更新数据.express_order_id = waybillCode;
+      }
     } else if (状态数值 === 4) {
       // 预检中：保存图片（优先用 images_v2）
       const 图片数据 = images_v2 || images;
