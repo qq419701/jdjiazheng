@@ -98,7 +98,7 @@
     <!-- 拒绝退款预警横幅 -->
     <el-alert
       v-if="拒绝退款订单数 > 0"
-      :title="`⚠️ 当前有 ${拒绝退款订单数} 个订单被SUP拒绝退款（拒绝退款），需客服人工处理`"
+      :title="`⚠️ 当前有 ${拒绝退款订单数} 个订单被SUP拒绝退款，需客服人工处理`"
       type="warning"
       :closable="false"
       show-icon
