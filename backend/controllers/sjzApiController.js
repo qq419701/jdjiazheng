@@ -448,7 +448,7 @@ const 企业微信回调事件 = async (req, res) => {
     };
     await 订单.update(更新数据);
 
-    // 若 auto_group=1：创建客户群
+    // 若 auto_group=1：创建客户群，建群后同步备注群
     if (设置对象.qywx_auto_group === '1') {
       try {
         const 群名称模板 = 设置对象.qywx_group_name_template || '三角洲服务_{order_no}';
@@ -457,6 +457,18 @@ const 企业微信回调事件 = async (req, res) => {
         const 员工列表 = [员工userid];
         const chatid = await qywxService.创建客户群(群名称, 群主, 员工列表);
         await 订单.update({ status: 3, qywx_group_chat_id: chatid, qywx_group_created_at: new Date() });
+
+        // 建群成功后：若配置了加好友群备注模板，异步更新群名称（二次确认名称正确）
+        const 群备注模板 = 设置对象.qywx_group_remark_template || '';
+        if (群备注模板) {
+          const 最新订单 = await Order.findOne({ where: { order_no: 订单号, business_type: 'sjz' } });
+          const 群备注名称 = qywxService.渲染模板(群备注模板, 最新订单 || 订单);
+          if (群备注名称) {
+            qywxService.更新群信息(chatid, 群备注名称).catch(e => {
+              console.warn('[三角洲] 更新群备注名称失败（不影响主流程）:', e.message);
+            });
+          }
+        }
       } catch (建群错误) {
         console.error('[三角洲] 自动建群失败（不影响主流程）:', 建群错误.message);
       }

@@ -18,6 +18,7 @@ const multer = require('multer');
 const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 const { 触发洗衣下单, 查询洗衣订单状态, 取消洗衣订单, 获取洗衣订单列表, 获取洗衣订单详情, 修改洗衣订单并同步鲸蚁, 测试洗衣API连接, 获取洗衣Token状态, 查询洗衣物流, 确认洗衣退款完成 } = require('../controllers/laundryController');
 const { 获取商品列表: 获取商品列表管理, 新增商品, 更新商品, 删除商品 } = require('../controllers/productController');
+const qywxService = require('../services/qywxService');
 
 // ===== 备注图片上传配置 =====
 // 图片保存到 backend/uploads/remarks/ 目录，通过 /uploads/remarks/ 静态路径访问
@@ -1301,6 +1302,44 @@ router.post('/sjz-orders/:id/confirm-refund', 验证Token, async (req, res) => {
     await 订单.update({ status: 6, order_log: JSON.stringify(现有日志) });
 
     res.json({ code: 1, message: '退款完成，卡密已作废' });
+
+    // ===== 退款后异步更新企业微信：客户备注 + 群名称 =====
+    setImmediate(async () => {
+      try {
+        const { Setting } = require('../models');
+        const 设置列表 = await Setting.findAll();
+        const 设置对象 = {};
+        设置列表.forEach(s => { 设置对象[s.key_name] = s.key_value; });
+
+        if (设置对象.qywx_enabled !== '1') return;
+
+        const 额外参数 = { status_text: '已退款', refund_reason: req.body?.refund_reason || '退款' };
+
+        // 退款后更新客户备注
+        const 退款备注模板 = 设置对象.qywx_refund_remark_template || '';
+        if (退款备注模板 && 订单.qywx_assigned_user && 订单.qywx_external_userid) {
+          const 备注内容 = qywxService.渲染模板(退款备注模板, 订单, 额外参数);
+          if (备注内容) {
+            await qywxService.自动备注客户(订单.qywx_assigned_user, 订单.qywx_external_userid, 备注内容).catch(e => {
+              console.warn('[三角洲] 退款后更新客户备注失败:', e.message);
+            });
+          }
+        }
+
+        // 退款后更新群名称
+        const 退款群名称模板 = 设置对象.qywx_refund_group_name_template || '';
+        if (退款群名称模板 && 订单.qywx_group_chat_id) {
+          const 新群名称 = qywxService.渲染模板(退款群名称模板, 订单, 额外参数);
+          if (新群名称) {
+            await qywxService.更新群信息(订单.qywx_group_chat_id, 新群名称).catch(e => {
+              console.warn('[三角洲] 退款后更新群名称失败:', e.message);
+            });
+          }
+        }
+      } catch (企微错误) {
+        console.error('[三角洲] 退款后企业微信更新出错（不影响退款结果）:', 企微错误.message);
+      }
+    });
   } catch (错误) {
     console.error('[三角洲] 确认退款出错:', 错误);
     res.status(500).json({ code: -1, message: '服务器错误' });

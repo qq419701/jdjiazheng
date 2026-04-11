@@ -391,6 +391,39 @@ const 初始化数据库 = async () => {
     }
     console.log('✅ 奇所SUP默认配置初始化完成（共', 奇所SUP默认配置.length, '项）');
 
+    // 三角洲企业微信默认配置
+    const 三角洲企微默认配置 = [
+      // ===== 基本开关 =====
+      { key_name: 'qywx_enabled',            key_value: '0', description: '企业微信总开关（0=关闭，1=开启）。开启后提交订单时自动生成专属联系我二维码/链接。' },
+      { key_name: 'qywx_corpid',             key_value: '',  description: '企业微信企业ID（CorpID）。在企业微信管理后台"我的企业"页面可以找到。' },
+      { key_name: 'qywx_secret',             key_value: '',  description: '企业微信客户联系Secret。在管理后台 → 客户联系 → API → 开启API 后获取，用于调用客户联系接口。' },
+      // ===== 回调验证 =====
+      { key_name: 'qywx_token',              key_value: '',  description: '企业微信回调验证Token（自定义字符串）。在管理后台配置"接收事件服务器"时填写，用于验证回调请求合法性。' },
+      { key_name: 'qywx_encoding_aes_key',   key_value: '',  description: '企业微信回调加密密钥EncodingAESKey（43位随机字符串）。配置接收事件服务器时自动生成或手动填写。' },
+      // ===== 加好友模式 =====
+      { key_name: 'qywx_add_friend_mode',    key_value: 'link', description: '添加好友展示方式：link=仅展示跳转链接（适合手机端直接跳转），qrcode=仅展示二维码（适合截图扫码），both=链接和二维码都展示。' },
+      // ===== 员工分配 =====
+      { key_name: 'qywx_user_ids',           key_value: '',  description: '接待员工的企业微信UserID列表，多个用英文逗号分隔，例如：user001,user002,user003。每个订单会按照分配模式分配给其中一名员工。' },
+      { key_name: 'qywx_user_assign_mode',   key_value: 'round_robin', description: '员工分配模式：round_robin=轮询分配（按订单号均匀分配，保证每个员工接单量均衡），first=固定第一个员工（适合单人运营）。' },
+      // ===== 加好友后自动操作 =====
+      { key_name: 'qywx_remark_template',    key_value: '三角洲客户_{order_no}', description: '客户添加好友后自动备注的模板。可用变量：{order_no}订单号，{phone}手机号，{player_name}游戏昵称，{product_name}套餐名，{insurance}保险格数，{date}当前日期。例如：三角洲_{order_no}_{phone}' },
+      { key_name: 'qywx_welcome_template',   key_value: '您好！已收到您的三角洲哈夫币充值需求，稍后为您安排服务。', description: '客户添加好友后自动发送的欢迎语模板。可用变量同备注模板。注意：欢迎语只能在客户添加好友后20秒内发送，之后无效。' },
+      // ===== 自动建群 =====
+      { key_name: 'qywx_auto_group',         key_value: '0', description: '是否在客户添加好友后自动创建服务群（0=不建群，1=自动建群）。建群成功后订单状态变为"已建群"。' },
+      { key_name: 'qywx_group_name_template',key_value: '三角洲服务_{order_no}', description: '自动建群时的群名称模板。可用变量同备注模板。例如：{player_name}的哈夫币服务群' },
+      { key_name: 'qywx_group_remark_template', key_value: '', description: '建群成功后更新群名称的模板（二次确认群名，可用于加入更多订单信息）。留空则不更新。可用变量同备注模板。' },
+      // ===== 退款/撤单后自动操作 =====
+      { key_name: 'qywx_refund_remark_template',    key_value: '', description: '退款或撤单完成后，自动修改客户备注的模板。留空则不更新备注。可用变量：{order_no},{phone},{player_name},{product_name},{date},{status_text}（已退款），{refund_reason}（退款原因）。例如：【已退款】三角洲_{order_no}' },
+      { key_name: 'qywx_refund_group_name_template', key_value: '', description: '退款或撤单完成后，自动修改服务群名称的模板。留空则不更新群名称。可用变量同退款备注模板。例如：【已退款】{player_name}的服务群' },
+    ];
+    for (const 配置项 of 三角洲企微默认配置) {
+      await Setting.findOrCreate({
+        where: { key_name: 配置项.key_name },
+        defaults: { ...配置项, updated_at: new Date() },
+      });
+    }
+    console.log('✅ 三角洲企业微信默认配置初始化完成（共', 三角洲企微默认配置.length, '项）');
+
     // 后台自定义标题/名称默认配置
     const 后台自定义配置 = [
       { key_name: 'admin_site_title', key_value: '京东家政代下单系统', description: '后台登录页系统标题' },

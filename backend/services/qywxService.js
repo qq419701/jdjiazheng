@@ -182,13 +182,40 @@ const 创建客户群 = async (群名称, 群主, 员工列表) => {
 };
 
 /**
+ * 更新客户群信息（重命名群）
+ * 调用 /appchat/update，支持修改群名称
+ * @param {string} chatid 群ID
+ * @param {string} 新群名称
+ */
+const 更新群信息 = async (chatid, 新群名称) => {
+  const token = await 获取AccessToken();
+  const 响应 = await axios.post(
+    `https://qyapi.weixin.qq.com/cgi-bin/appchat/update?access_token=${token}`,
+    { chatid, name: 新群名称 },
+    { timeout: 8000 }
+  );
+  if (响应.data.errcode !== 0) {
+    console.warn('[企业微信] 更新群信息失败:', 响应.data.errmsg);
+  }
+};
+
+/**
  * 渲染模板（替换占位变量）
- * 支持变量：{order_no} {date} {product_name} {player_name} {phone} {insurance}
+ * 支持变量：
+ *   {order_no}     — 订单号
+ *   {date}         — 当前日期（如 2026/4/11）
+ *   {product_name} — 套餐名称（哈夫币数量 或 service_type）
+ *   {player_name}  — 游戏昵称
+ *   {phone}        — 手机号
+ *   {insurance}    — 保险格数（如 3格）
+ *   {status_text}  — 当前状态文字（退款/撤单等场景传入）
+ *   {refund_reason}— 退款原因（退款场景传入）
  * @param {string} 模板
  * @param {Object} 订单
+ * @param {Object} [额外参数] - 可选，{ status_text, refund_reason }
  * @returns {string} 渲染后文本
  */
-const 渲染模板 = (模板, 订单) => {
+const 渲染模板 = (模板, 订单, 额外参数 = {}) => {
   if (!模板) return '';
   const 今日 = new Date().toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' });
   return 模板
@@ -197,7 +224,9 @@ const 渲染模板 = (模板, 订单) => {
     .replace(/\{product_name\}/g, 订单.sjz_hafubi_amount ? `${订单.sjz_hafubi_amount}哈夫币` : (订单.service_type || ''))
     .replace(/\{player_name\}/g, 订单.sjz_game_nickname || '')
     .replace(/\{phone\}/g, 订单.phone || '')
-    .replace(/\{insurance\}/g, 订单.sjz_insurance_slots != null ? `${订单.sjz_insurance_slots}格` : '');
+    .replace(/\{insurance\}/g, 订单.sjz_insurance_slots != null ? `${订单.sjz_insurance_slots}格` : '')
+    .replace(/\{status_text\}/g, 额外参数.status_text || '')
+    .replace(/\{refund_reason\}/g, 额外参数.refund_reason || '退款');
 };
 
 /**
@@ -221,6 +250,7 @@ module.exports = {
   自动备注客户,
   发送欢迎语,
   创建客户群,
+  更新群信息,
   渲染模板,
   验证回调签名,
   分配员工,

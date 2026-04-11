@@ -931,15 +931,19 @@
           </el-form-item>
           <el-form-item label="企业ID（CorpID）">
             <el-input v-model="设置表单.qywx_corpid" placeholder="从企业微信管理后台获取" />
+            <div class="字段说明">企业微信唯一标识，在"我的企业"页面底部可以找到</div>
           </el-form-item>
           <el-form-item label="客户联系Secret">
             <el-input v-model="设置表单.qywx_secret" type="password" show-password placeholder="客户联系 → API → Secret" />
+            <div class="字段说明">在企业微信管理后台 → 客户联系 → 联系我 → API处开启并获取，专用于客户联系接口，与通讯录/消息的Secret不同</div>
           </el-form-item>
           <el-form-item label="回调Token">
             <el-input v-model="设置表单.qywx_token" placeholder="企业微信配置事件接收时自定义Token" />
+            <div class="字段说明">配置接收事件服务器时填写的Token，用于验证回调请求合法性，可自定义任意字符串</div>
           </el-form-item>
           <el-form-item label="EncodingAESKey">
             <el-input v-model="设置表单.qywx_encoding_aes_key" placeholder="43位随机字符串" />
+            <div class="字段说明">配置接收事件服务器时的消息加解密密钥，43位随机字符串，在企业微信后台自动生成</div>
           </el-form-item>
           <el-form-item label="回调地址（只读）">
             <el-tag type="info">{{ 当前域名 }}/api/sjz/qywx-callback</el-tag>
@@ -950,32 +954,63 @@
               <el-radio value="qrcode">仅二维码</el-radio>
               <el-radio value="both">链接+二维码</el-radio>
             </el-radio-group>
+            <div class="字段说明">link=H5成功页仅展示跳转链接按钮（手机端直接跳转），qrcode=仅展示二维码（截图扫码），both=两种都展示</div>
           </el-form-item>
           <el-form-item label="员工UserID列表">
             <el-input v-model="设置表单.qywx_user_ids" placeholder="user1,user2,user3（逗号分隔）" />
-            <div class="字段说明">多个员工用英文逗号分隔，在企业微信通讯录中查看userid</div>
+            <div class="字段说明">多个员工用英文逗号分隔。在企业微信后台 → 通讯录 → 成员详情中可查看userid。每笔订单会按分配模式指定其中一名员工接待。</div>
           </el-form-item>
           <el-form-item label="员工分配方式">
             <el-radio-group v-model="设置表单.qywx_user_assign_mode">
-              <el-radio value="round_robin">轮询分配</el-radio>
-              <el-radio value="first">固定第一个</el-radio>
+              <el-radio value="round_robin">轮询分配（均衡）</el-radio>
+              <el-radio value="first">固定第一个员工</el-radio>
             </el-radio-group>
+            <div class="字段说明">轮询分配=按订单号均匀分配给所有员工，保证接单量均衡；固定第一个=所有订单都分给列表第一名员工，适合单人运营。</div>
           </el-form-item>
-          <el-form-item label="自动备注模板">
+          <el-form-item label="加好友后自动备注">
             <el-input v-model="设置表单.qywx_remark_template" placeholder="三角洲客户_{order_no}" />
-            <div class="字段说明">可用变量：{order_no} {phone} {player_name} {insurance} {date}</div>
+            <div class="字段说明">客户添加好友后，自动将客户在员工通讯录中的备注改为此内容。留空则不备注。可用变量：{order_no}订单号，{phone}手机号，{player_name}游戏昵称，{product_name}套餐名，{insurance}保险格数，{date}日期</div>
           </el-form-item>
-          <el-form-item label="欢迎语模板">
+          <el-form-item label="加好友后欢迎语">
             <el-input v-model="设置表单.qywx_welcome_template" type="textarea" :rows="4" placeholder="您好！感谢您的信任，已收到您的三角洲哈夫币充值需求 {product_name}，稍后为您安排。" />
-            <div class="字段说明">可用变量：{order_no} {phone} {player_name} {insurance} {product_name} {date}</div>
+            <div class="字段说明">客户添加好友后20秒内自动发送的欢迎消息。注意：欢迎语超过20秒后发送则失效。可用变量同备注模板。</div>
           </el-form-item>
           <el-form-item label="自动建群">
             <el-switch v-model="设置表单.qywx_auto_group" active-value="1" inactive-value="0" />
-            <div class="字段说明">开启后，客户添加好友后自动创建客户服务群</div>
+            <div class="字段说明">开启后，客户添加好友后自动创建客户服务群，订单状态变为"已建群"</div>
           </el-form-item>
           <el-form-item v-if="设置表单.qywx_auto_group === '1'" label="群名称模板">
             <el-input v-model="设置表单.qywx_group_name_template" placeholder="三角洲服务_{order_no}" />
-            <div class="字段说明">可用变量：{order_no} {player_name} {date}</div>
+            <div class="字段说明">建群时的群名称，可用变量：{order_no} {player_name} {phone} {date}</div>
+          </el-form-item>
+          <el-form-item v-if="设置表单.qywx_auto_group === '1'" label="建群后群备注模板">
+            <el-input v-model="设置表单.qywx_group_remark_template" placeholder="留空则不更新群名称，例如：{player_name}的服务群_{order_no}" />
+            <div class="字段说明">建群成功后二次更新群名称的模板（可加入更多订单信息），留空则跳过。可用变量：{order_no} {player_name} {phone} {product_name} {insurance} {date}</div>
+          </el-form-item>
+
+          <!-- 退款/撤单后企业微信设置 -->
+          <div class="设置分组标题">── 退款/撤单后自动操作 ──</div>
+
+          <el-alert
+            type="warning"
+            :closable="false"
+            show-icon
+            style="margin-bottom:16px"
+          >
+            <template #default>
+              退款/撤单触发时机：① 管理员在后台点击"确认退款"；② 阿奇所SUP平台发起撤单请求。
+              <br/>两种方式触发后，都会按以下模板自动更新企业微信客户备注和群名称（需企业微信总开关开启）。
+              <br/>可用变量：<code>{order_no}</code> <code>{phone}</code> <code>{player_name}</code> <code>{product_name}</code> <code>{date}</code> <code>{status_text}</code>（已退款） <code>{refund_reason}</code>（退款原因）
+            </template>
+          </el-alert>
+
+          <el-form-item label="退款后客户备注模板">
+            <el-input v-model="设置表单.qywx_refund_remark_template" placeholder="留空则不更新备注，例如：【已退款】三角洲_{order_no}" />
+            <div class="字段说明">退款或撤单成功后，自动将客户的企业微信备注改为此内容。留空则不操作。</div>
+          </el-form-item>
+          <el-form-item label="退款后群名称模板">
+            <el-input v-model="设置表单.qywx_refund_group_name_template" placeholder="留空则不更新群名称，例如：【已退款】{player_name}的服务群" />
+            <div class="字段说明">退款或撤单成功后，自动将服务群名称改为此内容。留空则不操作。如订单无关联群则忽略。</div>
           </el-form-item>
 
           <el-form-item>
@@ -1244,6 +1279,9 @@ const 设置表单 = ref({
   qywx_remark_template: '三角洲客户_{order_no}',
   qywx_welcome_template: '您好！已收到您的三角洲哈夫币充值需求，稍后为您安排服务。',
   qywx_auto_group: '0', qywx_group_name_template: '三角洲服务_{order_no}',
+  qywx_group_remark_template: '',
+  qywx_refund_remark_template: '',
+  qywx_refund_group_name_template: '',
 })
 
 // 洗衣回调地址（自动拼接 site_url + /api/laundry/callback）
@@ -1444,6 +1482,9 @@ const 加载设置 = async () => {
         qywx_welcome_template: 数据.qywx_welcome_template || '您好！已收到您的三角洲哈夫币充值需求，稍后为您安排服务。',
         qywx_auto_group: 数据.qywx_auto_group || '0',
         qywx_group_name_template: 数据.qywx_group_name_template || '三角洲服务_{order_no}',
+        qywx_group_remark_template: 数据.qywx_group_remark_template || '',
+        qywx_refund_remark_template: 数据.qywx_refund_remark_template || '',
+        qywx_refund_group_name_template: 数据.qywx_refund_group_name_template || '',
       }
     }
   } finally {
