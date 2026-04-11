@@ -295,7 +295,7 @@ const 取消洗衣订单 = async (req, res) => {
 /**
  * 查询洗衣订单物流轨迹
  * GET /admin/api/laundry-orders/:id/express-routes
- * 优先用回寄单号（已回寄阶段），否则用取件单号（express_waybill_code 或兼容的 express_order_id）
+ * 同时查询取件（pickup_route）和回寄（return_route）两段轨迹
  */
 const 查询洗衣物流 = async (req, res) => {
   try {
@@ -304,22 +304,54 @@ const 查询洗衣物流 = async (req, res) => {
     });
     if (!订单) return res.json({ code: 0, message: '订单不存在' });
 
-    // 优先用回寄单号（已回寄阶段），否则用取件单号
-    const 单号 = 订单.return_waybill_code || 订单.express_waybill_code || 订单.express_order_id;
-    if (!单号) return res.json({ code: 0, message: '暂无物流单号，请等待鲸蚁分配' });
+    const 取件单号 = 订单.express_waybill_code || 订单.express_order_id;
+    const 回寄单号 = 订单.return_waybill_code;
+
+    if (!取件单号 && !回寄单号) {
+      return res.json({ code: 0, message: '暂无物流单号，请等待鲸蚁分配' });
+    }
 
     const { 查询物流轨迹 } = require('../services/laundryApiService');
-    const 物流数据 = await 查询物流轨迹(单号);
+
+    let pickup_route_数据 = null;
+    let return_route_数据 = null;
+
+    if (取件单号) {
+      try {
+        pickup_route_数据 = await 查询物流轨迹(取件单号);
+      } catch (e) {
+        console.error('查取件物流失败:', e.message);
+      }
+    }
+
+    if (回寄单号) {
+      try {
+        return_route_数据 = await 查询物流轨迹(回寄单号);
+      } catch (e) {
+        console.error('查回寄物流失败:', e.message);
+      }
+    }
 
     res.json({
       code: 1,
       message: '查询成功',
       data: {
-        waybillCode: 单号,
-        collectorName: 物流数据?.collectorName || '',
-        collectorPhone: 物流数据?.collectorPhone || '',
-        logisticsNumber: 物流数据?.logisticsNumber || 单号,
-        routes: 物流数据?.routes || [],
+        // 兼容旧版字段（取件快递信息）
+        express_waybill_code: 取件单号 || '',
+        collectorName: pickup_route_数据?.collectorName || '',
+        collectorPhone: pickup_route_数据?.collectorPhone || '',
+        routes: pickup_route_数据?.routes || [],
+        // 新增：结构化双段数据
+        pickup_route: {
+          waybillCode: 取件单号 || '',
+          collectorName: pickup_route_数据?.collectorName || '',
+          collectorPhone: pickup_route_数据?.collectorPhone || '',
+          routes: pickup_route_数据?.routes || [],
+        },
+        return_route: {
+          waybillCode: 回寄单号 || '',
+          routes: return_route_数据?.routes || [],
+        },
       },
     });
   } catch (错误) {

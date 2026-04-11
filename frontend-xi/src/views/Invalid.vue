@@ -31,7 +31,8 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { showToast } from 'vant'
+import { showToast, showLoadingToast, closeToast } from 'vant'
+import { 验证洗衣卡密API } from '../api/index'
 
 const route = useRoute()
 const router = useRouter()
@@ -40,8 +41,22 @@ const 是已使用 = computed(() => route.query.used === '1')
 const 是已作废 = computed(() => route.query.invalidated === '1')
 const 卡密码 = computed(() => route.query.code || '')
 
-const 查询快递 = () => {
-  router.push({ name: 'Tracking', params: { code: 卡密码.value } })
+const 查询快递 = async () => {
+  if (!卡密码.value) return
+  showLoadingToast({ message: '查询中...', forbidClick: true })
+  try {
+    const 结果 = await 验证洗衣卡密API(卡密码.value)
+    closeToast()
+    const 订单号 = 结果?.data?.order_no || ''
+    if (订单号) {
+      router.push({ name: 'Tracking', params: { code: 卡密码.value }, query: { orderNo: 订单号 } })
+    } else {
+      showToast('暂时查不到订单号，请联系客服')
+    }
+  } catch {
+    closeToast()
+    showToast('查询失败，请稍后重试')
+  }
 }
 
 const 联系客服 = () => {
