@@ -402,7 +402,7 @@ const 初始化数据库 = async () => {
         defaults: { ...配置项, updated_at: new Date() },
       })
     }
-    console.log('✅ 后台自定义标题默认配置初始化完成')
+    console.log('✅ 后台自定义标题/名称默认配置初始化完成')
 
     console.log('\n🎉 数据库初始化完成！');
     console.log('管理员账号：admin');
