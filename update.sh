@@ -94,6 +94,15 @@ update_h5() {
   log_ok "前端H5构建完成 → dist/"
 }
 
+update_xi() {
+  log_section "🧺 洗衣前端（frontend-xi）— 构建"
+  if [ ! -d "$PROJECT_DIR/frontend-xi" ]; then log_warn "目录 frontend-xi 不存在，跳过"; return; fi
+  smart_npm_install "$PROJECT_DIR/frontend-xi" "洗衣前端" "dev"
+  cd "$PROJECT_DIR/frontend-xi"
+  npm run build
+  log_ok "洗衣前端构建完成 → dist/"
+}
+
 update_admin() {
   log_section "🖥️  后台管理（frontend-admin）— 构建"
   if [ ! -d "$PROJECT_DIR/frontend-admin" ]; then log_warn "目录 frontend-admin 不存在，跳过"; return; fi
@@ -120,17 +129,19 @@ main() {
   echo ""
 
   case "${1:-all}" in
-    all)      pull_code; update_backend; update_h5; update_admin; show_status ;; 
+    all)      pull_code; update_backend; update_h5; update_xi; update_admin; show_status ;; 
     backend)  pull_code; update_backend; show_status ;; 
     admin)    pull_code; update_admin ;; 
     h5)       pull_code; update_h5 ;; 
-    frontend) pull_code; update_h5; update_admin ;; 
+    xi)       pull_code; update_xi ;; 
+    frontend) pull_code; update_h5; update_xi; update_admin ;; 
     *)
-      echo "用法: $0 [all|backend|admin|h5|frontend]"
+      echo "用法: $0 [all|backend|admin|h5|xi|frontend]"
       echo -e "  ${GREEN}all${NC}       全量更新（默认）"
       echo -e "  ${GREEN}backend${NC}   仅拉代码+重启后端"
       echo -e "  ${GREEN}admin${NC}     仅拉代码+重建后台管理"
-      echo -e "  ${GREEN}h5${NC}        仅拉代码+重建前端H5"
+      echo -e "  ${GREEN}h5${NC}        仅拉代码+重建前端H5（家政）"
+      echo -e "  ${GREEN}xi${NC}        仅拉代码+重建洗衣前端"
       echo -e "  ${GREEN}frontend${NC}  拉代码+重建全部前端"
       exit 1 ;;
   esac
