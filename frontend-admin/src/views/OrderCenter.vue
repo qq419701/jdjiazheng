@@ -375,10 +375,14 @@
               <el-input v-model="tp搜索条件.member_name" placeholder="如：优酷年卡" clearable style="width:120px" />
             </el-form-item>
             <el-form-item label="状态">
-              <el-select v-model="tp搜索条件.status" clearable placeholder="全部状态" style="width:120px">
+              <el-select v-model="tp搜索条件.status" clearable placeholder="全部状态" style="width:130px">
                 <el-option label="待处理" value="0" />
-                <el-option label="拒绝退款" value="6" />
+                <el-option label="处理中" value="1" />
+                <el-option label="服务中" value="2" />
+                <el-option label="已完成" value="3" />
                 <el-option label="已取消" value="4" />
+                <el-option label="失败" value="5" />
+                <el-option label="拒绝退款" value="6" />
               </el-select>
             </el-form-item>
             <el-form-item label="日期范围">
@@ -930,11 +934,11 @@ const 获取洗衣状态类型 = (laundryStatus) => {
 }
 
 const tp获取状态类型 = (status) => {
-  const m = { 0: 'info', 4: 'info', 6: 'warning' }
+  const m = { 0: 'info', 1: 'primary', 2: 'success', 3: 'success', 4: 'info', 5: 'danger', 6: 'warning' }
   return m[status] || 'info'
 }
 const tp获取状态文字 = (status) => {
-  const m = { 0: '待处理', 4: '已取消', 6: '拒绝退款' }
+  const m = { 0: '待处理', 1: '处理中', 2: '服务中', 3: '已完成', 4: '已取消', 5: '失败', 6: '拒绝退款' }
   return m[status] || '未知'
 }
 
@@ -984,11 +988,37 @@ const 获取订单行样式 = ({ row }) => {
 }
 
 // 快速筛选拒绝退款订单（切换到家政Tab并筛选status=6）
-const 快速筛选拒绝退款订单 = () => {
-  jz搜索条件.value.status = '6'
-  当前Tab.value = 'jiazheng'
-  jz当前页.value = 1
-  加载家政订单()
+const 快速筛选拒绝退款订单 = async () => {
+  const [r1, r2, r3] = await Promise.allSettled([
+    获取订单列表API({ business_type: 'jiazheng', status: 6, page: 1, limit: 1 }),
+    获取洗衣订单列表API({ status: 6, page: 1, limit: 1 }),
+    获取充值订单列表API({ status: 6, page: 1, limit: 1 }),
+  ])
+  const jz数量 = (r1.status === 'fulfilled' && r1.value?.code === 1) ? (r1.value.data?.total || 0) : 0
+  const xi数量 = (r2.status === 'fulfilled' && r2.value?.code === 1) ? (r2.value.data?.total || 0) : 0
+  const tp数量 = (r3.status === 'fulfilled' && r3.value?.code === 1) ? (r3.value.data?.total || 0) : 0
+
+  if (jz数量 > 0) {
+    jz搜索条件.value.status = '6'
+    当前Tab.value = 'jiazheng'
+    jz当前页.value = 1
+    加载家政订单()
+  } else if (xi数量 > 0) {
+    xi搜索条件.value.status = '6'
+    当前Tab.value = 'xiyifu'
+    xi当前页.value = 1
+    加载洗衣订单()
+  } else if (tp数量 > 0) {
+    tp搜索条件.value.status = '6'
+    当前Tab.value = 'topup'
+    tp当前页.value = 1
+    加载充值订单()
+  } else {
+    jz搜索条件.value.status = '6'
+    当前Tab.value = 'jiazheng'
+    jz当前页.value = 1
+    加载家政订单()
+  }
 }
 
 // Tab 列表（含第4个空调订单预留位）
