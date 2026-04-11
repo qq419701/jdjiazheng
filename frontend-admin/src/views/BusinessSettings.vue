@@ -1029,6 +1029,8 @@ const 处理凭证图片选择 = (e) => {
 const 设置表单 = ref({
   // 通用
   site_url: '',
+  admin_site_title: '',
+  admin_site_name: '',
   // 家政
   banner_url: '',
   service_type: '日常保洁',
