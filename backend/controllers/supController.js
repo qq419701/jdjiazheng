@@ -1238,7 +1238,7 @@ const 撤销订单 = async (req, res) => {
           操作: '阿奇所平台撤单，订单自动取消',
           状态: 'cancel',
         });
-        await 关联订单.update({ status: 4, order_log: JSON.stringify(现有日志) });
+        await 关联订单.update({ status: 4, laundry_status: '已取消', order_log: JSON.stringify(现有日志) });
       }
 
       // 将卡密状态设为已失效，sup_status 设为已撤单
