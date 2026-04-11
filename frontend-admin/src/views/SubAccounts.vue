@@ -152,7 +152,6 @@ const 权限模块标签 = {
   order_center: '订单中心',
   business_settings: '业务设置',
   regions: '地区管理',
-  jd_accounts: '京东账号管理',
   sub_accounts: '子账号管理',
   // [已废弃] orders: '家政订单',
   // [已废弃] cards: '家政卡密',

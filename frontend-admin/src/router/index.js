@@ -86,40 +86,8 @@ const routes = [
         path: 'jd-accounts',
         name: 'JdAccounts',
         component: () => import('../views/JdAccounts.vue'),
-        meta: { 标题: '京东账号管理', 权限Key: 'jd_accounts' },
+        meta: { 标题: '京东账号管理', 权限Key: 'business_settings' },
       },
-      // ===== [已废弃] 以下为旧独立业务卡密路由，已被统一卡密工作台替代，暂不删除保留备查 =====
-      // [已废弃]
-      // {
-      //   // 充值卡密生成页（必须在 topup-cards 之前注册，防止被拦截）
-      //   path: 'topup-cards/generate',
-      //   name: 'TopupCardGenerate',
-      //   component: () => import('../views/TopupCardGenerate.vue'),
-      //   meta: { 标题: '生成充值卡密', 权限Key: 'topup_cards' },
-      // },
-      // [已废弃]
-      // {
-      //   path: 'topup-cards',
-      //   name: 'TopupCards',
-      //   component: () => import('../views/TopupCards.vue'),
-      //   meta: { 标题: '充值卡密管理', 权限Key: 'topup_cards' },
-      // },
-      // [已废弃] ===== 旧洗衣卡密路由 =====
-      // [已废弃]
-      // {
-      //   path: 'laundry-cards',
-      //   name: 'LaundryCards',
-      //   component: () => import('../views/LaundryCards.vue'),
-      //   meta: { 标题: '洗衣卡密管理', 权限Key: 'laundry_cards' },
-      // },
-      // [已废弃]
-      // {
-      //   path: 'laundry-cards/generate',
-      //   name: 'LaundryCardGenerate',
-      //   component: () => import('../views/LaundryCardGenerate.vue'),
-      //   meta: { 标题: '批量生成洗衣卡密', 权限Key: 'laundry_cards' },
-      // },
-      // ===== [已废弃] 以上为旧独立业务卡密路由，暂不删除保留备查 =====
       // ===== 地区管理 =====
       {
         path: 'regions',
@@ -216,7 +184,6 @@ router.beforeEach((to, from, next) => {
         { key: 'business_settings', name: 'BusinessSettings' },
         { key: 'sup_logs', name: 'SupLogs' },
         { key: 'regions', name: 'Regions' },
-        { key: 'jd_accounts', name: 'JdAccounts' },
         { key: 'sub_accounts', name: 'SubAccounts' },
         { key: 'dashboard', name: 'Dashboard' },
       ]
