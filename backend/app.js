@@ -58,10 +58,10 @@ const 订单限流 = rateLimit({
   legacyHeaders: false,
 });
 
-// 后台管理API通用限流：每IP每分钟最多60次
+// 后台管理API通用限流：每IP每分钟最多120次（避免多接口同时加载触发限流）
 const 管理API限流 = rateLimit({
   windowMs: 60 * 1000,
-  max: 60,
+  max: 120,
   message: { code: -1, message: '请求过于频繁，请稍后再试' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -98,8 +98,19 @@ const adminRouter = require('./routes/admin');
 const supRouter = require('./routes/sup');
 app.use('/', supRouter);
 
+// auth/me 独立高频限流：每IP每分钟最多300次（路由守卫高频调用，不应被通用限流卡住）
+const authMe限流 = rateLimit({
+  windowMs: 60 * 1000,
+  max: 300,
+  message: { code: -1, message: '请求过于频繁，请稍后再试' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // 后台管理接口（登录接口独立限流 + 所有管理接口通用限流）
 // 注意：/admin/api 必须在 /api 之前注册，避免路由冲突
+// auth/me 注册在通用限流之前，使用独立宽松限流
+app.use('/admin/api/auth/me', authMe限流);
 app.use('/admin/api/login', 登录限流);
 app.use('/admin/api', 管理API限流, adminRouter);
 
