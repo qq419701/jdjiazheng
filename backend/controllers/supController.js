@@ -1167,48 +1167,59 @@ const 撤销订单 = async (req, res) => {
       });
 
       if (关联订单) {
-        // 服务中（status=2，鲸蚁已受理）：不允许撤单，返回凭证并标记为拒绝退款
+        // 服务中（status=2，鲸蚁已受理）：先尝试通知鲸蚁取消，不直接拒绝
         if (关联订单.status === 2) {
-          const 拒绝原因 = `洗衣服务处理中（${关联订单.laundry_status || '进行中'}），无法撤单`;
-          const 拒绝日志 = 安全解析JSON(关联订单.order_log, []);
-          拒绝日志.push({
-            时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
-            操作: `阿奇所平台撤单被拒绝：${拒绝原因}，已返回拒绝凭证`,
-            状态: 'error',
-          });
-          await 关联订单.update({ status: 6, order_log: JSON.stringify(拒绝日志) });
-          try {
-            const reqCopy = { ...req.body };
-            delete reqCopy.sign;
-            await SupLog.create({
-              log_type: 'cancelOrder',
-              order_no: orderNo,
-              out_trade_no: 卡密记录.id.toString(),
-              user_id: req.body.userId || null,
-              request_data: JSON.stringify(reqCopy),
-              response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { orderNo: orderNo, cancelStatus: 30, refuseReason: 拒绝原因, refuseProof: 拒绝凭证URL } }),
-              status_code: 200,
-              cancel_status: 30,
-              result: 'fail',
-              error_msg: 拒绝原因,
-            });
-          } catch (日志错误) {
-            console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+          if (关联订单.laundry_order_id) {
+            try {
+              const { 同步订单状态 } = require('../services/laundryApiService');
+              const out_booking_no = `B${关联订单.id}`;
+              await 同步订单状态(关联订单.order_no, out_booking_no, -1);
+              // 鲸蚁取消成功，继续往下执行取消本地订单
+            } catch (鲸蚁错误) {
+              // 鲸蚁取消失败，拒绝撤单，不修改订单 status（保持 status=2 方便后续重试）
+              const 拒绝原因 = `洗衣服务处理中（${关联订单.laundry_status || '已分配'}），鲸蚁取消失败：${鲸蚁错误.message}`;
+              const 拒绝日志 = 安全解析JSON(关联订单.order_log, []);
+              拒绝日志.push({
+                时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+                操作: `阿奇所平台撤单被拒绝：${拒绝原因}，已返回拒绝凭证`,
+                状态: 'error',
+              });
+              await 关联订单.update({ order_log: JSON.stringify(拒绝日志) });
+              try {
+                const reqCopy = { ...req.body };
+                delete reqCopy.sign;
+                await SupLog.create({
+                  log_type: 'cancelOrder',
+                  order_no: orderNo,
+                  out_trade_no: 卡密记录.id.toString(),
+                  user_id: req.body.userId || null,
+                  request_data: JSON.stringify(reqCopy),
+                  response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { orderNo: orderNo, cancelStatus: 30, refuseReason: 拒绝原因, refuseProof: 拒绝凭证URL } }),
+                  status_code: 200,
+                  cancel_status: 30,
+                  result: 'fail',
+                  error_msg: 拒绝原因,
+                });
+              } catch (日志错误) {
+                console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+              }
+              return res.json({
+                code: 200,
+                message: '接口调用成功',
+                data: {
+                  orderNo: orderNo,
+                  cancelStatus: 30,
+                  refuseReason: 拒绝原因,
+                  refuseProof: 拒绝凭证URL,
+                },
+              });
+            }
           }
-          return res.json({
-            code: 200,
-            message: '接口调用成功',
-            data: {
-              orderNo: orderNo,
-              cancelStatus: 30,
-              refuseReason: 拒绝原因,
-              refuseProof: 拒绝凭证URL,
-            },
-          });
+          // 如果没有 laundry_order_id 或鲸蚁取消成功，继续取消本地订单
         }
 
-        // 如果已推送到鲸蚁（有 laundry_order_id），尝试通知鲸蚁取消
-        if (关联订单.laundry_order_id) {
+        // 如果已推送到鲸蚁且 status 不是 2（status=2 时已在上方处理），尝试通知鲸蚁取消
+        if (关联订单.status !== 2 && 关联订单.laundry_order_id) {
           try {
             const { 同步订单状态 } = require('../services/laundryApiService');
             const out_booking_no = `B${关联订单.id}`;
