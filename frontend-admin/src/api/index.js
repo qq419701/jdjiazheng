@@ -183,6 +183,28 @@ export const 套餐生成卡密API = (数据) => 请求实例.post('/card-templa
 // ===== 订单中心 =====
 export const 获取订单角标数量API = () => 请求实例.get('/order-center/badge-counts')
 
+// ===== 三角洲订单管理 =====
+export const 获取三角洲订单列表API = (参数) => 请求实例.get('/sjz-orders', { params: 参数 })
+export const 获取三角洲订单详情API = (id) => 请求实例.get(`/sjz-orders/${id}`)
+export const 更新三角洲订单状态API = (id, 数据) => 请求实例.put(`/sjz-orders/${id}/status`, 数据)
+export const 更新三角洲订单备注API = (id, 数据) => 请求实例.put(`/sjz-orders/${id}/remark`, 数据)
+export const 导出三角洲订单API = (参数) => 请求实例.get('/sjz-orders/export', { params: 参数, responseType: 'blob' })
+export const 订单页搜索三角洲卡密API = (keyword) => 请求实例.get('/sjz-orders/search-card', { params: { keyword } })
+export const 申请三角洲退款API = (id) => 请求实例.put(`/sjz-orders/${id}/status`, { status: 6 })
+export const 确认三角洲退款完成API = (id) => 请求实例.post(`/sjz-orders/${id}/confirm-refund`)
+export const 重置三角洲订单API = (id) => 请求实例.post(`/sjz-orders/${id}/reset`)
+
+// ===== 三角洲卡密管理 =====
+export const 获取三角洲卡密列表API = (参数) => 请求实例.get('/sjz-cards', { params: 参数 })
+export const 生成三角洲卡密API = (数据) => 请求实例.post('/sjz-cards/generate', 数据)
+export const 删除三角洲卡密API = (id) => 请求实例.delete(`/sjz-cards/${id}`)
+export const 作废三角洲卡密API = (id) => 请求实例.put(`/sjz-cards/${id}/invalidate`)
+export const 导出三角洲卡密API = (参数) => 请求实例.get('/sjz-cards/export', { params: 参数, responseType: 'blob' })
+export const 获取三角洲预览卡密API = () => 请求实例.get('/sjz-cards/preview-card')
+export const 获取三角洲批次列表API = () => 请求实例.get('/sjz-card-batches')
+export const 获取三角洲批次卡密API = (id) => 请求实例.get(`/sjz-card-batches/${id}/cards`)
+export const 删除三角洲批次API = (id) => 请求实例.delete(`/sjz-card-batches/${id}`)
+
 // ===== 阿奇所SUP日志 =====
 export const 获取SUP日志列表API = (参数) => 请求实例.get('/sup-logs', { params: 参数 })
 export const 获取SUP日志统计API = () => 请求实例.get('/sup-logs/stats')

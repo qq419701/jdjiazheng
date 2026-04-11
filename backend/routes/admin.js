@@ -997,13 +997,20 @@ router.post('/card-templates/generate', 验证Token, async (req, res) => {
       topup_steps: 套餐.topup_steps || null,
       topup_account_regex: 套餐.topup_account_regex || null,
       topup_account_error_msg: 套餐.topup_account_error_msg || null,
+      // 三角洲套餐字段
+      sjz_hafubi_amount: 套餐.sjz_hafubi_amount || null,
+      sjz_show_nickname: 套餐.sjz_show_nickname != null ? 套餐.sjz_show_nickname : 1,
+      sjz_show_insurance: 套餐.sjz_show_insurance != null ? 套餐.sjz_show_insurance : 1,
+      sjz_show_is_adult: 套餐.sjz_show_is_adult != null ? 套餐.sjz_show_is_adult : 0,
+      sjz_show_warehouse: 套餐.sjz_show_warehouse != null ? 套餐.sjz_show_warehouse : 0,
+      sjz_require_phone: 套餐.sjz_require_phone != null ? 套餐.sjz_require_phone : 1,
     });
 
-    // 生成卡密（去重，按业务类型加前缀 JZ/XY/CZ）
+    // 生成卡密（去重，按业务类型加前缀 JZ/XY/CZ/SJZ）
     const 现有卡密 = await Card.findAll({ attributes: ['code'] });
     const 已有集合 = new Set(现有卡密.map(c => c.code));
 
-    const 前缀Map = { jiazheng: 'JZ', xiyifu: 'XY', topup: 'CZ' };
+    const 前缀Map = { jiazheng: 'JZ', xiyifu: 'XY', topup: 'CZ', sjz: 'SJZ' };
     const 业务前缀 = 前缀Map[套餐.business_type] || '';
 
     const 新卡密列表 = [];
@@ -1035,6 +1042,13 @@ router.post('/card-templates/generate', 验证Token, async (req, res) => {
           topup_steps: 套餐.topup_steps || null,
           topup_account_regex: 套餐.topup_account_regex || null,
           topup_account_error_msg: 套餐.topup_account_error_msg || null,
+          // 三角洲套餐字段
+          sjz_hafubi_amount: 套餐.sjz_hafubi_amount || null,
+          sjz_show_nickname: 套餐.sjz_show_nickname != null ? 套餐.sjz_show_nickname : 1,
+          sjz_show_insurance: 套餐.sjz_show_insurance != null ? 套餐.sjz_show_insurance : 1,
+          sjz_show_is_adult: 套餐.sjz_show_is_adult != null ? 套餐.sjz_show_is_adult : 0,
+          sjz_show_warehouse: 套餐.sjz_show_warehouse != null ? 套餐.sjz_show_warehouse : 0,
+          sjz_require_phone: 套餐.sjz_require_phone != null ? 套餐.sjz_require_phone : 1,
         });
         n++;
       }
@@ -1066,12 +1080,13 @@ router.post('/card-templates/generate', 验证Token, async (req, res) => {
 router.get('/order-center/badge-counts', 验证Token, async (req, res) => {
   try {
     const { Op } = require('sequelize');
-    const [jz, xi, tp] = await Promise.all([
+    const [jz, xi, tp, sjz] = await Promise.all([
       Order.count({ where: { business_type: 'jiazheng', status: 0 } }),
       Order.count({ where: { business_type: 'xiyifu', status: 0 } }),
       Order.count({ where: { business_type: 'topup', status: 0 } }),
+      Order.count({ where: { business_type: 'sjz', status: 0 } }),
     ]);
-    res.json({ code: 1, data: { jiazheng: jz, xiyifu: xi, topup: tp } });
+    res.json({ code: 1, data: { jiazheng: jz, xiyifu: xi, topup: tp, sjz } });
   } catch (错误) {
     console.error('获取订单角标数量出错:', 错误);
     res.status(500).json({ code: -1, message: '服务器错误' });
@@ -1194,5 +1209,253 @@ router.get('/sup-logs/stats', 验证Token, async (req, res) => {
     res.status(500).json({ code: -1, message: '服务器错误' });
   }
 });
+
+// ===== 三角洲订单管理 =====
+
+// 导出三角洲订单CSV（必须在 /:id 之前注册）
+router.get('/sjz-orders/export', 验证Token, async (req, res) => {
+  req.query.business_type = 'sjz';
+  return 导出订单(req, res);
+});
+
+// 三角洲订单页搜索卡密（必须在 /:id 之前注册）
+router.get('/sjz-orders/search-card', 验证Token, async (req, res) => {
+  try {
+    const { Op } = require('sequelize');
+    const { Card } = require('../models');
+    const keyword = (req.query.keyword || '').trim();
+    if (!keyword) return res.json({ code: 0, message: '请输入卡密码' });
+
+    const 卡密列表 = await Card.findAll({
+      where: {
+        business_type: 'sjz',
+        code: { [Op.like]: `%${keyword}%` },
+      },
+      order: [['created_at', 'DESC']],
+      limit: 20,
+    });
+
+    const 结果 = await Promise.all(卡密列表.map(async (卡密) => {
+      let order_no = null;
+      try {
+        const 订单 = await Order.findOne({
+          where: { card_code: 卡密.code },
+          order: [['created_at', 'DESC']],
+          attributes: ['order_no'],
+        });
+        if (订单) order_no = 订单.order_no;
+      } catch {}
+      return {
+        id: 卡密.id,
+        code: 卡密.code,
+        status: 卡密.status,
+        service_type: 卡密.sjz_hafubi_amount ? `${卡密.sjz_hafubi_amount}哈夫币` : '-',
+        created_at: 卡密.created_at,
+        order_no,
+      };
+    }));
+
+    res.json({ code: 1, message: '获取成功', data: 结果 });
+  } catch (错误) {
+    console.error('[三角洲] 搜索卡密出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+// 三角洲订单列表（强制 business_type='sjz'）
+router.get('/sjz-orders', 验证Token, async (req, res) => {
+  req.query.business_type = 'sjz';
+  return 获取订单列表(req, res);
+});
+
+// 三角洲订单详情
+router.get('/sjz-orders/:id', 验证Token, 获取订单详情);
+
+// 更新三角洲订单状态
+router.put('/sjz-orders/:id/status', 验证Token, 更新订单状态);
+
+// 更新三角洲订单备注
+router.put('/sjz-orders/:id/remark', 验证Token, 更新订单备注);
+
+// 重置三角洲订单
+router.post('/sjz-orders/:id/reset', 验证Token, 重置订单);
+
+// 三角洲订单退款
+router.post('/sjz-orders/:id/confirm-refund', 验证Token, async (req, res) => {
+  try {
+    const 订单 = await Order.findOne({ where: { id: req.params.id, business_type: 'sjz' } });
+    if (!订单) return res.json({ code: 0, message: '三角洲订单不存在' });
+
+    if (订单.card_code) {
+      const { Card } = require('../models');
+      await Card.update({ status: 2, invalidated_at: new Date() }, { where: { code: 订单.card_code } });
+    }
+
+    const { 安全解析JSON } = require('../utils/helpers');
+    const 现有日志 = 安全解析JSON(订单.order_log, []);
+    现有日志.push({
+      时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+      操作: '退款完成，卡密已作废',
+      状态: 'success',
+    });
+    await 订单.update({ status: 6, order_log: JSON.stringify(现有日志) });
+
+    res.json({ code: 1, message: '退款完成，卡密已作废' });
+  } catch (错误) {
+    console.error('[三角洲] 确认退款出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+// ===== 三角洲卡密管理 =====
+
+// 三角洲卡密列表
+router.get('/sjz-cards', 验证Token, async (req, res) => {
+  req.query.business_type = 'sjz';
+  return 获取卡密列表(req, res);
+});
+
+// 生成三角洲卡密
+router.post('/sjz-cards/generate', 验证Token, async (req, res) => {
+  try {
+    const {
+      count = 1,
+      remark = '',
+      expired_at = null,
+      sjz_hafubi_amount = null,
+      sjz_show_nickname = 1,
+      sjz_show_insurance = 1,
+      sjz_show_is_adult = 0,
+      sjz_show_warehouse = 0,
+      sjz_require_phone = 1,
+    } = req.body;
+    const { CardBatch, Card: CardModel } = require('../models');
+    const { 生成卡密: 生成卡密码 } = require('../utils/helpers');
+
+    const 实际数量 = Math.min(parseInt(count) || 1, 5000);
+    const 批次号 = `SJZ${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+
+    const 批次 = await CardBatch.create({
+      batch_no: 批次号,
+      category: '三角洲哈夫币',
+      service_type: sjz_hafubi_amount ? `${sjz_hafubi_amount}哈夫币` : '三角洲服务',
+      service_hours: 0,
+      count: 实际数量,
+      remark: remark || '',
+      business_type: 'sjz',
+      created_by: req.管理员?.id || null,
+      created_at: new Date(),
+      sjz_hafubi_amount: sjz_hafubi_amount || null,
+      sjz_show_nickname,
+      sjz_show_insurance,
+      sjz_show_is_adult,
+      sjz_show_warehouse,
+      sjz_require_phone,
+    });
+
+    const 现有卡密 = await CardModel.findAll({ attributes: ['code'] });
+    const 已有集合 = new Set(现有卡密.map(c => c.code));
+
+    const 新卡密列表 = [];
+    let n = 0, tries = 0;
+    while (n < 实际数量 && tries < 实际数量 * 10) {
+      tries++;
+      const 码 = 生成卡密码(16, 'SJZ');
+      if (!已有集合.has(码)) {
+        已有集合.add(码);
+        新卡密列表.push({
+          code: 码,
+          category: '三角洲哈夫币',
+          service_type: sjz_hafubi_amount ? `${sjz_hafubi_amount}哈夫币` : '三角洲服务',
+          service_hours: 0,
+          remark: remark || '',
+          status: 0,
+          created_by: req.管理员?.id || null,
+          batch_id: 批次.id,
+          expired_at: expired_at || null,
+          created_at: new Date(),
+          business_type: 'sjz',
+          sjz_hafubi_amount: sjz_hafubi_amount || null,
+          sjz_show_nickname,
+          sjz_show_insurance,
+          sjz_show_is_adult,
+          sjz_show_warehouse,
+          sjz_require_phone,
+        });
+        n++;
+      }
+    }
+
+    await CardModel.bulkCreate(新卡密列表);
+
+    res.json({
+      code: 1,
+      message: `成功生成 ${新卡密列表.length} 个三角洲卡密`,
+      data: {
+        batch_no: 批次号,
+        batch_id: 批次.id,
+        codes: 新卡密列表.map(c => c.code),
+        count: 新卡密列表.length,
+      },
+    });
+  } catch (错误) {
+    console.error('[三角洲] 生成卡密出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+// 获取三角洲预览卡密
+router.get('/sjz-cards/preview-card', 验证Token, async (req, res) => {
+  try {
+    const { Card: CardModel } = require('../models');
+    const 卡密 = await CardModel.findOne({
+      where: { status: 0, business_type: 'sjz' },
+      order: [['created_at', 'DESC']],
+    });
+    if (!卡密) return res.json({ code: 0, message: '暂无可用三角洲卡密，请先生成卡密', data: null });
+    res.json({ code: 1, message: 'ok', data: { code: 卡密.code } });
+  } catch (错误) {
+    console.error('[三角洲] 获取预览卡密出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+// 删除三角洲卡密
+router.delete('/sjz-cards/:id', 验证Token, 删除卡密);
+
+// 作废三角洲卡密
+router.put('/sjz-cards/:id/invalidate', 验证Token, 作废卡密);
+
+// 导出三角洲卡密CSV（必须在 /:id 之前注册）
+router.get('/sjz-cards/export', 验证Token, async (req, res) => {
+  req.query.business_type = 'sjz';
+  return 导出卡密(req, res);
+});
+
+// 三角洲批次列表
+router.get('/sjz-card-batches', 验证Token, async (req, res) => {
+  const { CardBatch, Card: CardModel } = require('../models');
+  try {
+    const 批次列表 = await CardBatch.findAll({
+      where: { business_type: 'sjz' },
+      order: [['created_at', 'DESC']],
+    });
+    const 批次数据 = await Promise.all(批次列表.map(async (批次) => {
+      const [实际数量, 已用数量, 未用数量] = await Promise.all([
+        CardModel.count({ where: { batch_id: 批次.id } }),
+        CardModel.count({ where: { batch_id: 批次.id, status: 1 } }),
+        CardModel.count({ where: { batch_id: 批次.id, status: 0 } }),
+      ]);
+      return { ...批次.toJSON(), actual_count: 实际数量, used_count: 已用数量, unused_count: 未用数量 };
+    }));
+    res.json({ code: 1, message: '获取成功', data: 批次数据 });
+  } catch (e) {
+    console.error('[三角洲] 获取批次出错:', e);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+router.get('/sjz-card-batches/:id/cards', 验证Token, 获取批次卡密);
+router.delete('/sjz-card-batches/:id', 验证Token, 删除批次);
 
 module.exports = router;

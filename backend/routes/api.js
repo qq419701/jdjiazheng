@@ -42,4 +42,27 @@ router.get('/cz/ip-city', 获取IP城市);
 // 提交充值订单
 router.post('/cz/orders', 提交充值订单);
 
+// ===== 三角洲H5接口 =====
+const sjzController = require('../controllers/sjzApiController');
+const multer = require('multer');
+const sjz上传目录 = require('path').join(__dirname, '../uploads/sjz');
+if (!require('fs').existsSync(sjz上传目录)) require('fs').mkdirSync(sjz上传目录, { recursive: true });
+const sjz截图上传 = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, sjz上传目录),
+    filename: (req, file, cb) => {
+      const ext = require('path').extname(file.originalname) || '.jpg';
+      cb(null, `sjz_${Date.now()}_${Math.random().toString(36).substr(2, 6)}${ext}`);
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => { file.mimetype.startsWith('image/') ? cb(null, true) : cb(new Error('只支持图片')); },
+});
+router.get('/sjz/verify-card/:code', sjzController.验证三角洲卡密);
+router.get('/sjz/ip-city', sjzController.获取IP城市);
+router.post('/sjz/upload', sjz截图上传.array('files', 5), sjzController.上传截图);
+router.post('/sjz/orders', sjzController.提交三角洲订单);
+router.get('/sjz/qywx-callback', sjzController.企业微信回调验证);
+router.post('/sjz/qywx-callback', require('express').text({ type: 'text/xml' }), sjzController.企业微信回调事件);
+
 module.exports = router;

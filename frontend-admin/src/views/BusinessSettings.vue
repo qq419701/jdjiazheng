@@ -859,7 +859,132 @@
         </el-form>
       </el-tab-pane>
 
-      <!-- ===== Tab 5：奇所SUP设置 ===== -->
+      <!-- ===== Tab 5：三角洲设置 ===== -->
+      <el-tab-pane label="⚔️ 三角洲设置" name="sjz">
+        <el-form :model="设置表单" label-width="180px" style="max-width: 720px">
+
+          <!-- 基本设置分组 -->
+          <div class="设置分组标题">── 基本设置 ──</div>
+
+          <el-form-item label="Banner图片URL">
+            <el-input v-model="设置表单.sjz_banner_url" placeholder="三角洲H5顶部横幅图片URL（可选）" />
+          </el-form-item>
+          <el-form-item label="顶部主标题">
+            <el-input v-model="设置表单.sjz_title" placeholder="三角洲哈夫币服务" />
+          </el-form-item>
+          <el-form-item label="副标题">
+            <el-input v-model="设置表单.sjz_subtitle" placeholder="追缴包赔 · 手游端游均可 · 安全有保障" />
+          </el-form-item>
+          <el-form-item label="下单须知">
+            <el-input v-model="设置表单.sjz_notice" type="textarea" :rows="5" placeholder="每行一条须知，换行分隔" />
+          </el-form-item>
+          <el-form-item label="服务内容JSON">
+            <el-input v-model="设置表单.sjz_service_content" type="textarea" :rows="6" placeholder='[{"icon":"⚔️","title":"追缴包赔","desc":"追缴不成全额退款"}]' />
+            <div class="字段说明">JSON数组格式，每项含 icon/title/desc 字段，显示在H5服务内容宫格</div>
+          </el-form-item>
+
+          <!-- 弹窗提醒设置分组 -->
+          <div class="设置分组标题">── 弹窗提醒设置 ──</div>
+
+          <el-form-item label="首页弹窗（开启）">
+            <el-switch v-model="设置表单.sjz_popup1_enabled" active-value="1" inactive-value="0" />
+          </el-form-item>
+          <template v-if="设置表单.sjz_popup1_enabled === '1'">
+            <el-form-item label="首页弹窗标题"><el-input v-model="设置表单.sjz_popup1_title" /></el-form-item>
+            <el-form-item label="首页弹窗内容"><el-input v-model="设置表单.sjz_popup1_content" type="textarea" :rows="3" /></el-form-item>
+            <el-form-item label="首页弹窗图标"><el-input v-model="设置表单.sjz_popup1_icon" placeholder="⚔️" style="width:80px" /></el-form-item>
+            <el-form-item label="首页弹窗按钮文字"><el-input v-model="设置表单.sjz_popup1_btn_text" placeholder="我知道了" /></el-form-item>
+            <el-form-item label="自动关闭（秒）">
+              <el-input-number v-model="设置表单.sjz_popup1_auto_close" :min="0" :max="30" />
+              <div class="字段说明">0=不自动关闭</div>
+            </el-form-item>
+          </template>
+
+          <el-form-item label="确认弹窗（开启）">
+            <el-switch v-model="设置表单.sjz_popup2_enabled" active-value="1" inactive-value="0" />
+          </el-form-item>
+          <template v-if="设置表单.sjz_popup2_enabled === '1'">
+            <el-form-item label="确认弹窗标题"><el-input v-model="设置表单.sjz_popup2_title" /></el-form-item>
+            <el-form-item label="确认弹窗内容"><el-input v-model="设置表单.sjz_popup2_content" type="textarea" :rows="3" /></el-form-item>
+            <el-form-item label="确认按钮文字"><el-input v-model="设置表单.sjz_popup2_btn_text" placeholder="确认提交" /></el-form-item>
+          </template>
+
+          <!-- 企业微信配置分组 -->
+          <div class="设置分组标题">── 企业微信配置 ──</div>
+
+          <el-alert
+            title="企业微信配置说明"
+            type="info"
+            :closable="false"
+            show-icon
+            style="margin-bottom:16px"
+          >
+            <template #default>
+              需先在企业微信管理后台 → 客户联系 → API → 开启API，获取客户联系Secret。
+              <br/>回调URL：<code>{{ 当前域名 }}/api/sjz/qywx-callback</code>
+            </template>
+          </el-alert>
+
+          <el-form-item label="企业微信总开关">
+            <el-switch v-model="设置表单.qywx_enabled" active-value="1" inactive-value="0" active-text="开启" inactive-text="关闭" />
+            <div class="字段说明">开启后，提交订单时自动生成专属企业微信联系方式</div>
+          </el-form-item>
+          <el-form-item label="企业ID（CorpID）">
+            <el-input v-model="设置表单.qywx_corpid" placeholder="从企业微信管理后台获取" />
+          </el-form-item>
+          <el-form-item label="客户联系Secret">
+            <el-input v-model="设置表单.qywx_secret" type="password" show-password placeholder="客户联系 → API → Secret" />
+          </el-form-item>
+          <el-form-item label="回调Token">
+            <el-input v-model="设置表单.qywx_token" placeholder="企业微信配置事件接收时自定义Token" />
+          </el-form-item>
+          <el-form-item label="EncodingAESKey">
+            <el-input v-model="设置表单.qywx_encoding_aes_key" placeholder="43位随机字符串" />
+          </el-form-item>
+          <el-form-item label="回调地址（只读）">
+            <el-tag type="info">{{ 当前域名 }}/api/sjz/qywx-callback</el-tag>
+          </el-form-item>
+          <el-form-item label="添加好友方式">
+            <el-radio-group v-model="设置表单.qywx_add_friend_mode">
+              <el-radio value="link">仅链接跳转</el-radio>
+              <el-radio value="qrcode">仅二维码</el-radio>
+              <el-radio value="both">链接+二维码</el-radio>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="员工UserID列表">
+            <el-input v-model="设置表单.qywx_user_ids" placeholder="user1,user2,user3（逗号分隔）" />
+            <div class="字段说明">多个员工用英文逗号分隔，在企业微信通讯录中查看userid</div>
+          </el-form-item>
+          <el-form-item label="员工分配方式">
+            <el-radio-group v-model="设置表单.qywx_user_assign_mode">
+              <el-radio value="round_robin">轮询分配</el-radio>
+              <el-radio value="first">固定第一个</el-radio>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="自动备注模板">
+            <el-input v-model="设置表单.qywx_remark_template" placeholder="三角洲客户_{order_no}" />
+            <div class="字段说明">可用变量：{order_no} {phone} {player_name} {insurance} {date}</div>
+          </el-form-item>
+          <el-form-item label="欢迎语模板">
+            <el-input v-model="设置表单.qywx_welcome_template" type="textarea" :rows="4" placeholder="您好！感谢您的信任，已收到您的三角洲哈夫币充值需求 {product_name}，稍后为您安排。" />
+            <div class="字段说明">可用变量：{order_no} {phone} {player_name} {insurance} {product_name} {date}</div>
+          </el-form-item>
+          <el-form-item label="自动建群">
+            <el-switch v-model="设置表单.qywx_auto_group" active-value="1" inactive-value="0" />
+            <div class="字段说明">开启后，客户添加好友后自动创建客户服务群</div>
+          </el-form-item>
+          <el-form-item v-if="设置表单.qywx_auto_group === '1'" label="群名称模板">
+            <el-input v-model="设置表单.qywx_group_name_template" placeholder="三角洲服务_{order_no}" />
+            <div class="字段说明">可用变量：{order_no} {player_name} {date}</div>
+          </el-form-item>
+
+          <el-form-item>
+            <el-button type="primary" :loading="保存中" @click="保存设置('sjz')">💾 保存三角洲设置</el-button>
+          </el-form-item>
+        </el-form>
+      </el-tab-pane>
+
+      <!-- ===== Tab 6：奇所SUP设置 ===== -->
       <el-tab-pane label="🔧 奇所SUP设置" name="agiso_sup">
         <el-form :model="设置表单" label-width="160px" style="max-width: 680px">
 
@@ -1101,6 +1226,24 @@ const 设置表单 = ref({
   agiso_sup_enabled: '0', agiso_app_id: '', agiso_app_secret: '',
   agiso_merchant_key: '', agiso_user_id: '', agiso_products: '',
   agiso_refuse_proof: '',
+  // 三角洲基本
+  sjz_banner_url: '', sjz_title: '三角洲哈夫币服务',
+  sjz_subtitle: '追缴包赔 · 手游端游均可 · 安全有保障',
+  sjz_notice: '', sjz_service_content: '',
+  // 三角洲弹窗1
+  sjz_popup1_enabled: '0', sjz_popup1_title: '注意事项',
+  sjz_popup1_content: '请确保填写信息准确，服务开始后不支持退款。',
+  sjz_popup1_icon: '⚔️', sjz_popup1_btn_text: '我知道了', sjz_popup1_auto_close: 0,
+  // 三角洲弹窗2
+  sjz_popup2_enabled: '0', sjz_popup2_title: '信息确认',
+  sjz_popup2_content: '请再次确认您填写的信息是否正确。', sjz_popup2_btn_text: '确认提交',
+  // 企业微信
+  qywx_enabled: '0', qywx_corpid: '', qywx_secret: '',
+  qywx_token: '', qywx_encoding_aes_key: '',
+  qywx_add_friend_mode: 'link', qywx_user_ids: '', qywx_user_assign_mode: 'round_robin',
+  qywx_remark_template: '三角洲客户_{order_no}',
+  qywx_welcome_template: '您好！已收到您的三角洲哈夫币充值需求，稍后为您安排服务。',
+  qywx_auto_group: '0', qywx_group_name_template: '三角洲服务_{order_no}',
 })
 
 // 洗衣回调地址（自动拼接 site_url + /api/laundry/callback）
@@ -1108,6 +1251,9 @@ const 回调地址 = computed(() => {
   const 域名 = (设置表单.value.site_url || '').replace(/\/$/, '')
   return 域名 ? `${域名}/api/laundry/callback` : '/api/laundry/callback'
 })
+
+// 当前域名（用于展示企业微信回调地址）
+const 当前域名 = computed(() => window.location.origin)
 
 const Token过期时间文字 = computed(() => {
   const expireAt = parseInt(设置表单.value.laundry_token_expire_at || '0')
@@ -1267,6 +1413,37 @@ const 加载设置 = async () => {
         agiso_user_id: 数据.agiso_user_id || '',
         agiso_products: 数据.agiso_products || '',
         agiso_refuse_proof: 数据.agiso_refuse_proof || '',
+        // 三角洲基本
+        sjz_banner_url: 数据.sjz_banner_url || '',
+        sjz_title: 数据.sjz_title || '三角洲哈夫币服务',
+        sjz_subtitle: 数据.sjz_subtitle || '追缴包赔 · 手游端游均可 · 安全有保障',
+        sjz_notice: 数据.sjz_notice || '',
+        sjz_service_content: 数据.sjz_service_content || '',
+        // 三角洲弹窗1
+        sjz_popup1_enabled: 数据.sjz_popup1_enabled || '0',
+        sjz_popup1_title: 数据.sjz_popup1_title || '注意事项',
+        sjz_popup1_content: 数据.sjz_popup1_content || '请确保填写信息准确，服务开始后不支持退款。',
+        sjz_popup1_icon: 数据.sjz_popup1_icon || '⚔️',
+        sjz_popup1_btn_text: 数据.sjz_popup1_btn_text || '我知道了',
+        sjz_popup1_auto_close: parseInt(数据.sjz_popup1_auto_close) || 0,
+        // 三角洲弹窗2
+        sjz_popup2_enabled: 数据.sjz_popup2_enabled || '0',
+        sjz_popup2_title: 数据.sjz_popup2_title || '信息确认',
+        sjz_popup2_content: 数据.sjz_popup2_content || '请再次确认您填写的信息是否正确。',
+        sjz_popup2_btn_text: 数据.sjz_popup2_btn_text || '确认提交',
+        // 企业微信
+        qywx_enabled: 数据.qywx_enabled || '0',
+        qywx_corpid: 数据.qywx_corpid || '',
+        qywx_secret: 数据.qywx_secret || '',
+        qywx_token: 数据.qywx_token || '',
+        qywx_encoding_aes_key: 数据.qywx_encoding_aes_key || '',
+        qywx_add_friend_mode: 数据.qywx_add_friend_mode || 'link',
+        qywx_user_ids: 数据.qywx_user_ids || '',
+        qywx_user_assign_mode: 数据.qywx_user_assign_mode || 'round_robin',
+        qywx_remark_template: 数据.qywx_remark_template || '三角洲客户_{order_no}',
+        qywx_welcome_template: 数据.qywx_welcome_template || '您好！已收到您的三角洲哈夫币充值需求，稍后为您安排服务。',
+        qywx_auto_group: 数据.qywx_auto_group || '0',
+        qywx_group_name_template: 数据.qywx_group_name_template || '三角洲服务_{order_no}',
       }
     }
   } finally {

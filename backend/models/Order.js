@@ -277,6 +277,21 @@ const Order = 数据库连接.define('Order', {
     allowNull: true,
     comment: '电商平台订单号（从卡密的ecommerce_order_no自动带入，如小红书单号P791381403338389551）',
   },
+  // ===== 三角洲专用字段 =====
+  sjz_game_nickname: { type: DataTypes.STRING(100), allowNull: true, comment: '游戏昵称' },
+  sjz_insurance_slots: { type: DataTypes.TINYINT, allowNull: true, comment: '保险格数(0-6)' },
+  sjz_is_adult: { type: DataTypes.TINYINT, defaultValue: -1, comment: '是否成年:1是0否-1未填' },
+  sjz_warehouse_images: { type: DataTypes.TEXT, allowNull: true, comment: '仓库截图URL JSON数组' },
+  sjz_hafubi_amount: { type: DataTypes.DECIMAL(10, 2), allowNull: true, comment: '哈夫币数量' },
+  // ===== 企业微信字段 =====
+  qywx_config_id: { type: DataTypes.STRING(100), allowNull: true, comment: '企业微信联系我config_id' },
+  qywx_qrcode_url: { type: DataTypes.TEXT, allowNull: true, comment: '专属二维码URL' },
+  qywx_link: { type: DataTypes.TEXT, allowNull: true, comment: '专属跳转链接' },
+  qywx_assigned_user: { type: DataTypes.STRING(50), allowNull: true, comment: '分配员工userid' },
+  qywx_external_userid: { type: DataTypes.STRING(100), allowNull: true, comment: '客户enterprise外部userid' },
+  qywx_group_chat_id: { type: DataTypes.STRING(100), allowNull: true, comment: '客户群ID' },
+  qywx_add_friend_at: { type: DataTypes.DATE, allowNull: true, comment: '加好友时间' },
+  qywx_group_created_at: { type: DataTypes.DATE, allowNull: true, comment: '建群时间' },
 }, {
   tableName: 'orders',
   timestamps: false,
