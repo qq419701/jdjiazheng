@@ -58,6 +58,8 @@ export const 删除规则API = (id) => 请求实例.delete(`/time-rules/${id}`)
 
 // ===== 系统设置 =====
 export const 获取设置API = () => 请求实例.get('/settings')
+// 公开接口：获取站点标题（登录页使用，无需Token）
+export const 获取站点配置API = () => 请求实例.get('/public/site-config')
 export const 保存设置API = (数据) => 请求实例.put('/settings', 数据)
 
 // ===== 地区管理 =====

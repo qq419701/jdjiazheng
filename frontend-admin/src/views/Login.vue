@@ -70,7 +70,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { User, Lock } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
-import { 登录API, 获取验证码API, 获取设置API } from '../api/index'
+import { 登录API, 获取验证码API, 获取站点配置API } from '../api/index'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -156,7 +156,7 @@ const 提交登录 = async () => {
 onMounted(async () => {
   刷新验证码()
   try {
-    const 设置结果 = await 获取设置API()
+    const 设置结果 = await 获取站点配置API()
     if (设置结果?.code === 1 && 设置结果.data?.admin_site_title) {
       站点标题.value = 设置结果.data.admin_site_title
     }
