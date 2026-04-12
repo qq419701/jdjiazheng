@@ -1235,9 +1235,10 @@ const Tab列表 = computed(() => {
 
 // 业务开关加载完成后，确保当前Tab是有效的已开启业务
 watch(() => moduleStore.已加载, (loaded) => {
-  if (loaded && Tab列表.value.length > 0) {
+  const 第一个Tab = Tab列表.value[0]
+  if (loaded && 第一个Tab) {
     if (!Tab列表.value.find(t => t.key === 当前Tab.value)) {
-      当前Tab.value = Tab列表.value[0].key
+      当前Tab.value = 第一个Tab.key
     }
   }
 }, { immediate: true })

@@ -419,9 +419,10 @@ const 选中业务类型 = ref('jiazheng')
 
 // 业务开关加载完成后，确保默认选中业务是已开启的业务
 watch(() => moduleStore.已加载, (loaded) => {
-  if (loaded && 业务列表.value.length > 0) {
+  const 第一个业务 = 业务列表.value[0]
+  if (loaded && 第一个业务) {
     if (!业务列表.value.find(b => b.type === 选中业务类型.value)) {
-      选中业务类型.value = 业务列表.value[0].type
+      选中业务类型.value = 第一个业务.type
     }
   }
 }, { immediate: true })
