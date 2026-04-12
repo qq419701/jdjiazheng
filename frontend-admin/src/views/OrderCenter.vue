@@ -1,3 +1,4 @@
+<template>
   <!-- 统一订单中心 -->
   <div class="订单中心">
 
@@ -541,19 +542,19 @@
                 <span v-else style="color:#bbb;font-size:12px">-</span>
               </template>
             </el-table-column>
-            <el-table-column label="上号方式" width="100" show-overflow-tooltip v-if="false">
+            <el-table-column label="上号方式" width="100" show-overflow-tooltip>
               <template #default="{ row }">{{ row.sjz_login_method || '-' }}</template>
             </el-table-column>
             <el-table-column label="区/系统" width="100" show-overflow-tooltip>
               <template #default="{ row }">{{ row.sjz_region || '-' }}</template>
             </el-table-column>
-            <el-table-column label="电商订单号" width="160" show-overflow-tooltip v-if="false">
+            <el-table-column label="电商订单号" width="160" show-overflow-tooltip>
               <template #default="{ row }">
                 <span v-if="row.ecommerce_order_no" style="color:#409eff;font-size:12px;font-weight:500">{{ row.ecommerce_order_no }}</span>
                 <span v-else style="color:#bbb;font-size:12px">-</span>
               </template>
             </el-table-column>
-            <el-table-column label="登录城市" width="110" show-overflow-tooltip v-if="false">
+            <el-table-column label="登录城市" width="110" show-overflow-tooltip>
               <template #default="{ row }">{{ row.login_city || '-' }}</template>
             </el-table-column>
             <el-table-column label="状态" width="140">
