@@ -53,6 +53,13 @@ export const useSjzOrderStore = defineStore('sjzOrder', {
     sjz_popup1_auto_close: '0',
     sjz_popup1_btn_text: '我知道了',
 
+    // 弹窗2配置（信息确认弹窗，填写完信息后点击提交时触发）
+    sjz_popup2_enabled: '0',
+    sjz_popup2_title: '信息确认',
+    sjz_popup2_content: '请再次确认您填写的信息是否正确。',
+    sjz_popup2_btn_text: '确认提交',
+    sjz_popup2_auto_close: '0',
+
     // 成功页文字配置
     sjz_success_title: '✅ 下单成功！',
     sjz_success_subtitle: '我们已收到您的服务订单',
@@ -119,6 +126,11 @@ export const useSjzOrderStore = defineStore('sjzOrder', {
       this.sjz_popup1_icon = pc.sjz_popup1_icon || '⚔️'
       this.sjz_popup1_auto_close = pc.sjz_popup1_auto_close || '0'
       this.sjz_popup1_btn_text = pc.sjz_popup1_btn_text || '我知道了'
+      this.sjz_popup2_enabled = pc.sjz_popup2_enabled || '0'
+      this.sjz_popup2_title = pc.sjz_popup2_title || '信息确认'
+      this.sjz_popup2_content = pc.sjz_popup2_content || '请再次确认您填写的信息是否正确。'
+      this.sjz_popup2_btn_text = pc.sjz_popup2_btn_text || '确认提交'
+      this.sjz_popup2_auto_close = pc.sjz_popup2_auto_close || '0'
       // 成功页文字配置
       const sc = 信息.success_config || {}
       this.sjz_success_title = sc.sjz_success_title || '✅ 下单成功！'
