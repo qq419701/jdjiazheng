@@ -35,7 +35,7 @@
             <el-tag v-if="row.topup_account_type" size="small" style="margin-left:4px">{{ 账号类型标签(row.topup_account_type) }}</el-tag>
           </span>
           <span v-else-if="当前业务类型 === 'sjz'">
-            <el-tag v-if="row.sjz_hafubi_amount" type="warning" size="small">{{ row.sjz_hafubi_amount }} 哈夫币</el-tag>
+            <el-tag v-if="row.sjz_hafubi_amount" type="warning" size="small">{{ row.sjz_hafubi_amount }}</el-tag>
             <span v-else style="color:#bbb">-</span>
           </span>
         </template>
@@ -204,8 +204,12 @@
         <!-- ===== 三角洲专用字段 ===== -->
         <template v-if="当前业务类型 === 'sjz'">
           <el-form-item label="哈夫币数量">
-            <el-input-number v-model="表单数据.sjz_hafubi_amount" :min="0" :precision="2" :step="100" style="width:200px" />
-            <div class="字段提示块">💡 此套餐对应的哈夫币数量，显示在H5下单页</div>
+            <el-input v-model="表单数据.sjz_hafubi_amount" placeholder="如：1000万、3亿、500" style="width:200px" />
+            <div class="快捷选择行">
+              <span class="快捷标签">快捷选择：</span>
+              <el-button v-for="项 in 哈夫币数量快捷" :key="项" size="small" plain @click="表单数据.sjz_hafubi_amount = 项">{{ 项 }}</el-button>
+            </div>
+            <div class="字段提示块">💡 直接填写展示文字，如"1000万"、"3亿"，显示在H5下单页</div>
           </el-form-item>
           <el-form-item label="要求游戏昵称">
             <el-switch v-model="表单数据.sjz_show_nickname" :active-value="1" :inactive-value="0" />
@@ -213,11 +217,23 @@
           </el-form-item>
           <el-form-item label="要求保险格数">
             <el-switch v-model="表单数据.sjz_show_insurance" :active-value="1" :inactive-value="0" />
-            <div class="字段提示块">💡 开启后，H5下单页显示0-6格保险格选择</div>
+            <div class="字段提示块">💡 开启后，H5下单页显示保险格数选择</div>
+          </el-form-item>
+          <el-form-item v-if="表单数据.sjz_show_insurance" label="保险格数选项">
+            <el-input v-model="表单数据.sjz_insurance_options" placeholder="如：2,4,6,9" style="width:200px" />
+            <div class="快捷选择行">
+              <span class="快捷标签">快捷选择：</span>
+              <el-button v-for="项 in 保险格数选项快捷" :key="项" size="small" plain @click="表单数据.sjz_insurance_options = 项">{{ 项 }}</el-button>
+            </div>
+            <div class="字段提示块">💡 用英文逗号分隔的数字，表示显示哪几格选项</div>
           </el-form-item>
           <el-form-item label="要求成年认证">
             <el-switch v-model="表单数据.sjz_show_is_adult" :active-value="1" :inactive-value="0" />
-            <div class="字段提示块">💡 开启后，H5下单页显示是否成年单选</div>
+            <div class="字段提示块">💡 开启后，H5下单页显示是否成年选择</div>
+          </el-form-item>
+          <el-form-item v-if="表单数据.sjz_show_is_adult" label="成年认证选项">
+            <el-input v-model="表单数据.sjz_adult_options" placeholder="如：已成年,未成年" style="width:200px" />
+            <div class="字段提示块">💡 用英文逗号分隔，如"已成年,未成年"</div>
           </el-form-item>
           <el-form-item label="要求仓库截图">
             <el-switch v-model="表单数据.sjz_show_warehouse" :active-value="1" :inactive-value="0" />
@@ -225,7 +241,19 @@
           </el-form-item>
           <el-form-item label="必填手机号">
             <el-switch v-model="表单数据.sjz_require_phone" :active-value="1" :inactive-value="0" />
-            <div class="字段提示块">💡 关闭后，手机号变为非必填</div>
+            <div class="字段提示块">💡 关闭后，手机号变为非必填（排在表单最后）</div>
+          </el-form-item>
+          <el-form-item label="要求上号方式">
+            <el-switch v-model="表单数据.sjz_show_login_method" :active-value="1" :inactive-value="0" />
+            <div class="字段提示块">💡 开启后，H5下单页显示上号方式选择</div>
+          </el-form-item>
+          <el-form-item v-if="表单数据.sjz_show_login_method" label="上号方式选项">
+            <el-input v-model="表单数据.sjz_login_method_options" placeholder="如：扫码,账密" style="width:200px" />
+            <div class="快捷选择行">
+              <span class="快捷标签">快捷选择：</span>
+              <el-button v-for="项 in 上号方式快捷" :key="项" size="small" plain @click="表单数据.sjz_login_method_options = 项">{{ 项 }}</el-button>
+            </div>
+            <div class="字段提示块">💡 用英文逗号分隔，如"扫码,账密"</div>
           </el-form-item>
         </template>
 
@@ -294,6 +322,9 @@ const 家政服务分类快捷 = ['日常保洁', '深度清洁', '专项保洁'
 const 洗衣服务类型快捷 = ['任洗一件', '任洗两件', '任洗三件', '床品套件', '大件清洗']
 const 到账时间快捷 = ['当天', '1-3天', '3-5天', '5-7天']
 const 充值到账时间快捷 = ['1小时内', '1-6小时', '24小时内', '即时到账']
+const 哈夫币数量快捷 = ['500万', '1000万', '3000万', '1亿', '3亿']
+const 保险格数选项快捷 = ['0,1,2,3,4,5,6', '2,4,6,9', '0,3,6']
+const 上号方式快捷 = ['扫码', '扫码,账密', '扫码,账密,其他']
 
 const 表单数据 = reactive({
   product_name: '',
@@ -312,12 +343,16 @@ const 表单数据 = reactive({
   topup_account_regex: '',
   topup_account_error_msg: '',
   // 三角洲套餐字段
-  sjz_hafubi_amount: null,
+  sjz_hafubi_amount: '',
   sjz_show_nickname: 1,
   sjz_show_insurance: 1,
+  sjz_insurance_options: '0,1,2,3,4,5,6',
   sjz_show_is_adult: 0,
+  sjz_adult_options: '已成年,未成年',
   sjz_show_warehouse: 0,
   sjz_require_phone: 1,
+  sjz_show_login_method: 0,
+  sjz_login_method_options: '扫码',
 })
 
 // 表单验证规则（根据业务类型动态计算）
@@ -403,12 +438,16 @@ const 打开编辑弹窗 = (行) => {
     topup_account_regex: 行.topup_account_regex || '',
     topup_account_error_msg: 行.topup_account_error_msg || '',
     // 三角洲套餐字段
-    sjz_hafubi_amount: 行.sjz_hafubi_amount || null,
+    sjz_hafubi_amount: 行.sjz_hafubi_amount || '',
     sjz_show_nickname: 行.sjz_show_nickname != null ? 行.sjz_show_nickname : 1,
     sjz_show_insurance: 行.sjz_show_insurance != null ? 行.sjz_show_insurance : 1,
+    sjz_insurance_options: 行.sjz_insurance_options || '0,1,2,3,4,5,6',
     sjz_show_is_adult: 行.sjz_show_is_adult != null ? 行.sjz_show_is_adult : 0,
+    sjz_adult_options: 行.sjz_adult_options || '已成年,未成年',
     sjz_show_warehouse: 行.sjz_show_warehouse != null ? 行.sjz_show_warehouse : 0,
     sjz_require_phone: 行.sjz_require_phone != null ? 行.sjz_require_phone : 1,
+    sjz_show_login_method: 行.sjz_show_login_method != null ? 行.sjz_show_login_method : 0,
+    sjz_login_method_options: 行.sjz_login_method_options || '扫码',
   })
   弹窗可见.value = true
 }
@@ -421,8 +460,11 @@ const 重置表单 = () => {
     topup_member_icon: '', topup_arrival_time: '', topup_show_expired: 0,
     topup_steps: '', topup_account_regex: '', topup_account_error_msg: '',
     // 三角洲字段默认值
-    sjz_hafubi_amount: null, sjz_show_nickname: 1, sjz_show_insurance: 1,
-    sjz_show_is_adult: 0, sjz_show_warehouse: 0, sjz_require_phone: 1,
+    sjz_hafubi_amount: '', sjz_show_nickname: 1, sjz_show_insurance: 1,
+    sjz_insurance_options: '0,1,2,3,4,5,6',
+    sjz_show_is_adult: 0, sjz_adult_options: '已成年,未成年',
+    sjz_show_warehouse: 0, sjz_require_phone: 1,
+    sjz_show_login_method: 0, sjz_login_method_options: '扫码',
   })
   表单引用.value?.clearValidate()
 }

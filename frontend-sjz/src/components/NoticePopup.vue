@@ -104,7 +104,7 @@ watch(() => props.show, (新值) => {
   } else {
     停止倒计时()
   }
-})
+}, { immediate: true })
 
 onUnmounted(() => {
   停止倒计时()

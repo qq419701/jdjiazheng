@@ -23,22 +23,14 @@
         @close="关闭弹窗1"
       />
 
-      <!-- 弹窗2：信息确认弹窗 -->
-      <NoticePopup
-        :show="显示弹窗2"
-        :title="store.sjz_popup2_title"
-        :content="store.sjz_popup2_content"
-        icon-emoji="⚔️"
-        :btn-text="store.sjz_popup2_btn_text"
-        btn-color="#e94560"
-        bg-color="#16213e"
-        title-color="#f5c518"
-        content-color="#e0e0e0"
-        @close="确认弹窗2提交"
-      />
-
       <!-- 顶部Banner -->
       <div class="顶部Banner">
+        <!-- 正在接单状态条 -->
+        <div class="接单状态条">
+          <span class="状态点"></span>
+          <span class="状态文字">🔴 正在接单 · 名额有限</span>
+          <span class="状态右文">🔥 今日快速安排中</span>
+        </div>
         <!-- 城市定位胶囊（右上角） -->
         <div class="城市胶囊">
           <span>📍</span>
@@ -56,48 +48,39 @@
         </div>
         <!-- 哈夫币数量徽章 -->
         <div v-if="store.哈夫币数量" class="哈夫币徽章">
-          <span>💰 {{ store.哈夫币数量 }} 哈夫币</span>
+          <span class="哈夫币脉冲">💰 {{ store.哈夫币数量 }} 哈夫币</span>
         </div>
+        <!-- 金色分割线 -->
+        <div class="金色分割线"></div>
       </div>
 
       <!-- 表单区域 -->
       <div class="内容区">
 
-        <!-- 手机号 -->
-        <div v-if="store.需要手机号" class="表单卡片">
-          <div class="字段标题">📱 手机号 <span class="必填标记">*</span></div>
-          <input
-            v-model="手机号输入"
-            type="tel"
-            inputmode="numeric"
-            placeholder="请输入手机号"
-            class="输入框"
-            :class="{ '输入错误': 手机号错误提示, '输入正确': 手机号验证通过 }"
-            @blur="触发手机号验证"
-            @input="重置手机号状态"
-          />
-          <div v-if="手机号错误提示" class="错误提示">{{ 手机号错误提示 }}</div>
+        <!-- 紧迫提示条 -->
+        <div class="紧迫提示条">
+          <span>⚡ 填写完成后立即为您安排 · 名额有限</span>
         </div>
 
         <!-- 游戏昵称 -->
-        <div v-if="store.需要游戏昵称" class="表单卡片">
+        <div v-if="store.需要游戏昵称" class="表单卡片" :class="{ '已填': 游戏昵称输入.trim() }">
           <div class="字段标题">🎮 游戏昵称 <span class="选填标记">（选填）</span></div>
           <input
             v-model="游戏昵称输入"
             type="text"
-            placeholder="请输入游戏内昵称"
+            placeholder="如：超神、战神"
             class="输入框"
           />
         </div>
 
         <!-- 几格保险 -->
-        <div v-if="store.需要保险格数" class="表单卡片">
-          <div class="字段标题">🛡️ 保险格数</div>
-          <div class="保险格按钮组">
+        <div v-if="store.需要保险格数" class="表单卡片" :class="{ '已填': 保险格数选择 !== null }">
+          <div class="字段标题">🛡️ 保险格数 <span class="必填标记">*</span></div>
+          <div class="选项按钮组">
             <button
-              v-for="格数 in [0,1,2,3,4,5,6]"
+              v-for="格数 in store.保险格选项"
               :key="格数"
-              class="保险格按钮"
+              class="选项按钮"
               :class="{ '已选': 保险格数选择 === 格数 }"
               @click="保险格数选择 = 格数"
             >{{ 格数 }}格</button>
@@ -105,22 +88,35 @@
         </div>
 
         <!-- 是否成年 -->
-        <div v-if="store.需要成年认证" class="表单卡片">
-          <div class="字段标题">🔞 是否成年</div>
-          <div class="单选组">
-            <label class="单选项" :class="{ '已选': 成年选择 === 1 }" @click="成年选择 = 1">
-              <span class="单选圆" :class="{ '已选': 成年选择 === 1 }"></span>
-              <span>已成年</span>
-            </label>
-            <label class="单选项" :class="{ '已选': 成年选择 === 0 }" @click="成年选择 = 0">
-              <span class="单选圆" :class="{ '已选': 成年选择 === 0 }"></span>
-              <span>未成年</span>
-            </label>
+        <div v-if="store.需要成年认证" class="表单卡片" :class="{ '已填': 成年选择 !== -1 }">
+          <div class="字段标题">🔞 是否成年 <span class="必填标记">*</span></div>
+          <div class="选项按钮组">
+            <button
+              v-for="(选项, 索引) in store.成年选项"
+              :key="索引"
+              class="选项按钮"
+              :class="{ '已选': 成年选择 === 索引 }"
+              @click="成年选择 = 索引"
+            >{{ 选项 }}</button>
+          </div>
+        </div>
+
+        <!-- 上号方式 -->
+        <div v-if="store.需要上号方式" class="表单卡片" :class="{ '已填': 上号方式选择 !== null }">
+          <div class="字段标题">📱 上号方式 <span class="必填标记">*</span></div>
+          <div class="选项按钮组">
+            <button
+              v-for="(方式, 索引) in store.上号方式选项"
+              :key="索引"
+              class="选项按钮"
+              :class="{ '已选': 上号方式选择 === 方式 }"
+              @click="上号方式选择 = 方式"
+            >{{ 方式 }}</button>
           </div>
         </div>
 
         <!-- 仓库截图 -->
-        <div v-if="store.需要仓库截图" class="表单卡片">
+        <div v-if="store.需要仓库截图" class="表单卡片" :class="{ '已填': 截图预览列表.length > 0 }">
           <div class="字段标题">📦 仓库截图 <span class="选填标记">（最多3张）</span></div>
           <div class="截图区域">
             <div v-for="(预览, 索引) in 截图预览列表" :key="索引" class="截图预览项">
@@ -134,6 +130,22 @@
             </label>
           </div>
           <div v-if="截图上传中" class="截图提示">上传中...</div>
+        </div>
+
+        <!-- 手机号（放最后） -->
+        <div v-if="store.需要手机号" class="表单卡片" :class="{ '已填': 手机号验证通过, '有错': 手机号错误提示 }">
+          <div class="字段标题">📱 手机号 <span class="必填标记">*</span></div>
+          <input
+            v-model="手机号输入"
+            type="tel"
+            inputmode="numeric"
+            placeholder="请输入手机号"
+            class="输入框"
+            :class="{ '输入错误': 手机号错误提示, '输入正确': 手机号验证通过 }"
+            @blur="触发手机号验证"
+            @input="重置手机号状态"
+          />
+          <div v-if="手机号错误提示" class="错误提示">{{ 手机号错误提示 }}</div>
         </div>
 
         <!-- 服务内容宫格 -->
@@ -167,6 +179,7 @@
 
       <!-- 底部固定按钮 -->
       <div class="底部按钮区">
+        <div class="提交安全提示">🔒 信息安全加密 · 提交即可安排</div>
         <button
           class="提交按钮"
           :class="{ '提交中': 提交中 }"
@@ -174,12 +187,12 @@
           :disabled="提交中"
         >
           <span v-if="提交中">⏳ 提交中...</span>
-          <span v-else>⚔️ 立即下单</span>
+          <span v-else>⚡ 立即预约 · 马上安排</span>
         </button>
       </div>
 
       <!-- 底部安全间距 -->
-      <div style="height: 80px"></div>
+      <div style="height: 100px"></div>
     </div>
 
     <!-- 加载失败/无效状态 -->
@@ -211,6 +224,7 @@ const 手机号输入 = ref('')
 const 游戏昵称输入 = ref('')
 const 保险格数选择 = ref(null)
 const 成年选择 = ref(-1)
+const 上号方式选择 = ref(null)
 const 截图文件列表 = ref([])
 const 截图预览列表 = ref([])
 const 截图URLs = ref([])
@@ -225,7 +239,6 @@ const 提交中 = ref(false)
 
 // 弹窗状态
 const 显示弹窗1 = ref(false)
-const 显示弹窗2 = ref(false)
 
 // 须知展开
 const 展开须知 = ref(false)
@@ -311,7 +324,7 @@ const 删除截图 = (索引) => {
 // 弹窗关闭
 const 关闭弹窗1 = () => { 显示弹窗1.value = false }
 
-// 点击下单
+// 点击下单（直接提交，不再有弹窗2）
 const 点击下单 = async () => {
   // 验证手机号
   if (store.需要手机号) {
@@ -321,17 +334,7 @@ const 点击下单 = async () => {
       return
     }
   }
-  // 显示二次确认弹窗（若开启）
-  if (store.sjz_popup2_enabled === '1') {
-    显示弹窗2.value = true
-    return
-  }
   // 直接提交
-  await 执行提交()
-}
-
-const 确认弹窗2提交 = async () => {
-  显示弹窗2.value = false
   await 执行提交()
 }
 
@@ -347,6 +350,10 @@ const 执行提交 = async () => {
       sjz_insurance_slots: 保险格数选择.value,
       sjz_is_adult: 成年选择.value,
       sjz_warehouse_images: 截图URLs.value.length > 0 ? 截图URLs.value : null,
+    }
+    // 若需要上号方式，附加字段
+    if (store.需要上号方式 && 上号方式选择.value) {
+      请求数据.sjz_login_method = 上号方式选择.value
     }
 
     const 响应 = await 提交三角洲订单API(请求数据)
@@ -409,7 +416,7 @@ onMounted(async () => {
 /* ===== 主页容器 ===== */
 .主页容器 {
   min-height: 100vh;
-  background: #1a1a2e;
+  background: linear-gradient(180deg, #0d0d1a 0%, #1a1a2e 40%, #16213e 100%);
   color: #e0e0e0;
   padding-bottom: 100px;
 }
@@ -425,11 +432,39 @@ onMounted(async () => {
 /* ===== 顶部Banner ===== */
 .顶部Banner {
   position: relative;
-  background: linear-gradient(135deg, #16213e, #0f3460);
-  border-bottom: 2px solid #e94560;
-  padding: 20px 16px 24px;
+  background: linear-gradient(135deg, #0d0d1a 0%, #16213e 60%, #0f3460 100%);
+  border-bottom: 2px solid rgba(245, 197, 24, 0.5);
+  padding: 0 0 20px;
   overflow: hidden;
 }
+
+/* 接单状态条 */
+.接单状态条 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(90deg, rgba(233, 69, 96, 0.15), rgba(233, 69, 96, 0.05));
+  border-bottom: 1px solid rgba(233, 69, 96, 0.3);
+  padding: 8px 16px;
+  font-size: 12px;
+}
+
+.状态点 {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e94560;
+  animation: 状态闪烁 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes 状态闪烁 {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(233,69,96,0.7); }
+  50% { opacity: 0.6; box-shadow: 0 0 0 4px rgba(233,69,96,0); }
+}
+
+.状态文字 { color: #e94560; font-weight: 600; }
+.状态右文 { margin-left: auto; color: #f5c518; font-weight: 600; }
 
 .Banner背景图 {
   position: absolute;
@@ -437,7 +472,7 @@ onMounted(async () => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.15;
+  opacity: 0.1;
 }
 
 .Banner内容 {
@@ -445,12 +480,13 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding-top: 8px;
+  padding: 20px 16px 8px;
 }
 
 .Banner图标 {
-  font-size: 40px;
+  font-size: 44px;
   flex-shrink: 0;
+  filter: drop-shadow(0 0 12px rgba(245,197,24,0.5));
 }
 
 .Banner文字区 {
@@ -458,21 +494,23 @@ onMounted(async () => {
 }
 
 .Banner主标题 {
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 22px;
+  font-weight: 800;
   color: #f5c518;
   margin-bottom: 4px;
+  text-shadow: 0 0 20px rgba(245,197,24,0.4);
 }
 
 .Banner副标题 {
-  font-size: 13px;
+  font-size: 12px;
   color: #aaa;
+  line-height: 1.5;
 }
 
 /* 城市胶囊 */
 .城市胶囊 {
   position: absolute;
-  top: 12px;
+  top: 42px;
   right: 12px;
   z-index: 2;
   display: flex;
@@ -499,13 +537,33 @@ onMounted(async () => {
 .哈夫币徽章 {
   position: relative;
   display: inline-block;
-  margin-top: 12px;
-  padding: 6px 16px;
+  margin: 8px 16px 0;
+}
+
+.哈夫币脉冲 {
+  display: inline-block;
+  padding: 8px 20px;
   background: linear-gradient(135deg, #f5c518, #e0a800);
-  border-radius: 20px;
-  font-size: 14px;
-  font-weight: 700;
+  border: 2px solid rgba(255, 220, 50, 0.6);
+  border-radius: 24px;
+  font-size: 15px;
+  font-weight: 800;
   color: #1a1a2e;
+  box-shadow: 0 0 16px rgba(245, 197, 24, 0.5);
+  animation: 徽章脉冲 2s ease-in-out infinite;
+}
+
+@keyframes 徽章脉冲 {
+  0%, 100% { box-shadow: 0 0 16px rgba(245,197,24,0.5); transform: scale(1); }
+  50% { box-shadow: 0 0 28px rgba(245,197,24,0.8); transform: scale(1.03); }
+}
+
+/* 金色分割线 */
+.金色分割线 {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #f5c518 30%, #e0a800 70%, transparent);
+  margin-top: 16px;
+  opacity: 0.7;
 }
 
 /* ===== 内容区 ===== */
@@ -513,18 +571,45 @@ onMounted(async () => {
   padding: 12px 12px 0;
 }
 
+/* 紧迫提示条 */
+.紧迫提示条 {
+  background: linear-gradient(90deg, #c62a47, #e94560);
+  border-radius: 8px;
+  padding: 10px 16px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 12px rgba(233,69,96,0.4);
+}
+
 /* ===== 表单卡片 ===== */
 .表单卡片 {
   background: #16213e;
-  border: 1px solid #0f3460;
+  border: 1px solid #1a3a6e;
+  border-left: 4px solid #1a3a6e;
   border-radius: 12px;
   padding: 14px 16px;
   margin-bottom: 12px;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+.表单卡片.已填 {
+  border-color: #f5c518;
+  border-left-color: #f5c518;
+  box-shadow: 0 0 0 1px rgba(245,197,24,0.15);
+}
+
+.表单卡片.有错 {
+  border-color: #e94560;
+  border-left-color: #e94560;
 }
 
 .字段标题 {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: #e0e0e0;
   margin-bottom: 10px;
 }
@@ -543,9 +628,10 @@ onMounted(async () => {
   color: #e0e0e0;
   outline: none;
   transition: border-color 0.2s;
+  box-sizing: border-box;
 }
 
-.输入框::placeholder { color: #666; }
+.输入框::placeholder { color: #555; }
 .输入框:focus { border-color: #e94560; }
 .输入框.输入错误 { border-color: #e94560; }
 .输入框.输入正确 { border-color: #07c160; }
@@ -556,64 +642,34 @@ onMounted(async () => {
   margin-top: 6px;
 }
 
-/* 保险格按钮组 */
-.保险格按钮组 {
+/* 选项按钮组（保险格/成年/上号方式通用） */
+.选项按钮组 {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.保险格按钮 {
+.选项按钮 {
   flex: 1;
-  min-width: calc(14.28% - 8px);
-  padding: 8px 0;
+  min-width: 60px;
+  padding: 10px 8px;
   background: #0f3460;
-  border: 1px solid #1a4a7e;
-  border-radius: 8px;
-  color: #aaa;
+  border: 2px solid #1a4a7e;
+  border-radius: 10px;
+  color: #888;
   font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.保险格按钮.已选 {
-  background: #e94560;
-  border-color: #e94560;
-  color: #fff;
   font-weight: 600;
-}
-
-/* 单选组 */
-.单选组 {
-  display: flex;
-  gap: 16px;
-}
-
-.单选项 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #aaa;
   cursor: pointer;
-  padding: 6px 0;
-}
-
-.单选项.已选 { color: #e0e0e0; }
-
-.单选圆 {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 2px solid #555;
-  flex-shrink: 0;
   transition: all 0.2s;
+  text-align: center;
 }
 
-.单选圆.已选 {
-  border-color: #e94560;
-  background: #e94560;
-  box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.2);
+.选项按钮.已选 {
+  background: linear-gradient(135deg, #e94560, #c62a47);
+  border-color: #f5c518;
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(233,69,96,0.5);
+  transform: translateY(-1px);
 }
 
 /* 截图区域 */
@@ -659,7 +715,7 @@ onMounted(async () => {
   width: 80px;
   height: 80px;
   background: #0f3460;
-  border: 1px dashed #1a4a7e;
+  border: 2px dashed #1a4a7e;
   border-radius: 8px;
   display: flex;
   flex-direction: column;
@@ -722,25 +778,38 @@ onMounted(async () => {
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 12px 16px;
-  background: linear-gradient(180deg, transparent, #1a1a2e 30%);
+  padding: 8px 16px 16px;
+  background: linear-gradient(180deg, transparent, rgba(13,13,26,0.97) 25%);
   z-index: 100;
+}
+
+.提交安全提示 {
+  text-align: center;
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 8px;
 }
 
 .提交按钮 {
   width: 100%;
-  padding: 16px;
+  padding: 17px;
   background: linear-gradient(135deg, #e94560, #c62a47);
   border: none;
   border-radius: 28px;
   color: #fff;
   font-size: 17px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 4px 20px rgba(233, 69, 96, 0.5);
-  transition: opacity 0.2s, transform 0.1s;
+  box-shadow: 0 4px 24px rgba(233, 69, 96, 0.55);
+  animation: 按钮呼吸 2s ease-in-out infinite;
+  letter-spacing: 1px;
 }
 
-.提交按钮:active { opacity: 0.85; transform: scale(0.98); }
-.提交按钮.提交中 { opacity: 0.7; cursor: not-allowed; }
+@keyframes 按钮呼吸 {
+  0%, 100% { transform: scale(1); box-shadow: 0 4px 24px rgba(233,69,96,0.55); }
+  50% { transform: scale(1.015); box-shadow: 0 6px 32px rgba(233,69,96,0.75); }
+}
+
+.提交按钮:active { opacity: 0.85; transform: scale(0.98); animation: none; }
+.提交按钮.提交中 { opacity: 0.7; cursor: not-allowed; animation: none; }
 </style>

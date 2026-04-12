@@ -1002,9 +1002,13 @@ router.post('/card-templates/generate', 验证Token, async (req, res) => {
       sjz_hafubi_amount: 套餐.sjz_hafubi_amount || null,
       sjz_show_nickname: 套餐.sjz_show_nickname != null ? 套餐.sjz_show_nickname : 1,
       sjz_show_insurance: 套餐.sjz_show_insurance != null ? 套餐.sjz_show_insurance : 1,
+      sjz_insurance_options: 套餐.sjz_insurance_options || '0,1,2,3,4,5,6',
       sjz_show_is_adult: 套餐.sjz_show_is_adult != null ? 套餐.sjz_show_is_adult : 0,
+      sjz_adult_options: 套餐.sjz_adult_options || '已成年,未成年',
       sjz_show_warehouse: 套餐.sjz_show_warehouse != null ? 套餐.sjz_show_warehouse : 0,
       sjz_require_phone: 套餐.sjz_require_phone != null ? 套餐.sjz_require_phone : 1,
+      sjz_show_login_method: 套餐.sjz_show_login_method != null ? 套餐.sjz_show_login_method : 0,
+      sjz_login_method_options: 套餐.sjz_login_method_options || '扫码',
     });
 
     // 生成卡密（去重，按业务类型加前缀 JZ/XY/CZ/SJZ）
@@ -1047,9 +1051,13 @@ router.post('/card-templates/generate', 验证Token, async (req, res) => {
           sjz_hafubi_amount: 套餐.sjz_hafubi_amount || null,
           sjz_show_nickname: 套餐.sjz_show_nickname != null ? 套餐.sjz_show_nickname : 1,
           sjz_show_insurance: 套餐.sjz_show_insurance != null ? 套餐.sjz_show_insurance : 1,
+          sjz_insurance_options: 套餐.sjz_insurance_options || '0,1,2,3,4,5,6',
           sjz_show_is_adult: 套餐.sjz_show_is_adult != null ? 套餐.sjz_show_is_adult : 0,
+          sjz_adult_options: 套餐.sjz_adult_options || '已成年,未成年',
           sjz_show_warehouse: 套餐.sjz_show_warehouse != null ? 套餐.sjz_show_warehouse : 0,
           sjz_require_phone: 套餐.sjz_require_phone != null ? 套餐.sjz_require_phone : 1,
+          sjz_show_login_method: 套餐.sjz_show_login_method != null ? 套餐.sjz_show_login_method : 0,
+          sjz_login_method_options: 套餐.sjz_login_method_options || '扫码',
         });
         n++;
       }
@@ -1364,9 +1372,13 @@ router.post('/sjz-cards/generate', 验证Token, async (req, res) => {
       sjz_hafubi_amount = null,
       sjz_show_nickname = 1,
       sjz_show_insurance = 1,
+      sjz_insurance_options = '0,1,2,3,4,5,6',
       sjz_show_is_adult = 0,
+      sjz_adult_options = '已成年,未成年',
       sjz_show_warehouse = 0,
       sjz_require_phone = 1,
+      sjz_show_login_method = 0,
+      sjz_login_method_options = '扫码',
     } = req.body;
     const { CardBatch, Card: CardModel } = require('../models');
     const { 生成卡密: 生成卡密码 } = require('../utils/helpers');
@@ -1387,9 +1399,13 @@ router.post('/sjz-cards/generate', 验证Token, async (req, res) => {
       sjz_hafubi_amount: sjz_hafubi_amount || null,
       sjz_show_nickname,
       sjz_show_insurance,
+      sjz_insurance_options,
       sjz_show_is_adult,
+      sjz_adult_options,
       sjz_show_warehouse,
       sjz_require_phone,
+      sjz_show_login_method,
+      sjz_login_method_options,
     });
 
     const 现有卡密 = await CardModel.findAll({ attributes: ['code'] });
@@ -1417,9 +1433,13 @@ router.post('/sjz-cards/generate', 验证Token, async (req, res) => {
           sjz_hafubi_amount: sjz_hafubi_amount || null,
           sjz_show_nickname,
           sjz_show_insurance,
+          sjz_insurance_options,
           sjz_show_is_adult,
+          sjz_adult_options,
           sjz_show_warehouse,
           sjz_require_phone,
+          sjz_show_login_method,
+          sjz_login_method_options,
         });
         n++;
       }

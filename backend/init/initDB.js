@@ -201,6 +201,84 @@ const 执行字段迁移 = async () => {
   } catch (e) {
     console.log('ℹ️ orders.ecommerce_order_no 历史数据修复跳过:', e.message);
   }
+
+  // ===== 三角洲业务升级迁移 =====
+
+  // 迁移：products.sjz_hafubi_amount DECIMAL -> VARCHAR(50)
+  for (const 表名 of ['products', 'cards', 'card_batches', 'orders']) {
+    try {
+      const [列信息] = await 数据库连接.query(`SHOW COLUMNS FROM \`${表名}\` LIKE 'sjz_hafubi_amount'`);
+      if (列信息.length > 0 && (列信息[0].Type || '').toLowerCase().includes('decimal')) {
+        await 数据库连接.query(`ALTER TABLE \`${表名}\` MODIFY COLUMN \`sjz_hafubi_amount\` VARCHAR(50) NULL COMMENT '哈夫币数量（文本，如1000万）'`);
+        console.log(`✅ ${表名}.sjz_hafubi_amount 从 DECIMAL 改为 VARCHAR(50)`);
+      }
+    } catch (e) {
+      console.log(`ℹ️ ${表名}.sjz_hafubi_amount 类型迁移跳过:`, e.message);
+    }
+  }
+
+  // 迁移：products/cards/card_batches 新增 sjz_insurance_options
+  for (const 表名 of ['products', 'cards', 'card_batches']) {
+    try {
+      const [r] = await 数据库连接.query(`SHOW COLUMNS FROM \`${表名}\` LIKE 'sjz_insurance_options'`);
+      if (r.length === 0) {
+        await 数据库连接.query(`ALTER TABLE \`${表名}\` ADD COLUMN \`sjz_insurance_options\` VARCHAR(50) DEFAULT '0,1,2,3,4,5,6' COMMENT '保险格数选项（逗号分隔）'`);
+        console.log(`✅ ${表名} 新增 sjz_insurance_options 字段`);
+      }
+    } catch (e) {
+      console.log(`ℹ️ ${表名}.sjz_insurance_options 迁移跳过:`, e.message);
+    }
+  }
+
+  // 迁移：products/cards/card_batches 新增 sjz_adult_options
+  for (const 表名 of ['products', 'cards', 'card_batches']) {
+    try {
+      const [r] = await 数据库连接.query(`SHOW COLUMNS FROM \`${表名}\` LIKE 'sjz_adult_options'`);
+      if (r.length === 0) {
+        await 数据库连接.query(`ALTER TABLE \`${表名}\` ADD COLUMN \`sjz_adult_options\` VARCHAR(100) DEFAULT '已成年,未成年' COMMENT '成年认证选项（逗号分隔）'`);
+        console.log(`✅ ${表名} 新增 sjz_adult_options 字段`);
+      }
+    } catch (e) {
+      console.log(`ℹ️ ${表名}.sjz_adult_options 迁移跳过:`, e.message);
+    }
+  }
+
+  // 迁移：products/cards/card_batches 新增 sjz_show_login_method
+  for (const 表名 of ['products', 'cards', 'card_batches']) {
+    try {
+      const [r] = await 数据库连接.query(`SHOW COLUMNS FROM \`${表名}\` LIKE 'sjz_show_login_method'`);
+      if (r.length === 0) {
+        await 数据库连接.query(`ALTER TABLE \`${表名}\` ADD COLUMN \`sjz_show_login_method\` TINYINT DEFAULT 0 COMMENT '要求上号方式'`);
+        console.log(`✅ ${表名} 新增 sjz_show_login_method 字段`);
+      }
+    } catch (e) {
+      console.log(`ℹ️ ${表名}.sjz_show_login_method 迁移跳过:`, e.message);
+    }
+  }
+
+  // 迁移：products/cards/card_batches 新增 sjz_login_method_options
+  for (const 表名 of ['products', 'cards', 'card_batches']) {
+    try {
+      const [r] = await 数据库连接.query(`SHOW COLUMNS FROM \`${表名}\` LIKE 'sjz_login_method_options'`);
+      if (r.length === 0) {
+        await 数据库连接.query(`ALTER TABLE \`${表名}\` ADD COLUMN \`sjz_login_method_options\` VARCHAR(100) DEFAULT '扫码' COMMENT '上号方式选项（逗号分隔）'`);
+        console.log(`✅ ${表名} 新增 sjz_login_method_options 字段`);
+      }
+    } catch (e) {
+      console.log(`ℹ️ ${表名}.sjz_login_method_options 迁移跳过:`, e.message);
+    }
+  }
+
+  // 迁移：orders 新增 sjz_login_method
+  try {
+    const [r] = await 数据库连接.query("SHOW COLUMNS FROM `orders` LIKE 'sjz_login_method'");
+    if (r.length === 0) {
+      await 数据库连接.query("ALTER TABLE `orders` ADD COLUMN `sjz_login_method` VARCHAR(50) NULL COMMENT '用户选择的上号方式'");
+      console.log('✅ orders 新增 sjz_login_method 字段');
+    }
+  } catch (e) {
+    console.log('ℹ️ orders.sjz_login_method 迁移跳过:', e.message);
+  }
 };
 
 /**
@@ -436,6 +514,25 @@ const 初始化数据库 = async () => {
       })
     }
     console.log('✅ 后台自定义标题/名称默认配置初始化完成')
+
+    // 三角洲成功页文字可配置（脚本设置）
+    const 三角洲成功页配置 = [
+      { key_name: 'sjz_success_title',          key_value: '✅ 下单成功！',                           description: '成功页主标题' },
+      { key_name: 'sjz_success_subtitle',       key_value: '我们已收到您的服务订单',                    description: '成功页副标题' },
+      { key_name: 'sjz_success_next_title',     key_value: '🎮 下一步：添加专属客服',                  description: '下一步标题' },
+      { key_name: 'sjz_success_next_subtitle',  key_value: '添加企业微信后第一时间安排哈夫币充值服务',    description: '下一步说明' },
+      { key_name: 'sjz_success_no_qywx_text',  key_value: '📞 客服会主动联系您\n请保持手机畅通，耐心等待联系', description: '无企业微信时提示' },
+      { key_name: 'sjz_success_guarantee_title', key_value: '🛡️ 服务保障',                          description: '服务保障标题' },
+      { key_name: 'sjz_success_guarantee_items', key_value: '["✅ 追缴包赔","✅ 手游端游均可","✅ 24小时客服","✅ 安全有保障"]', description: '服务保障条目（JSON数组）' },
+      { key_name: 'sjz_link_btn_text',          key_value: '💬 点击添加专属客服',                     description: '链接按钮文字' },
+    ]
+    for (const 配置项 of 三角洲成功页配置) {
+      await Setting.findOrCreate({
+        where: { key_name: 配置项.key_name },
+        defaults: { ...配置项, updated_at: new Date() },
+      })
+    }
+    console.log('✅ 三角洲成功页文字配置初始化完成（共', 三角洲成功页配置.length, '项）')
 
     console.log('\n🎉 数据库初始化完成！');
     console.log('管理员账号：admin');

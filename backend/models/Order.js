@@ -282,7 +282,8 @@ const Order = 数据库连接.define('Order', {
   sjz_insurance_slots: { type: DataTypes.TINYINT, allowNull: true, comment: '保险格数(0-6)' },
   sjz_is_adult: { type: DataTypes.TINYINT, defaultValue: -1, comment: '是否成年:1是0否-1未填' },
   sjz_warehouse_images: { type: DataTypes.TEXT, allowNull: true, comment: '仓库截图URL JSON数组' },
-  sjz_hafubi_amount: { type: DataTypes.DECIMAL(10, 2), allowNull: true, comment: '哈夫币数量' },
+  sjz_hafubi_amount: { type: DataTypes.STRING(50), allowNull: true, comment: '哈夫币数量（文本）' },
+  sjz_login_method: { type: DataTypes.STRING(50), allowNull: true, comment: '用户选择的上号方式' },
   // ===== 企业微信字段 =====
   qywx_config_id: { type: DataTypes.STRING(100), allowNull: true, comment: '企业微信联系我config_id' },
   qywx_qrcode_url: { type: DataTypes.TEXT, allowNull: true, comment: '专属二维码URL' },
