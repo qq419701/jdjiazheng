@@ -491,6 +491,10 @@ const 接收鲸蚁回调 = async (req, res) => {
         更新数据.express_waybill_code = waybillCode;
         更新数据.express_order_id = waybillCode;
       }
+      // 补充：若鲸蚁首次在此回调里带了订单ID，且本地尚未记录
+      if (回调数据.id && !订单.laundry_order_id) {
+        更新数据.laundry_order_id = String(回调数据.id);
+      }
     } else if (状态数值 === 4) {
       // 预检中：保存图片（优先用 images_v2）
       const 图片数据 = images_v2 || images;

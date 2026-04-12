@@ -554,7 +554,7 @@
     </el-dialog>
 
     <!-- 洗衣：订单详情弹窗 -->
-    <el-dialog v-model="显示洗衣详情弹窗" title="洗衣订单详情" width="700px">
+    <el-dialog v-model="显示洗衣详情弹窗" title="洗衣订单详情" width="700px" @closed="加载洗衣订单">
       <template v-if="洗衣详情数据">
         <el-descriptions :column="2" border>
           <el-descriptions-item label="订单号">{{ 洗衣详情数据.order_no }}</el-descriptions-item>
@@ -960,7 +960,8 @@ const xi获取状态文字 = (status) => {
 const 获取洗衣状态类型 = (laundryStatus) => {
   if (['取消', '已取消'].includes(laundryStatus)) return 'danger'
   if (['已送达', '完成'].includes(laundryStatus)) return 'success'
-  if (['已分配', '已取件', '已入厂', '已回寄'].includes(laundryStatus)) return 'primary'
+  if (['已取件', '已入厂', '已回寄'].includes(laundryStatus)) return 'primary'
+  if (['已分配', '预检中', '质检中'].includes(laundryStatus)) return 'warning'
   return 'info'
 }
 
