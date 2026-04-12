@@ -10,9 +10,9 @@
           <el-button type="primary">🌐 预览前端 <el-icon><ArrowDown /></el-icon></el-button>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="jiazheng">🏠 家政前端</el-dropdown-item>
-              <el-dropdown-item command="xiyifu">🧺 洗衣前端</el-dropdown-item>
-              <el-dropdown-item command="topup">💳 充值前端</el-dropdown-item>
+              <el-dropdown-item v-if="moduleStore.家政"  command="jiazheng">🏠 家政前端</el-dropdown-item>
+              <el-dropdown-item v-if="moduleStore.洗衣"  command="xiyifu">🧺 洗衣前端</el-dropdown-item>
+              <el-dropdown-item v-if="moduleStore.充值"  command="topup">💳 充值前端</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -22,9 +22,10 @@
           <el-button type="danger" plain>🚫 卡密作废 <el-icon><ArrowDown /></el-icon></el-button>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="jiazheng">家政卡密作废</el-dropdown-item>
-              <el-dropdown-item command="xiyifu">洗衣卡密作废</el-dropdown-item>
-              <el-dropdown-item command="topup">充值卡密作废</el-dropdown-item>
+              <el-dropdown-item v-if="moduleStore.家政"  command="jiazheng">家政卡密作废</el-dropdown-item>
+              <el-dropdown-item v-if="moduleStore.洗衣"  command="xiyifu">洗衣卡密作废</el-dropdown-item>
+              <el-dropdown-item v-if="moduleStore.充值"  command="topup">充值卡密作废</el-dropdown-item>
+              <el-dropdown-item v-if="moduleStore.三角洲" command="sjz">三角洲卡密作废</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -34,9 +35,10 @@
           <el-button type="success" :loading="导出中">📊 导出CSV <el-icon><ArrowDown /></el-icon></el-button>
           <template #dropdown>
             <el-dropdown-menu>
-              <el-dropdown-item command="jiazheng">导出家政订单</el-dropdown-item>
-              <el-dropdown-item command="xiyifu">导出洗衣订单</el-dropdown-item>
-              <el-dropdown-item command="topup">导出充值订单</el-dropdown-item>
+              <el-dropdown-item v-if="moduleStore.家政"  command="jiazheng">导出家政订单</el-dropdown-item>
+              <el-dropdown-item v-if="moduleStore.洗衣"  command="xiyifu">导出洗衣订单</el-dropdown-item>
+              <el-dropdown-item v-if="moduleStore.充值"  command="topup">导出充值订单</el-dropdown-item>
+              <el-dropdown-item v-if="moduleStore.三角洲" command="sjz">导出三角洲订单</el-dropdown-item>
             </el-dropdown-menu>
           </template>
         </el-dropdown>
@@ -997,6 +999,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown } from '@element-plus/icons-vue'
+import { useModuleStore } from '../stores/module'
 import {
   获取订单列表API, 获取订单详情API, 更新订单状态API, 触发自动下单API, 重置订单API, 更新订单备注API,
   上传备注图片API, 导出家政订单API, 订单页搜索家政卡密API, 作废卡密API,
@@ -1016,8 +1019,7 @@ import {
 } from '../api/index'
 
 const router = useRouter()
-
-// ==================== 工具函数 ====================
+const moduleStore = useModuleStore()
 
 // 格式化北京时间 YYYY-MM-DD HH:mm
 const 格式化北京时间 = (isoStr) => {
@@ -1215,12 +1217,30 @@ const 快速筛选拒绝退款订单 = async () => {
 }
 
 // Tab 列表（含第4个三角洲订单Tab）
-const Tab列表 = computed(() => [
-  { key: 'jiazheng', icon: '🏠', label: '家政订单', badge: 角标数量.value.jiazheng || 0 },
-  { key: 'xiyifu', icon: '🧺', label: '洗衣订单', badge: 角标数量.value.xiyifu || 0 },
-  { key: 'topup', icon: '💳', label: '充值订单', badge: 角标数量.value.topup || 0 },
-  { key: 'sjz', icon: '⚔️', label: '三角洲订单', badge: 角标数量.value.sjz || 0 },
-])
+const Tab列表 = computed(() => {
+  const 全部Tabs = [
+    { key: 'jiazheng', icon: '🏠', label: '家政订单', badge: 角标数量.value.jiazheng || 0 },
+    { key: 'xiyifu', icon: '🧺', label: '洗衣订单', badge: 角标数量.value.xiyifu || 0 },
+    { key: 'topup', icon: '💳', label: '充值订单', badge: 角标数量.value.topup || 0 },
+    { key: 'sjz', icon: '⚔️', label: '三角洲订单', badge: 角标数量.value.sjz || 0 },
+  ]
+  return 全部Tabs.filter(tab => {
+    if (tab.key === 'jiazheng') return moduleStore.家政
+    if (tab.key === 'xiyifu')   return moduleStore.洗衣
+    if (tab.key === 'topup')    return moduleStore.充值
+    if (tab.key === 'sjz')      return moduleStore.三角洲
+    return true
+  })
+})
+
+// 业务开关加载完成后，确保当前Tab是有效的已开启业务
+watch(() => moduleStore.已加载, (loaded) => {
+  if (loaded && Tab列表.value.length > 0) {
+    if (!Tab列表.value.find(t => t.key === 当前Tab.value)) {
+      当前Tab.value = Tab列表.value[0].key
+    }
+  }
+}, { immediate: true })
 
 // ==================== 卡密作废（共享） ====================
 

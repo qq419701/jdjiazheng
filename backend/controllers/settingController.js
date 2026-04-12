@@ -1,11 +1,17 @@
 // 系统设置控制器
 const { Setting } = require('../models');
+const 业务开关 = require('../config/business');
 
 const 获取所有设置 = async (req, res) => {
   try {
     const 列表 = await Setting.findAll();
     const 设置对象 = {};
     列表.forEach(s => { 设置对象[s.key_name] = s.key_value; });
+    // 追加业务模块开关状态（从 .env 透传给前端）
+    设置对象.business_jiazheng_enabled = 业务开关.家政 ? '1' : '0';
+    设置对象.business_xiyifu_enabled   = 业务开关.洗衣 ? '1' : '0';
+    设置对象.business_topup_enabled    = 业务开关.充值 ? '1' : '0';
+    设置对象.business_sjz_enabled      = 业务开关.三角洲 ? '1' : '0';
     res.json({ code: 1, message: '获取成功', data: 设置对象 });
   } catch (错误) {
     res.status(500).json({ code: -1, message: '服务器错误' });

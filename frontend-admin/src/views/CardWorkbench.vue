@@ -383,9 +383,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Ticket, CopyDocument } from '@element-plus/icons-vue'
+import { useModuleStore } from '../stores/module'
 import {
   获取套餐列表API,
   套餐生成卡密API,
@@ -401,13 +402,12 @@ import {
 import { 删除批次API, 删除洗衣批次API, 删除充值批次API, 删除三角洲批次API } from '../api/index'
 import { 作废洗衣卡密API, 作废充值卡密API, 删除洗衣卡密API, 删除充值卡密API, 作废三角洲卡密API, 删除三角洲卡密API } from '../api/index'
 
+// ===== 业务开关 =====
+const moduleStore = useModuleStore()
+
 // ===== 常量 =====
-const 业务列表 = [
-  { type: 'jiazheng', label: '🏠 家政' },
-  { type: 'xiyifu', label: '🧺 洗衣' },
-  { type: 'topup', label: '💳 充值' },
-  { type: 'sjz', label: '⚔️ 三角洲' },
-]
+// 业务列表根据业务开关动态过滤（来自 moduleStore.已开启业务列表）
+const 业务列表 = computed(() => moduleStore.已开启业务列表)
 
 // ===== 状态 =====
 const 主Tab = ref('generate')
@@ -416,6 +416,15 @@ const 统计数据 = ref(null)
 
 // 生成卡密
 const 选中业务类型 = ref('jiazheng')
+
+// 业务开关加载完成后，确保默认选中业务是已开启的业务
+watch(() => moduleStore.已加载, (loaded) => {
+  if (loaded && 业务列表.value.length > 0) {
+    if (!业务列表.value.find(b => b.type === 选中业务类型.value)) {
+      选中业务类型.value = 业务列表.value[0].type
+    }
+  }
+}, { immediate: true })
 const 当前套餐列表 = ref([])
 const 套餐搜索词 = ref('')
 const 套餐加载中 = ref(false)
