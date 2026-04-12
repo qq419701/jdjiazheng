@@ -29,3 +29,6 @@ Thumbs.db
 
 # Puppeteer缓存
 .local-chromium/
+
+# 服务器本地部署配置（不提交，每台服务器独立配置）
+.deploy

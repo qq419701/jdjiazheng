@@ -36,10 +36,24 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 #       目录名为 yuyuexitong → PM2 进程名为 yuyuexitong
 PM2_APP_NAME="$(basename "$PROJECT_DIR")"
 
-# 🔧 自动检测：GitHub 仓库名取目录名（假设仓库名与目录名一致）
-# 如果你的仓库名与目录名不同，请手动修改此行
+# 🔧 GitHub 仓库名配置
+# 优先读取项目根目录下的 .deploy 文件中的 GITHUB_REPO 配置
+# 如果没有 .deploy 文件，则自动用目录名推断（目录名需与仓库名一致）
+# 如果目录名与仓库名不一致，请在项目根目录创建 .deploy 文件，内容如下：
+#   GITHUB_REPO=qq419701/jdjiazheng
 GITHUB_USER="qq419701"
-GITHUB_REPO="${GITHUB_USER}/$(basename "$PROJECT_DIR")"
+DEPLOY_CONFIG_FILE="$PROJECT_DIR/.deploy"
+if [ -f "$DEPLOY_CONFIG_FILE" ]; then
+  # 从 .deploy 文件读取 GITHUB_REPO（忽略注释行和空行）
+  _REPO_FROM_FILE=$(grep -E '^GITHUB_REPO=' "$DEPLOY_CONFIG_FILE" | head -1 | cut -d'=' -f2- | tr -d '[:space:]')
+  if [ -n "$_REPO_FROM_FILE" ]; then
+    GITHUB_REPO="$_REPO_FROM_FILE"
+  else
+    GITHUB_REPO="${GITHUB_USER}/$(basename "$PROJECT_DIR")"
+  fi
+else
+  GITHUB_REPO="${GITHUB_USER}/$(basename "$PROJECT_DIR")"
+fi
 
 # 国内代理列表（按可用性排序，自动轮换）
 PROXY_LIST=(
