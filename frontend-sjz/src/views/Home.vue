@@ -48,7 +48,7 @@
         </div>
         <!-- 哈夫币数量徽章 -->
         <div v-if="store.哈夫币数量" class="哈夫币徽章">
-          <span class="哈夫币脉冲">💰 {{ store.哈夫币数量 }} 哈夫币</span>
+          <span class="哈夫币脉冲">💰 哈夫币：{{ store.哈夫币数量 }}</span>
         </div>
         <!-- 金色分割线 -->
         <div class="金色分割线"></div>
@@ -542,15 +542,16 @@ onMounted(async () => {
 
 .哈夫币脉冲 {
   display: inline-block;
-  padding: 8px 20px;
+  padding: 10px 24px;
   background: linear-gradient(135deg, #f5c518, #e0a800);
   border: 2px solid rgba(255, 220, 50, 0.6);
   border-radius: 24px;
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 20px;
+  font-weight: 900;
   color: #1a1a2e;
   box-shadow: 0 0 16px rgba(245, 197, 24, 0.5);
   animation: 徽章脉冲 2s ease-in-out infinite;
+  letter-spacing: 1px;
 }
 
 @keyframes 徽章脉冲 {

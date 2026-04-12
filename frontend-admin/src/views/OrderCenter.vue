@@ -535,9 +535,16 @@
             <el-table-column label="游戏昵称" width="120" show-overflow-tooltip>
               <template #default="{ row }">{{ row.sjz_game_nickname || '-' }}</template>
             </el-table-column>
-            <el-table-column label="哈夫币数量" width="100">
+            <el-table-column label="套餐" width="120">
               <template #default="{ row }">
                 <el-tag v-if="row.sjz_hafubi_amount" type="warning" size="small">{{ row.sjz_hafubi_amount }}</el-tag>
+                <span v-else-if="row.service_type" style="font-size:12px">{{ row.service_type }}</span>
+                <span v-else style="color:#bbb;font-size:12px">-</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="电商订单号" width="160" show-overflow-tooltip>
+              <template #default="{ row }">
+                <span v-if="row.ecommerce_order_no" style="color:#409eff;font-size:12px;font-weight:500">{{ row.ecommerce_order_no }}</span>
                 <span v-else style="color:#bbb;font-size:12px">-</span>
               </template>
             </el-table-column>
