@@ -88,15 +88,20 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { DataAnalysis, List, Ticket, UserFilled, Setting, MapLocation, Goods, Document } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
+import { useModuleStore } from '../stores/module'
 import { 获取设置API } from '../api/index'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const moduleStore = useModuleStore()
 
 const 系统名称 = ref('京东代下单系统')
 
 onMounted(async () => {
+  // 加载业务开关（从 .env 透传到前端）
+  moduleStore.加载业务开关()
+
   try {
     const res = await 获取设置API()
     if (res?.code === 1 && res.data?.admin_site_name) {

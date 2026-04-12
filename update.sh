@@ -1,7 +1,10 @@
 #!/bin/bash
 # ============================================================
 #  京东代下单系统 — 一键拉取更新 + 重新构建 + 重启
-#  版本：v4.2（新增三角洲前端 frontend-sjz + 充值前端 cz 单独命令）
+#  版本：v5.0
+#  新增：
+#    - 配置区改为自动检测脚本所在目录，新旧系统永不混淆
+#    - 支持通过 .env 控制各业务全链路显示/隐藏（见 backend/.env.example）
 #
 #  使用方式：
 #    chmod +x update.sh        （首次执行前赋予可执行权限）
@@ -13,14 +16,31 @@
 #    ./update.sh cz            （仅拉代码 + 重建充值前端 frontend-cz）
 #    ./update.sh sjz           （仅拉代码 + 重建三角洲前端 frontend-sjz）
 #    ./update.sh frontend      （拉代码 + 重建全部前端，不重启后端）
+#
+#  ⚠️  重要说明：
+#    本脚本会自动检测自身所在的项目目录，无需手动修改路径。
+#    PM2 进程名自动取项目目录名（如 jdjiazheng / yuyuexitong）。
+#    这样同一台服务器上的多个项目可以各自独立使用 update.sh，
+#    不会互相影响。
 # ============================================================
 
 set -e
 
 # ─────────────────────── 配置区 ───────────────────────
-PROJECT_DIR="/www/wwwroot/jdjiazheng"
-PM2_APP_NAME="jdjiazheng"
-GITHUB_REPO="qq419701/jdjiazheng"
+# 🔧 自动检测：脚本所在目录即为项目根目录，无需手动修改
+# 原理：无论脚本放在哪个项目目录下，都能正确操作自己的目录
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# 🔧 自动检测：PM2 进程名取项目目录名
+# 例如：目录名为 jdjiazheng → PM2 进程名为 jdjiazheng
+#       目录名为 yuyuexitong → PM2 进程名为 yuyuexitong
+PM2_APP_NAME="$(basename "$PROJECT_DIR")"
+
+# 🔧 自动检测：GitHub 仓库名取目录名（假设仓库名与目录名一致）
+# 如果你的仓库名与目录名不同，请手动修改此行
+GITHUB_USER="qq419701"
+GITHUB_REPO="${GITHUB_USER}/$(basename "$PROJECT_DIR")"
+
 # 国内代理列表（按可用性排序，自动轮换）
 PROXY_LIST=(
   "https://gh-proxy.com/https://github.com/${GITHUB_REPO}.git"
@@ -70,6 +90,9 @@ check_network() {
 # ─────────────────── 智能拉取代码（多代理轮换） ───────────────────
 pull_code() {
   log_section "📥 拉取最新代码（多代理自动轮换）"
+  log_info "项目目录：$PROJECT_DIR"
+  log_info "PM2进程名：$PM2_APP_NAME"
+  log_info "GitHub仓库：$GITHUB_REPO"
   cd "$PROJECT_DIR"
 
   git config --global http.lowSpeedLimit 0
@@ -194,9 +217,13 @@ show_status() {
 main() {
   echo ""
   echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"
-  echo -e "${GREEN}║  京东代下单 — 一键更新脚本 v4.2            ║${NC}"
+  echo -e "${GREEN}║  京东代下单 — 一键更新脚本 v5.0            ║${NC}"
   echo -e "${GREEN}║  $(date '+%Y-%m-%d %H:%M:%S')  国内服务器代理版        ║${NC}"
   echo -e "${GREEN}╚════════════════════════════════════════════╝${NC}"
+  echo ""
+  echo -e "  📁 项目目录：${CYAN}$PROJECT_DIR${NC}"
+  echo -e "  🤖 PM2进程名：${CYAN}$PM2_APP_NAME${NC}"
+  echo -e "  📦 GitHub仓库：${CYAN}$GITHUB_REPO${NC}"
   echo ""
 
   check_network || true
