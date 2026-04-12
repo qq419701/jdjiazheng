@@ -2389,7 +2389,10 @@ onMounted(async () => {
       const 批次结果 = await 统一获取批次列表API({ vendor_id: authStore.id })
       const 批次列表 = 批次结果.data || []
       供货商可见业务类型列表.value = [...new Set(批次列表.map(b => b.business_type).filter(Boolean))]
-    } catch {}
+    } catch (错误) {
+      console.warn('[OrderCenter] 供货商批次加载失败:', 错误)
+      供货商可见业务类型列表.value = []
+    }
   }
 
   // 加载站点域名

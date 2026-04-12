@@ -4,7 +4,7 @@ import { defineStore } from 'pinia'
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     // 账号ID
-    id: parseInt(localStorage.getItem('admin_id') || '0') || 0,
+    id: parseInt(localStorage.getItem('admin_id'), 10) || 0,
     // Token
     token: localStorage.getItem('admin_token') || '',
     // 用户名
@@ -75,12 +75,12 @@ export const useAuthStore = defineStore('auth', {
     // 仅刷新权限相关字段（不更新token），用于路由守卫实时同步权限
     刷新权限(数据) {
       if (!数据) return
-      if (数据.id) this.id = 数据.id
+      this.id = 数据.id || this.id
       this.nickname = 数据.nickname || this.nickname
       this.role = 数据.role || this.role
       this.permissions = 数据.permissions || []
       this.vendor_batch_ids = 数据.vendor_batch_ids || []
-      if (数据.id) localStorage.setItem('admin_id', 数据.id)
+      localStorage.setItem('admin_id', 数据.id || this.id)
       localStorage.setItem('admin_nickname', 数据.nickname || this.nickname)
       localStorage.setItem('admin_role', 数据.role || this.role)
       localStorage.setItem('admin_permissions', JSON.stringify(数据.permissions || []))

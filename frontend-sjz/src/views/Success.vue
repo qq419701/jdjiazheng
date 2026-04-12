@@ -27,7 +27,7 @@
     bg-color="#16213e"
     title-color="#f5c518"
     content-color="#e0e0e0"
-    :auto-close-seconds="parseInt(store.sjz_popup2_auto_close) || 0"
+    :auto-close-seconds="Number(store.sjz_popup2_auto_close) || 0"
     :mask-closable="true"
     @close="显示弹窗2 = false"
   />
