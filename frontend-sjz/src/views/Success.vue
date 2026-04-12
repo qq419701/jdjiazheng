@@ -15,6 +15,22 @@
     :mask-closable="true"
     @close="显示成功弹窗 = false"
   />
+
+  <!-- 弹窗2：下单成功页提示弹窗（后台可配置） -->
+  <NoticePopup
+    :show="显示弹窗2"
+    :title="store.sjz_popup2_title"
+    :content="store.sjz_popup2_content"
+    icon-emoji="✅"
+    :btn-text="store.sjz_popup2_btn_text"
+    btn-color="#e94560"
+    bg-color="#16213e"
+    title-color="#f5c518"
+    content-color="#e0e0e0"
+    :auto-close-seconds="parseInt(store.sjz_popup2_auto_close) || 0"
+    :mask-closable="true"
+    @close="显示弹窗2 = false"
+  />
   <div class="成功页容器">
     <!-- 顶部成功区 -->
     <div class="成功动画区">
@@ -103,6 +119,7 @@ const store = useSjzOrderStore()
 
 // 成功页弹窗状态
 const 显示成功弹窗 = ref(false)
+const 显示弹窗2 = ref(false)
 
 // 从sessionStorage恢复（防止页面刷新）
 onMounted(() => {
@@ -115,6 +132,13 @@ onMounted(() => {
       显示成功弹窗.value = true
     }
   }, 800)
+
+  // 若弹窗2启用，延迟 300ms 弹出弹窗2（下单成功提示）
+  setTimeout(() => {
+    if (store.sjz_popup2_enabled === '1') {
+      显示弹窗2.value = true
+    }
+  }, 300)
 })
 
 // 无微信提示按行分割

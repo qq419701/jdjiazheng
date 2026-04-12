@@ -160,6 +160,7 @@ router.post('/login', async (req, res) => {
       code: 1,
       message: '登录成功',
       data: {
+        id: 管理员.id,
         token,
         username: 管理员.username,
         nickname: 管理员.nickname || 管理员.username,
@@ -590,6 +591,7 @@ router.get('/auth/me', 验证Token, async (req, res) => {
       code: 1,
       message: '获取成功',
       data: {
+        id: 账号.id,
         permissions: 权限列表,
         role: 账号.role,
         nickname: 账号.nickname || 账号.username,

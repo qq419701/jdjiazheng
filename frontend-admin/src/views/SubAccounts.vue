@@ -118,23 +118,10 @@
           </el-checkbox-group>
         </el-form-item>
 
-        <!-- 供货商：可见业务选择 -->
+        <!-- 供货商：批次绑定说明 -->
         <template v-if="编辑表单.role === 'vendor'">
-          <el-form-item label="可见业务">
-            <!-- 仅显示后端已开启的业务（根据服务器环境变量 BUSINESS_*_ENABLED 控制） -->
-            <el-checkbox-group v-model="编辑表单.vendor_business_types">
-              <el-checkbox
-                v-for="业务 in moduleStore.已开启业务列表"
-                :key="业务.type"
-                :value="业务.type"
-              >{{ 业务.label }}</el-checkbox>
-            </el-checkbox-group>
-            <div style="font-size:12px;color:#999;margin-top:4px">
-              不选则显示所有已开启业务的订单
-            </div>
-          </el-form-item>
-          <div style="font-size:12px;color:#909399;margin-top:8px;padding:8px;background:#f5f7fa;border-radius:4px">
-            💡 供货商的<strong>批次绑定</strong>请在「卡密工作台 → 批次记录」中操作，在每个批次的操作栏点击「绑定供货商」按钮设置
+          <div style="font-size:12px;color:#909399;padding:8px;background:#f5f7fa;border-radius:4px">
+            💡 供货商的<strong>批次绑定</strong>请在「卡密工作台 → 批次记录」中操作，在每个批次的操作栏点击「绑定供货商」按钮设置。供货商可见的订单业务类型将自动根据其绑定的批次决定。
           </div>
         </template>
       </el-form>
@@ -179,11 +166,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import { useModuleStore } from '../stores/module'
 import { 获取子账号列表API, 新增子账号API, 更新子账号API, 重置子账号密码API, 删除子账号API, 修改自己密码API } from '../api/index'
-
-// 业务模块开关（用于可见业务动态渲染）
-const moduleStore = useModuleStore()
 
 // 所有可授权的模块（新版权限key，与最新路由一致）
 const 权限模块标签 = {
