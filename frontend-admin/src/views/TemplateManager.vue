@@ -7,10 +7,10 @@
     </div>
 
     <el-tabs v-model="当前业务类型" type="border-card" @tab-change="切换业务类型">
-      <el-tab-pane label="🏠 家政套餐" name="jiazheng" />
-      <el-tab-pane label="🧺 洗衣套餐" name="xiyifu" />
-      <el-tab-pane label="💳 充值套餐" name="topup" />
-      <el-tab-pane label="⚔️ 三角洲套餐" name="sjz" />
+      <el-tab-pane v-if="moduleStore.家政"  label="🏠 家政套餐"  name="jiazheng" />
+      <el-tab-pane v-if="moduleStore.洗衣"  label="🧺 洗衣套餐"  name="xiyifu" />
+      <el-tab-pane v-if="moduleStore.充值"  label="💳 充值套餐"  name="topup" />
+      <el-tab-pane v-if="moduleStore.三角洲" label="⚔️ 三角洲套餐" name="sjz" />
     </el-tabs>
 
     <!-- 操作栏 -->
@@ -267,9 +267,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 获取套餐列表API, 新增套餐API, 更新套餐API, 删除套餐API } from '../api/index'
+import { useModuleStore } from '../stores/module'
+
+const moduleStore = useModuleStore()
 
 // ===== 状态 =====
 const 当前业务类型 = ref('jiazheng')
@@ -492,6 +495,16 @@ const 删除套餐 = async (行) => {
     ElMessage.error('删除失败，请稍后重试')
   }
 }
+
+// 业务开关加载完成后，确保默认选中的业务类型是已开启的
+watch(() => moduleStore.已加载, (loaded) => {
+  if (!loaded) return
+  const 已开启业务类型 = moduleStore.已开启业务列表.map(b => b.type)
+  if (!已开启业务类型.includes(当前业务类型.value)) {
+    当前业务类型.value = 已开启业务类型[0] || 'jiazheng'
+    加载套餐列表()
+  }
+}, { immediate: true })
 
 onMounted(() => {
   加载套餐列表()
