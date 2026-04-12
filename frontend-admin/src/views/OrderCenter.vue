@@ -3,7 +3,7 @@
   <div class="订单中心">
 
     <!-- 顶部工具栏 -->
-    <el-card style="margin-bottom: 12px">
+    <el-card v-if="!authStore.是供货商" style="margin-bottom: 12px">
       <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
         <!-- 预览前端下拉 -->
         <el-dropdown @command="打开前端预览">
@@ -1062,6 +1062,17 @@
           </div>
         </el-form-item>
 
+        <!-- 电商订单号（可选，4个业务通用） -->
+        <el-form-item label="电商订单号">
+          <el-input
+            v-model="手动创建表单.ecommerce_order_no"
+            placeholder="如：P791381403338389551（可不填）"
+            style="width:300px"
+            clearable
+          />
+          <span style="font-size:12px;color:#999;margin-left:8px">电商平台订单号（可选）</span>
+        </el-form-item>
+
         <!-- 通用字段 -->
         <template v-if="手动创建业务类型 !== 'sjz'">
           <el-form-item label="姓名">
@@ -1201,6 +1212,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown, Plus } from '@element-plus/icons-vue'
 import { useModuleStore } from '../stores/module'
+import { useAuthStore } from '../stores/auth'
 import {
   获取订单列表API, 获取订单详情API, 更新订单状态API, 触发自动下单API, 重置订单API, 更新订单备注API,
   上传备注图片API, 导出家政订单API, 订单页搜索家政卡密API, 作废卡密API,
@@ -1217,11 +1229,15 @@ import {
   获取三角洲预览卡密API, 重置三角洲订单API,
   统一获取卡密列表API,
   获取设置API, 获取订单角标数量API,
-  手动创建订单API, 预分配卡密API, 获取套餐列表API
+  手动创建订单API, 预分配卡密API, 获取套餐列表API, 统一获取批次列表API
 } from '../api/index'
 
 const router = useRouter()
 const moduleStore = useModuleStore()
+const authStore = useAuthStore()
+
+// 供货商可见业务类型列表（仅 vendor 角色，由其绑定批次的 business_type 决定）
+const 供货商可见业务类型列表 = ref([])
 
 // 格式化北京时间 YYYY-MM-DD HH:mm
 const 格式化北京时间 = (isoStr) => {
@@ -1427,6 +1443,11 @@ const Tab列表 = computed(() => {
     { key: 'sjz', icon: '⚔️', label: '三角洲订单', badge: 角标数量.value.sjz || 0 },
   ]
   return 全部Tabs.filter(tab => {
+    // 供货商：只显示其绑定批次中涉及的业务类型
+    if (authStore.是供货商) {
+      return 供货商可见业务类型列表.value.includes(tab.key)
+    }
+    // 管理员：按 moduleStore 业务开关过滤
     if (tab.key === 'jiazheng') return moduleStore.家政
     if (tab.key === 'xiyifu')   return moduleStore.洗衣
     if (tab.key === 'topup')    return moduleStore.充值
@@ -2237,6 +2258,7 @@ const 手动创建套餐列表 = ref([])       // 当前业务类型的套餐列
 const 手动创建表单 = ref({
   product_id: null,
   card_code: '',           // 手动输入的卡密（为空则自动分配）
+  ecommerce_order_no: '', // 电商平台订单号（可选）
   // 通用字段
   name: '', phone: '', remark: '',
   // 家政/洗衣地址
@@ -2300,6 +2322,7 @@ const 重置手动创建表单 = () => {
   显示手动输入卡密.value = false
   手动创建表单.value = {
     product_id: null, card_code: '',
+    ecommerce_order_no: '',
     name: '', phone: '', remark: '',
     province: '', city: '', district: '', street: '', address: '',
     visit_date: '', visit_time: '', service_type: '', service_hours: 2,
@@ -2360,6 +2383,18 @@ const 提交手动创建订单 = async () => {
 // ==================== 初始化 ====================
 
 onMounted(async () => {
+  // 供货商：加载绑定批次的业务类型列表
+  if (authStore.是供货商 && authStore.id) {
+    try {
+      const 批次结果 = await 统一获取批次列表API({ vendor_id: authStore.id })
+      const 批次列表 = 批次结果.data || []
+      供货商可见业务类型列表.value = [...new Set(批次列表.map(b => b.business_type).filter(Boolean))]
+    } catch (错误) {
+      console.warn('[OrderCenter] 供货商批次加载失败:', 错误)
+      供货商可见业务类型列表.value = []
+    }
+  }
+
   // 加载站点域名
   try {
     const r = await 获取设置API()

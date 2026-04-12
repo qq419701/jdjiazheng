@@ -529,6 +529,7 @@ const 手动创建订单 = async (req, res) => {
       card_code,        // 卡密（可选，不传则自动分配）
       // 通用字段
       name, phone, remark,
+      ecommerce_order_no,  // 电商平台订单号（可选）
       // 家政/洗衣字段
       province, city, district, street, address,
       visit_date, visit_time,
@@ -593,6 +594,7 @@ const 手动创建订单 = async (req, res) => {
       name: name || '',
       phone: phone || '',
       remark: remark || null,
+      ecommerce_order_no: ecommerce_order_no || null,  // 电商平台订单号（可选）
     };
 
     // 家政/洗衣地址字段
