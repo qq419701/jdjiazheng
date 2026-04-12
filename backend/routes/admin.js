@@ -1032,6 +1032,22 @@ router.get('/unified-cards', 验证Token, 统一获取卡密列表);
 router.get('/unified-batches', 验证Token, 统一获取批次列表);
 router.get('/unified-stats', 验证Token, 统一获取卡密统计);
 
+// 更新批次绑定的供货商（PUT /admin/api/unified-batches/:id/vendor）
+router.put('/unified-batches/:id/vendor', 验证Token, async (req, res) => {
+  try {
+    const { CardBatch } = require('../models');
+    const 批次 = await CardBatch.findByPk(req.params.id);
+    if (!批次) return res.json({ code: 0, message: '批次不存在' });
+    // vendor_id 为 null 时取消绑定，为具体ID时绑定供货商
+    const vendor_id = req.body.vendor_id ?? null;
+    await 批次.update({ vendor_id });
+    res.json({ code: 1, message: vendor_id ? '供货商绑定成功' : '已取消供货商绑定' });
+  } catch (错误) {
+    console.error('绑定批次供货商出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
 // ===== 卡密工作台：选套餐生成卡密 =====
 router.post('/card-templates/generate', 验证Token, async (req, res) => {
   try {

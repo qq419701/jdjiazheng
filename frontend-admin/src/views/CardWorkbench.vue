@@ -306,6 +306,22 @@
           <el-select v-model="批次筛选.business_type" placeholder="全部业务" clearable style="width:120px">
             <el-option v-for="业务 in 业务列表" :key="业务.type" :label="业务.label" :value="业务.type" />
           </el-select>
+          <!-- 筛选供货商（用于按供货商查看绑定的批次） -->
+          <el-select
+            v-model="批次筛选.vendor_id"
+            placeholder="筛选供货商"
+            clearable
+            style="width:150px"
+            @change="加载批次列表"
+          >
+            <el-option label="无供货商" :value="0" />
+            <el-option
+              v-for="供货商 in 供货商列表"
+              :key="供货商.id"
+              :label="供货商.nickname || 供货商.username"
+              :value="供货商.id"
+            />
+          </el-select>
           <el-button type="primary" @click="加载批次列表">搜索</el-button>
           <el-button @click="重置批次筛选">重置</el-button>
         </div>
@@ -317,6 +333,17 @@
               <el-tag size="small" :type="业务Tag样式(row.business_type)">
                 {{ 业务中文(row.business_type) }}
               </el-tag>
+            </template>
+          </el-table-column>
+          <!-- 供货商列：显示绑定的供货商名称 -->
+          <el-table-column label="供货商" width="130">
+            <template #default="{ row }">
+              <span v-if="row.vendor_id">
+                <el-tag type="success" size="small">
+                  {{ 获取供货商名称(row.vendor_id) }}
+                </el-tag>
+              </span>
+              <span v-else style="color:#ccc;font-size:12px">-</span>
             </template>
           </el-table-column>
           <el-table-column label="套餐名称" min-width="140">
@@ -332,12 +359,15 @@
           <el-table-column label="创建时间" width="170">
             <template #default="{ row }">{{ 格式化时间(row.created_at) }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="320" fixed="right">
+          <el-table-column label="操作" width="380" fixed="right">
             <template #default="{ row }">
               <el-button size="small" @click="查看批次卡密(row)">查看卡密</el-button>
               <el-button size="small" @click="复制批次链接(row)">复制链接</el-button>
               <el-button size="small" @click="复制批次卡密(row)">复制卡密</el-button>
               <el-button size="small" type="success" @click="导出批次TXT(row)">导出TXT</el-button>
+              <el-button size="small" type="primary" plain @click="打开绑定供货商弹窗(row)">
+                {{ row.vendor_id ? '改绑供货商' : '绑定供货商' }}
+              </el-button>
               <el-button size="small" type="danger" @click="删除批次(row)">删除</el-button>
             </template>
           </el-table-column>
@@ -379,6 +409,58 @@
         </el-table-column>
       </el-table>
     </el-dialog>
+
+    <!-- ============ 绑定供货商弹窗 ============ -->
+    <el-dialog
+      v-model="显示绑定供货商弹窗"
+      title="🏪 绑定供货商"
+      width="480px"
+      :close-on-click-modal="false"
+    >
+      <div style="margin-bottom:16px">
+        <el-alert type="info" :closable="false" show-icon>
+          <template #title>什么是供货商绑定？</template>
+          <template #default>
+            <div style="font-size:12px;line-height:1.8">
+              供货商是指您的分销渠道来源。将批次绑定给供货商后：<br>
+              · 该供货商登录后台，<strong>只能看到绑定批次下产生的订单</strong><br>
+              · 这样可以实现按供货商隔离订单数据，方便对账<br>
+              · 一个批次只能绑定一个供货商，一个供货商可绑定多个批次<br>
+              · 如需取消绑定，选择「不绑定供货商」即可
+            </div>
+          </template>
+        </el-alert>
+      </div>
+
+      <el-form label-width="100px">
+        <el-form-item label="当前批次">
+          <span style="font-weight:600">{{ 绑定目标批次?.batch_no }}</span>
+          <el-tag v-if="绑定目标批次?.service_type" size="small" style="margin-left:6px">{{ 绑定目标批次?.service_type }}</el-tag>
+        </el-form-item>
+        <el-form-item label="绑定供货商">
+          <el-select v-model="绑定供货商ID" placeholder="请选择供货商" style="width:220px" clearable>
+            <el-option label="不绑定供货商（取消绑定）" :value="null" />
+            <el-option
+              v-for="供货商 in 供货商列表"
+              :key="供货商.id"
+              :label="`${供货商.nickname || 供货商.username} (@${供货商.username})`"
+              :value="供货商.id"
+            />
+          </el-select>
+          <div v-if="!供货商列表.length" style="font-size:12px;color:#f56c6c;margin-top:4px">
+            ⚠️ 暂无供货商账号，请先在「子账号管理」中创建角色为「供货商」的账号
+          </div>
+          <div v-else style="font-size:12px;color:#909399;margin-top:4px">
+            供货商登录后只能看到此批次下的订单
+          </div>
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="显示绑定供货商弹窗 = false">取消</el-button>
+        <el-button type="primary" :loading="绑定供货商中" @click="确认绑定供货商">确认绑定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -396,6 +478,8 @@ import {
   获取设置API,
   作废卡密API,
   删除卡密API,
+  获取供货商列表API,
+  绑定批次供货商API,
 } from '../api/index'
 
 // 批次删除需要判断业务类型，引入各业务接口
@@ -452,10 +536,17 @@ const 卡密分页 = reactive({ page: 1, limit: 20, total: 0 })
 // 批次
 const 批次列表 = ref([])
 const 批次加载中 = ref(false)
-const 批次筛选 = reactive({ business_type: '' })
+const 批次筛选 = reactive({ business_type: '', vendor_id: '' })
 const 批次弹窗可见 = ref(false)
 const 当前批次 = ref(null)
 const 批次卡密列表 = ref([])
+
+// ===== 供货商相关状态 =====
+const 供货商列表 = ref([])          // 供货商账号列表，用于绑定批次
+const 显示绑定供货商弹窗 = ref(false)
+const 绑定目标批次 = ref(null)      // 当前要绑定的批次记录
+const 绑定供货商ID = ref(null)      // 要绑定的供货商ID
+const 绑定供货商中 = ref(false)
 
 // Tab2 多选
 const 卡密选中列表 = ref([])
@@ -476,6 +567,7 @@ onMounted(async () => {
   // 加载统计、套餐
   加载统计()
   加载当前套餐()
+  加载供货商列表()
 })
 
 // ===== 统计 =====
@@ -698,7 +790,10 @@ const 删除卡密 = async (行) => {
 const 加载批次列表 = async () => {
   批次加载中.value = true
   try {
-    const 响应 = await 统一获取批次列表API(批次筛选)
+    const 响应 = await 统一获取批次列表API({
+      ...批次筛选,
+      vendor_id: 批次筛选.vendor_id !== '' ? 批次筛选.vendor_id : undefined,
+    })
     批次列表.value = 响应?.data?.list || 响应?.data || []
   } catch {
     ElMessage.error('加载批次列表失败')
@@ -709,7 +804,52 @@ const 加载批次列表 = async () => {
 
 const 重置批次筛选 = () => {
   批次筛选.business_type = ''
+  批次筛选.vendor_id = ''
   加载批次列表()
+}
+
+// ===== 供货商管理 =====
+// 加载供货商列表（用于批次绑定弹窗）
+const 加载供货商列表 = async () => {
+  try {
+    const 结果 = await 获取供货商列表API()
+    供货商列表.value = 结果?.data || []
+  } catch {
+    供货商列表.value = []
+  }
+}
+
+// 根据供货商ID获取显示名称
+const 获取供货商名称 = (vendor_id) => {
+  const 供货商 = 供货商列表.value.find(v => v.id === vendor_id)
+  return 供货商 ? (供货商.nickname || 供货商.username) : `ID:${vendor_id}`
+}
+
+// 打开绑定供货商弹窗
+const 打开绑定供货商弹窗 = (批次行) => {
+  绑定目标批次.value = 批次行
+  绑定供货商ID.value = 批次行.vendor_id || null
+  显示绑定供货商弹窗.value = true
+}
+
+// 确认绑定供货商
+const 确认绑定供货商 = async () => {
+  if (!绑定目标批次.value) return
+  绑定供货商中.value = true
+  try {
+    const 结果 = await 绑定批次供货商API(绑定目标批次.value.id, { vendor_id: 绑定供货商ID.value })
+    if (结果?.code === 1) {
+      ElMessage.success(绑定供货商ID.value ? '供货商绑定成功' : '已取消供货商绑定')
+      显示绑定供货商弹窗.value = false
+      加载批次列表()  // 刷新批次列表
+    } else {
+      ElMessage.error(结果?.message || '操作失败')
+    }
+  } catch {
+    ElMessage.error('网络错误，请重试')
+  } finally {
+    绑定供货商中.value = false
+  }
 }
 
 const 查看批次卡密 = async (行) => {

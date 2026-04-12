@@ -212,6 +212,8 @@ export const 获取SUP日志统计API = () => 请求实例.get('/sup-logs/stats'
 // ===== 供货商管理 =====
 // 获取供货商账号列表（用于套餐管理绑定供货商下拉选择）
 export const 获取供货商列表API = () => 请求实例.get('/vendors')
+// 更新批次绑定的供货商（vendor_id：供货商admin_id，传null则取消绑定）
+export const 绑定批次供货商API = (id, 数据) => 请求实例.put(`/unified-batches/${id}/vendor`, 数据)
 
 // ===== 手动创建订单 =====
 // 管理员手动新建订单（自动分配卡密或手动输入卡密）
