@@ -29,7 +29,7 @@
       </el-tab-pane>
 
       <!-- ===== Tab 2：家政设置 ===== -->
-      <el-tab-pane label="🏠 家政设置" name="jiazheng">
+      <el-tab-pane v-if="moduleStore.家政" label="🏠 家政设置" name="jiazheng">
         <el-form :model="设置表单" label-width="140px" style="max-width: 680px">
           <el-form-item label="Banner图片URL">
             <el-input v-model="设置表单.banner_url" placeholder="输入Banner图片的URL地址" />
@@ -364,7 +364,7 @@
       </el-tab-pane>
 
       <!-- ===== Tab 3：洗衣设置 ===== -->
-      <el-tab-pane label="🧺 洗衣设置" name="xiyifu">
+      <el-tab-pane v-if="moduleStore.洗衣" label="🧺 洗衣设置" name="xiyifu">
         <el-form :model="设置表单" label-width="160px" style="max-width: 680px">
           <el-form-item label="洗衣Banner URL">
             <el-input v-model="设置表单.laundry_banner_url" placeholder="Banner图片地址（可选）" />
@@ -654,7 +654,7 @@
       </el-tab-pane>
 
       <!-- ===== Tab 4：充值设置 ===== -->
-      <el-tab-pane label="💳 充值设置" name="topup">
+      <el-tab-pane v-if="moduleStore.充值" label="💳 充值设置" name="topup">
         <el-form :model="设置表单" label-width="150px" style="max-width: 700px">
 
           <!-- 基本设置 -->
@@ -860,7 +860,7 @@
       </el-tab-pane>
 
       <!-- ===== Tab 5：三角洲设置 ===== -->
-      <el-tab-pane label="⚔️ 三角洲设置" name="sjz">
+      <el-tab-pane v-if="moduleStore.三角洲" label="⚔️ 三角洲设置" name="sjz">
         <el-form :model="设置表单" label-width="180px" style="max-width: 720px">
 
           <!-- 基本设置分组 -->
@@ -1153,8 +1153,10 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 获取设置API, 保存设置API, 测试洗衣API连接, 获取规则列表API, 新增规则API, 更新规则API, 删除规则API, 获取洗衣时间规则API, 新增洗衣时间规则API, 更新洗衣时间规则API, 删除洗衣时间规则API, 获取账号列表API, 新增账号API, 更新账号API, 删除账号API, 触发账号登录API, 上传备注图片API } from '../api/index'
 import axios from 'axios'
+import { useModuleStore } from '../stores/module'
 
 const router = useRouter()
+const moduleStore = useModuleStore()
 const 加载中 = ref(false)
 const 保存中 = ref(false)
 const 当前Tab = ref('general')
