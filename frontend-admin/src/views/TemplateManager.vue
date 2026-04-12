@@ -399,16 +399,20 @@ const 字段是否启用 = (key) => {
 
 const 字段上移 = (索引) => {
   if (索引 === 0) return
-  const keys = [...当前字段排序.value.map(f => f.key)]
-  ;[keys[索引 - 1], keys[索引]] = [keys[索引], keys[索引 - 1]]
+  const keys = 当前字段排序.value.map(f => f.key)
+  const temp = keys[索引 - 1]
+  keys[索引 - 1] = keys[索引]
+  keys[索引] = temp
   表单数据.sjz_field_order = keys.join(',')
 }
 
 const 字段下移 = (索引) => {
   const arr = 当前字段排序.value
   if (索引 === arr.length - 1) return
-  const keys = [...arr.map(f => f.key)]
-  ;[keys[索引], keys[索引 + 1]] = [keys[索引 + 1], keys[索引]]
+  const keys = arr.map(f => f.key)
+  const temp = keys[索引]
+  keys[索引] = keys[索引 + 1]
+  keys[索引 + 1] = temp
   表单数据.sjz_field_order = keys.join(',')
 }
 
