@@ -398,14 +398,15 @@ import {
 } from '../api/index'
 
 // 批次删除需要判断业务类型，引入各业务接口
-import { 删除批次API, 删除洗衣批次API, 删除充值批次API } from '../api/index'
-import { 作废洗衣卡密API, 作废充值卡密API, 删除洗衣卡密API, 删除充值卡密API } from '../api/index'
+import { 删除批次API, 删除洗衣批次API, 删除充值批次API, 删除三角洲批次API } from '../api/index'
+import { 作废洗衣卡密API, 作废充值卡密API, 删除洗衣卡密API, 删除充值卡密API, 作废三角洲卡密API, 删除三角洲卡密API } from '../api/index'
 
 // ===== 常量 =====
 const 业务列表 = [
   { type: 'jiazheng', label: '🏠 家政' },
   { type: 'xiyifu', label: '🧺 洗衣' },
   { type: 'topup', label: '💳 充值' },
+  { type: 'sjz', label: '⚔️ 三角洲' },
 ]
 
 // ===== 状态 =====
@@ -541,6 +542,7 @@ const 生成链接 = (业务类型, 卡密码) => {
   const 域名 = 站点域名.value || window.location.origin
   if (业务类型 === 'xiyifu') return `${域名}/xi/${卡密码}`
   if (业务类型 === 'topup') return `${域名}/cz/${卡密码}`
+  if (业务类型 === 'sjz') return `${域名}/sjz/${卡密码}`
   // 家政统一用 /jz/ 前缀
   return `${域名}/jz/${卡密码}`
 }
@@ -636,6 +638,8 @@ const 作废卡密 = async (行) => {
       await 作废洗衣卡密API(行.id)
     } else if (行.business_type === 'topup') {
       await 作废充值卡密API(行.id)
+    } else if (行.business_type === 'sjz') {
+      await 作废三角洲卡密API(行.id)
     } else {
       await 作废卡密API(行.id)
     }
@@ -662,6 +666,8 @@ const 删除卡密 = async (行) => {
       结果 = await 删除洗衣卡密API(行.id)
     } else if (行.business_type === 'topup') {
       结果 = await 删除充值卡密API(行.id)
+    } else if (行.business_type === 'sjz') {
+      结果 = await 删除三角洲卡密API(行.id)
     } else {
       结果 = await 删除卡密API(行.id)
     }
@@ -739,6 +745,8 @@ const 删除批次 = async (行) => {
       await 删除洗衣批次API(行.id)
     } else if (行.business_type === 'topup') {
       await 删除充值批次API(行.id)
+    } else if (行.business_type === 'sjz') {
+      await 删除三角洲批次API(行.id)
     } else {
       await 删除批次API(行.id)
     }
@@ -768,6 +776,8 @@ const 批量作废 = async () => {
         await 作废洗衣卡密API(卡密.id)
       } else if (卡密.business_type === 'topup') {
         await 作废充值卡密API(卡密.id)
+      } else if (卡密.business_type === 'sjz') {
+        await 作废三角洲卡密API(卡密.id)
       } else {
         await 作废卡密API(卡密.id)
       }
@@ -809,6 +819,8 @@ const 批量删除卡密 = async () => {
           结果 = await 删除洗衣卡密API(卡密.id)
         } else if (卡密.business_type === 'topup') {
           结果 = await 删除充值卡密API(卡密.id)
+        } else if (卡密.business_type === 'sjz') {
+          结果 = await 删除三角洲卡密API(卡密.id)
         } else {
           结果 = await 删除卡密API(卡密.id)
         }
@@ -899,12 +911,12 @@ const 批次弹窗导出TXT = () => {
 
 // ===== 工具函数 =====
 const 业务中文 = (type) => {
-  const map = { jiazheng: '家政', xiyifu: '洗衣', topup: '充值' }
+  const map = { jiazheng: '家政', xiyifu: '洗衣', topup: '充值', sjz: '三角洲' }
   return map[type] || type
 }
 
 const 业务Tag样式 = (type) => {
-  const map = { jiazheng: 'primary', xiyifu: 'success', topup: 'warning' }
+  const map = { jiazheng: 'primary', xiyifu: 'success', topup: 'warning', sjz: 'danger' }
   return map[type] || ''
 }
 

@@ -1296,6 +1296,89 @@ const 撤销订单 = async (req, res) => {
       // 将卡密状态设为已失效，sup_status 设为已撤单
       await 卡密记录.update({ status: 2, sup_status: 2, invalidated_at: new Date() });
 
+    } else if (业务类型 === 'sjz') {
+      // ===== 三角洲业务 =====
+      // 三角洲服务：服务中（status=4）或已完成（status=5）不允许撤单，其余允许
+      const 关联订单sjz = await Order.findOne({
+        where: { card_code: 卡密记录.code },
+      });
+
+      if (关联订单sjz && (关联订单sjz.status === 4 || 关联订单sjz.status === 5)) {
+        const 拒绝原因 = '三角洲服务已处理中或完成，无法撤单';
+        try {
+          const reqCopy = { ...req.body };
+          delete reqCopy.sign;
+          await SupLog.create({
+            log_type: 'cancelOrder',
+            order_no: orderNo,
+            out_trade_no: 卡密记录.id.toString(),
+            user_id: req.body.userId || null,
+            request_data: JSON.stringify(reqCopy),
+            response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { orderNo: orderNo, cancelStatus: 30, refuseReason: 拒绝原因, refuseProof: 拒绝凭证URL } }),
+            status_code: 200,
+            cancel_status: 30,
+            result: 'fail',
+            error_msg: 拒绝原因,
+          });
+        } catch (日志错误) {
+          console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
+        }
+        return res.json({
+          code: 200,
+          message: '接口调用成功',
+          data: { orderNo: orderNo, cancelStatus: 30, refuseReason: 拒绝原因, refuseProof: 拒绝凭证URL },
+        });
+      }
+
+      if (关联订单sjz && 关联订单sjz.status !== 6) {
+        const 现有日志 = 安全解析JSON(关联订单sjz.order_log, []);
+        现有日志.push({
+          时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+          操作: '阿奇所平台撤单，三角洲订单自动取消',
+          状态: 'cancel',
+        });
+        await 关联订单sjz.update({ status: 6, order_log: JSON.stringify(现有日志) });
+
+        // 撤单成功后：异步更新企业微信客户备注 + 群名称
+        const 关联订单快照 = 关联订单sjz.toJSON ? 关联订单sjz.toJSON() : { ...关联订单sjz };
+        setImmediate(async () => {
+          try {
+            const { Setting } = require('../models');
+            const qywxSvc = require('../services/qywxService');
+            const 设置列表 = await Setting.findAll();
+            const 设置对象 = {};
+            设置列表.forEach(s => { 设置对象[s.key_name] = s.key_value; });
+            if (设置对象.qywx_enabled !== '1') return;
+
+            const 额外参数 = { status_text: '已撤单/退款', refund_reason: '阿奇所平台撤单' };
+
+            const 退款备注模板 = 设置对象.qywx_refund_remark_template || '';
+            if (退款备注模板 && 关联订单快照.qywx_assigned_user && 关联订单快照.qywx_external_userid) {
+              const 备注内容 = qywxSvc.渲染模板(退款备注模板, 关联订单快照, 额外参数);
+              if (备注内容) {
+                await qywxSvc.自动备注客户(关联订单快照.qywx_assigned_user, 关联订单快照.qywx_external_userid, 备注内容).catch(e => {
+                  console.warn('[三角洲-SUP撤单] 更新客户备注失败:', e.message);
+                });
+              }
+            }
+
+            const 退款群名称模板 = 设置对象.qywx_refund_group_name_template || '';
+            if (退款群名称模板 && 关联订单快照.qywx_group_chat_id) {
+              const 新群名称 = qywxSvc.渲染模板(退款群名称模板, 关联订单快照, 额外参数);
+              if (新群名称) {
+                await qywxSvc.更新群信息(关联订单快照.qywx_group_chat_id, 新群名称).catch(e => {
+                  console.warn('[三角洲-SUP撤单] 更新群名称失败:', e.message);
+                });
+              }
+            }
+          } catch (企微错误) {
+            console.error('[三角洲-SUP撤单] 企业微信更新出错（不影响撤单结果）:', 企微错误.message);
+          }
+        });
+      }
+
+      await 卡密记录.update({ status: 2, sup_status: 2, invalidated_at: new Date() });
+
     } else {
       // 未知业务类型：按原逻辑处理（查关联订单，未使用则撤单）
       const 关联订单 = await Order.findOne({

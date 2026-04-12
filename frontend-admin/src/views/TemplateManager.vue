@@ -10,6 +10,7 @@
       <el-tab-pane label="🏠 家政套餐" name="jiazheng" />
       <el-tab-pane label="🧺 洗衣套餐" name="xiyifu" />
       <el-tab-pane label="💳 充值套餐" name="topup" />
+      <el-tab-pane label="⚔️ 三角洲套餐" name="sjz" />
     </el-tabs>
 
     <!-- 操作栏 -->
@@ -32,6 +33,10 @@
           <span v-else-if="当前业务类型 === 'topup'">
             {{ row.topup_member_name || '-' }}
             <el-tag v-if="row.topup_account_type" size="small" style="margin-left:4px">{{ 账号类型标签(row.topup_account_type) }}</el-tag>
+          </span>
+          <span v-else-if="当前业务类型 === 'sjz'">
+            <el-tag v-if="row.sjz_hafubi_amount" type="warning" size="small">{{ row.sjz_hafubi_amount }} 哈夫币</el-tag>
+            <span v-else style="color:#bbb">-</span>
           </span>
         </template>
       </el-table-column>
@@ -196,6 +201,34 @@
           </el-form-item>
         </template>
 
+        <!-- ===== 三角洲专用字段 ===== -->
+        <template v-if="当前业务类型 === 'sjz'">
+          <el-form-item label="哈夫币数量">
+            <el-input-number v-model="表单数据.sjz_hafubi_amount" :min="0" :precision="2" :step="100" style="width:200px" />
+            <div class="字段提示块">💡 此套餐对应的哈夫币数量，显示在H5下单页</div>
+          </el-form-item>
+          <el-form-item label="要求游戏昵称">
+            <el-switch v-model="表单数据.sjz_show_nickname" :active-value="1" :inactive-value="0" />
+            <div class="字段提示块">💡 开启后，H5下单页显示游戏昵称输入框</div>
+          </el-form-item>
+          <el-form-item label="要求保险格数">
+            <el-switch v-model="表单数据.sjz_show_insurance" :active-value="1" :inactive-value="0" />
+            <div class="字段提示块">💡 开启后，H5下单页显示0-6格保险格选择</div>
+          </el-form-item>
+          <el-form-item label="要求成年认证">
+            <el-switch v-model="表单数据.sjz_show_is_adult" :active-value="1" :inactive-value="0" />
+            <div class="字段提示块">💡 开启后，H5下单页显示是否成年单选</div>
+          </el-form-item>
+          <el-form-item label="要求仓库截图">
+            <el-switch v-model="表单数据.sjz_show_warehouse" :active-value="1" :inactive-value="0" />
+            <div class="字段提示块">💡 开启后，H5下单页显示仓库截图上传（最多3张）</div>
+          </el-form-item>
+          <el-form-item label="必填手机号">
+            <el-switch v-model="表单数据.sjz_require_phone" :active-value="1" :inactive-value="0" />
+            <div class="字段提示块">💡 关闭后，手机号变为非必填</div>
+          </el-form-item>
+        </template>
+
         <!-- 通用字段 -->
         <el-form-item label="成本价（元）">
           <el-input-number v-model="表单数据.cost_price" :min="0" :precision="2" :step="1" />
@@ -275,6 +308,13 @@ const 表单数据 = reactive({
   topup_steps: '',
   topup_account_regex: '',
   topup_account_error_msg: '',
+  // 三角洲套餐字段
+  sjz_hafubi_amount: null,
+  sjz_show_nickname: 1,
+  sjz_show_insurance: 1,
+  sjz_show_is_adult: 0,
+  sjz_show_warehouse: 0,
+  sjz_require_phone: 1,
 })
 
 // 表单验证规则（根据业务类型动态计算）
@@ -359,6 +399,13 @@ const 打开编辑弹窗 = (行) => {
     topup_steps: 行.topup_steps || '',
     topup_account_regex: 行.topup_account_regex || '',
     topup_account_error_msg: 行.topup_account_error_msg || '',
+    // 三角洲套餐字段
+    sjz_hafubi_amount: 行.sjz_hafubi_amount || null,
+    sjz_show_nickname: 行.sjz_show_nickname != null ? 行.sjz_show_nickname : 1,
+    sjz_show_insurance: 行.sjz_show_insurance != null ? 行.sjz_show_insurance : 1,
+    sjz_show_is_adult: 行.sjz_show_is_adult != null ? 行.sjz_show_is_adult : 0,
+    sjz_show_warehouse: 行.sjz_show_warehouse != null ? 行.sjz_show_warehouse : 0,
+    sjz_require_phone: 行.sjz_require_phone != null ? 行.sjz_require_phone : 1,
   })
   弹窗可见.value = true
 }
@@ -370,6 +417,9 @@ const 重置表单 = () => {
     topup_account_type: '', topup_account_label: '', topup_member_name: '',
     topup_member_icon: '', topup_arrival_time: '', topup_show_expired: 0,
     topup_steps: '', topup_account_regex: '', topup_account_error_msg: '',
+    // 三角洲字段默认值
+    sjz_hafubi_amount: null, sjz_show_nickname: 1, sjz_show_insurance: 1,
+    sjz_show_is_adult: 0, sjz_show_warehouse: 0, sjz_require_phone: 1,
   })
   表单引用.value?.clearValidate()
 }

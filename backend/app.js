@@ -82,6 +82,8 @@ app.use('/admin', express.static(path.join(__dirname, 'public/admin')));
 app.use('/xi', express.static(path.join(__dirname, 'public/xi')));
 // 充值H5静态文件（/cz 路径）
 app.use('/cz', express.static(path.join(__dirname, 'public/cz')));
+// 三角洲H5静态文件（/sjz 路径）
+app.use('/sjz', express.static(path.join(__dirname, 'public/sjz')));
 // 京东家政H5（/jz 路径，新格式卡密链接：域名/jz/{卡密}）
 app.use('/jz', express.static(path.join(__dirname, 'public/h5')));
 // 备注图片上传目录（/uploads/remarks/ 路径，供前端直接访问）
@@ -122,6 +124,9 @@ app.use('/api/xi/orders', 订单限流);
 // 充值H5接口限流
 app.use('/api/cz/verify-card', 卡密限流);
 app.use('/api/cz/orders', 订单限流);
+// 三角洲H5接口限流
+app.use('/api/sjz/verify-card', 卡密限流);
+app.use('/api/sjz/orders', 订单限流);
 app.use('/api', apiRouter);
 
 // ===== 前端路由处理（SPA支持）===== 
@@ -138,6 +143,11 @@ app.get('/xi/*', 页面限流, (req, res) => {
 // 充值H5路由兜底（/cz/* 返回充值H5首页）
 app.get('/cz/*', 页面限流, (req, res) => {
   res.sendFile(path.join(__dirname, 'public/cz/index.html'));
+});
+
+// 三角洲H5路由兜底（/sjz/* 返回三角洲H5首页）
+app.get('/sjz/*', 页面限流, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public/sjz/index.html'));
 });
 
 // 家政H5新路径路由兜底（/jz/{卡密} 格式，新版卡密链接）
@@ -160,6 +170,7 @@ app.listen(端口, async () => {
   console.log(`🏠 家政H5：http://localhost:${端口}/jz/{卡密}`);
   console.log(`🧺 洗衣H5：http://localhost:${端口}/xi/{卡密}`);
   console.log(`💳 充值H5：http://localhost:${端口}/cz/{卡密}`);
+  console.log(`⚔️  三角洲H5：http://localhost:${端口}/sjz/{卡密}`);
   console.log(`🖥️  后台管理：http://localhost:${端口}/admin`);
   console.log(`📋 后端接口：http://localhost:${端口}/api`);
   console.log(`🔗 SUP接口：http://localhost:${端口}/agisoAcprSupplierApi/...\n`);

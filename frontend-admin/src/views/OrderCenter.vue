@@ -489,6 +489,86 @@
         </el-card>
       </div>
 
+      <!-- ============ 三角洲订单 内容 ============ -->
+      <div v-show="当前Tab === 'sjz'">
+
+        <!-- 三角洲筛选行 -->
+        <el-card class="搜索卡片">
+          <el-form :inline="true" :model="sjz搜索条件">
+            <el-form-item label="关键词">
+              <el-input v-model="sjz搜索条件.keyword" placeholder="可搜索：订单号 / 手机号 / 游戏昵称 / 卡密" clearable style="width:300px" />
+            </el-form-item>
+            <el-form-item label="状态">
+              <el-select v-model="sjz搜索条件.status" clearable placeholder="全部状态" style="width:160px">
+                <el-option label="待处理" value="0" />
+                <el-option label="待添加（已生成联系方式）" value="1" />
+                <el-option label="已加好友" value="2" />
+                <el-option label="已建群" value="3" />
+                <el-option label="服务中" value="4" />
+                <el-option label="已完成" value="5" />
+                <el-option label="已取消" value="6" />
+                <el-option label="失败" value="7" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="日期范围">
+              <el-date-picker v-model="sjz日期范围" type="daterange" range-separator="至" start-placeholder="开始日期" end-placeholder="结束日期" value-format="YYYY-MM-DD" style="width:240px" />
+            </el-form-item>
+            <el-form-item>
+              <el-button type="primary" @click="sjz搜索">搜索</el-button>
+              <el-button @click="sjz重置">重置</el-button>
+            </el-form-item>
+          </el-form>
+        </el-card>
+
+        <!-- 三角洲表格 -->
+        <el-card>
+          <el-table :data="sjz订单列表" v-loading="sjz加载中" stripe :row-class-name="获取订单行样式">
+            <el-table-column prop="id" label="ID" width="60" />
+            <el-table-column label="创建时间" width="145">
+              <template #default="{ row }">{{ 格式化北京时间(row.created_at) }}</template>
+            </el-table-column>
+            <el-table-column label="手机号" width="130">
+              <template #default="{ row }">{{ row.phone || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="游戏昵称" width="120" show-overflow-tooltip>
+              <template #default="{ row }">{{ row.sjz_game_nickname || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="哈夫币数量" width="100">
+              <template #default="{ row }">
+                <el-tag v-if="row.sjz_hafubi_amount" type="warning" size="small">{{ row.sjz_hafubi_amount }}</el-tag>
+                <span v-else style="color:#bbb;font-size:12px">-</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="登录城市" width="110" show-overflow-tooltip>
+              <template #default="{ row }">{{ row.login_city || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="状态" width="140">
+              <template #default="{ row }">
+                <el-tag :type="sjz获取状态类型(row.status)" size="small">{{ sjz获取状态文字(row.status) }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="备注" width="150">
+              <template #default="{ row }">
+                <span v-if="row.remark" class="备注摘要">📝 {{ row.remark.length > 15 ? row.remark.substring(0, 15) + '…' : row.remark }}</span>
+                <span v-else style="color:#bbb;font-size:12px">-</span>
+              </template>
+            </el-table-column>
+            <!-- 操作列 -->
+            <el-table-column label="操作" width="360" fixed="right">
+              <template #default="{ row }">
+                <el-button size="small" @click="sjz查看详情(row.id)">详情</el-button>
+                <el-button size="small" type="info" plain @click="打开备注弹窗(row, 'sjz')">备注</el-button>
+                <el-button v-if="row.status === 0 || row.status === 1 || row.status === 2 || row.status === 3 || row.status === 4" size="small" type="success" plain @click="sjz标记完成(row)">标记完成</el-button>
+                <el-button v-if="row.status !== 5 && row.status !== 6" size="small" type="warning" plain @click="sjz申请退款(row)">申请退款</el-button>
+                <el-button v-if="row.status === 6" size="small" type="danger" @click="sjz确认退款完成(row)">确认退款完成</el-button>
+                <el-button size="small" @click="sjz复制订单(row)">复制</el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+          <el-pagination v-model:current-page="sjz当前页" v-model:page-size="sjz每页数量" :total="sjz总数" layout="total, prev, pager, next" class="分页器" @change="加载三角洲订单" />
+        </el-card>
+      </div>
+
     <!-- ============ 共用：备注弹窗 ============ -->
     <el-dialog v-model="显示备注弹窗" title="编辑备注" width="520px" :close-on-click-modal="false">
       <div class="备注弹窗内容">
@@ -779,10 +859,66 @@
       </template>
     </el-dialog>
 
+    <!-- 三角洲：订单详情弹窗 -->
+    <el-dialog v-model="显示三角洲详情弹窗" title="⚔️ 三角洲订单详情" width="700px">
+      <template v-if="三角洲详情数据">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="订单号">{{ 三角洲详情数据.order_no }}</el-descriptions-item>
+          <el-descriptions-item label="卡密">{{ 三角洲详情数据.card_code }}</el-descriptions-item>
+          <el-descriptions-item label="手机号">{{ 三角洲详情数据.phone || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="登录城市">{{ 三角洲详情数据.login_city || '-' }}</el-descriptions-item>
+          <!-- 三角洲专用信息 -->
+          <el-descriptions-item v-if="三角洲详情数据.sjz_hafubi_amount" label="哈夫币数量">{{ 三角洲详情数据.sjz_hafubi_amount }}</el-descriptions-item>
+          <el-descriptions-item v-if="三角洲详情数据.sjz_game_nickname" label="游戏昵称">{{ 三角洲详情数据.sjz_game_nickname }}</el-descriptions-item>
+          <el-descriptions-item v-if="三角洲详情数据.sjz_insurance_slots !== null && 三角洲详情数据.sjz_insurance_slots !== undefined" label="保险格数">{{ 三角洲详情数据.sjz_insurance_slots }}格</el-descriptions-item>
+          <el-descriptions-item label="是否成年">{{ 三角洲详情数据.sjz_is_adult === 1 ? '已成年' : 三角洲详情数据.sjz_is_adult === 0 ? '未成年' : '未填写' }}</el-descriptions-item>
+          <el-descriptions-item v-if="三角洲详情数据.sjz_warehouse_images" label="仓库截图" :span="2">
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <el-image
+                v-for="(图片, 索引) in 解析仓库截图(三角洲详情数据.sjz_warehouse_images)"
+                :key="索引"
+                :src="图片"
+                style="width:80px;height:80px;border-radius:4px;object-fit:cover"
+                :preview-src-list="解析仓库截图(三角洲详情数据.sjz_warehouse_images)"
+                :initial-index="索引"
+                fit="cover"
+              />
+            </div>
+          </el-descriptions-item>
+          <!-- 企业微信状态 -->
+          <el-descriptions-item label="企业微信状态" :span="2">{{ sjz企业微信状态文字(三角洲详情数据) }}</el-descriptions-item>
+          <el-descriptions-item v-if="三角洲详情数据.qywx_qrcode_url" label="专属二维码">
+            <el-link :href="三角洲详情数据.qywx_qrcode_url" target="_blank">查看二维码</el-link>
+          </el-descriptions-item>
+          <el-descriptions-item v-if="三角洲详情数据.qywx_link" label="跳转链接">
+            <el-link :href="三角洲详情数据.qywx_link" target="_blank">{{ 三角洲详情数据.qywx_link }}</el-link>
+          </el-descriptions-item>
+          <el-descriptions-item v-if="三角洲详情数据.qywx_add_friend_at" label="加好友时间">{{ 格式化北京时间(三角洲详情数据.qywx_add_friend_at) }}</el-descriptions-item>
+          <el-descriptions-item v-if="三角洲详情数据.qywx_group_chat_id" label="客户群ID">{{ 三角洲详情数据.qywx_group_chat_id }}</el-descriptions-item>
+          <el-descriptions-item label="订单状态">
+            <el-tag :type="sjz获取状态类型(三角洲详情数据.status)" size="small">{{ sjz获取状态文字(三角洲详情数据.status) }}</el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ 格式化北京时间(三角洲详情数据.created_at) }}</el-descriptions-item>
+          <el-descriptions-item label="备注" :span="2">{{ 三角洲详情数据.remark || '-' }}</el-descriptions-item>
+        </el-descriptions>
+        <!-- 操作日志 -->
+        <div v-if="三角洲详情数据.order_log?.length" style="margin-top:16px">
+          <div style="font-size:14px;font-weight:600;color:#333;margin-bottom:8px">操作日志</div>
+          <el-timeline>
+            <el-timeline-item v-for="(日志, 索引) in 三角洲详情数据.order_log" :key="索引" :type="日志.状态 === 'success' ? 'success' : (日志.状态 === 'error' ? 'danger' : 'primary')" :timestamp="日志.时间" placement="top">
+              {{ 日志.操作 }}
+            </el-timeline-item>
+          </el-timeline>
+        </div>
+      </template>
+      <template #footer>
+        <el-button type="primary" @click="显示三角洲详情弹窗 = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 家政：订单详情弹窗 -->
     <el-dialog
-      v-model="显示家政详情弹窗"
-      title="🏠 家政订单详情"
+      v-model="显示家政详情弹窗"      title="🏠 家政订单详情"
       width="860px"
       :close-on-click-modal="false"
     >
@@ -872,6 +1008,9 @@ import {
   获取充值订单列表API, 获取充值订单详情API, 更新充值订单状态API, 更新充值订单备注API,
   申请充值退款API, 确认充值退款完成API, 导出充值订单API, 订单页搜索充值卡密API, 作废充值卡密API,
   获取充值预览卡密API,
+  获取三角洲订单列表API, 获取三角洲订单详情API, 更新三角洲订单状态API, 更新三角洲订单备注API,
+  申请三角洲退款API, 确认三角洲退款完成API, 导出三角洲订单API, 订单页搜索三角洲卡密API, 作废三角洲卡密API,
+  获取三角洲预览卡密API, 重置三角洲订单API,
   统一获取卡密列表API,
   获取设置API, 获取订单角标数量API
 } from '../api/index'
@@ -974,6 +1113,28 @@ const tp获取状态文字 = (status) => {
   return m[status] || '未知'
 }
 
+// 三角洲状态
+const sjz状态文字映射 = { 0: '待处理', 1: '待添加（已生成联系方式）', 2: '已加好友', 3: '已建群', 4: '服务中', 5: '已完成', 6: '已取消', 7: '失败' }
+const sjz获取状态类型 = (status) => {
+  const m = { 0: 'info', 1: 'primary', 2: 'primary', 3: 'success', 4: 'success', 5: 'success', 6: 'info', 7: 'danger' }
+  return m[status] ?? 'info'
+}
+const sjz获取状态文字 = (status) => sjz状态文字映射[status] ?? '未知'
+
+const sjz企业微信状态文字 = (详情) => {
+  if (!详情) return '-'
+  if (详情.qywx_group_chat_id) return `已建群（${详情.qywx_group_chat_id}）`
+  if (详情.qywx_external_userid) return '已加好友'
+  if (详情.qywx_config_id) return '已生成联系方式，等待添加'
+  return '未生成企业微信联系方式'
+}
+
+// 解析仓库截图
+const 解析仓库截图 = (imagesJson) => {
+  if (!imagesJson) return []
+  try { return JSON.parse(imagesJson) } catch { return [] }
+}
+
 // 账号脱敏显示
 const 脱敏账号 = (account, accountType) => {
   if (!account) return '-'
@@ -994,7 +1155,7 @@ const 账号类型中文 = (type) => {
 const 当前Tab = ref('jiazheng')
 const 站点域名 = ref('')
 const 预览链接 = ref('')
-const 角标数量 = ref({ jiazheng: 0, xiyifu: 0, topup: 0 })
+const 角标数量 = ref({ jiazheng: 0, xiyifu: 0, topup: 0, sjz: 0 })
 const 导出中 = ref(false)
 const 拒绝退款订单数 = ref(0)
 
@@ -1053,12 +1214,12 @@ const 快速筛选拒绝退款订单 = async () => {
   }
 }
 
-// Tab 列表（含第4个空调订单预留位）
+// Tab 列表（含第4个三角洲订单Tab）
 const Tab列表 = computed(() => [
   { key: 'jiazheng', icon: '🏠', label: '家政订单', badge: 角标数量.value.jiazheng || 0 },
   { key: 'xiyifu', icon: '🧺', label: '洗衣订单', badge: 角标数量.value.xiyifu || 0 },
   { key: 'topup', icon: '💳', label: '充值订单', badge: 角标数量.value.topup || 0 },
-  { key: 'aircon', icon: '❄️', label: '空调订单', badge: 0, disabled: true },
+  { key: 'sjz', icon: '⚔️', label: '三角洲订单', badge: 角标数量.value.sjz || 0 },
 ])
 
 // ==================== 卡密作废（共享） ====================
@@ -1084,6 +1245,7 @@ const 搜索卡密 = async () => {
     jiazheng: 订单页搜索家政卡密API,
     xiyifu: 订单页搜索洗衣卡密API,
     topup: 订单页搜索充值卡密API,
+    sjz: 订单页搜索三角洲卡密API,
   }
   try {
     const [旧结果, 新结果] = await Promise.allSettled([
@@ -1111,6 +1273,7 @@ const 确认作废卡密 = async (行) => {
     jiazheng: 作废卡密API,
     xiyifu: 作废洗衣卡密API,
     topup: 作废充值卡密API,
+    sjz: 作废三角洲卡密API,
   }
   try {
     await ElMessageBox.confirm(
@@ -1135,8 +1298,9 @@ const 打开前端预览 = async (businessType) => {
     jiazheng: 获取家政预览卡密API,
     xiyifu: 获取洗衣预览卡密API,
     topup: 获取充值预览卡密API,
+    sjz: 获取三角洲预览卡密API,
   }
-  const pathMap = { jiazheng: '/jz/', xiyifu: '/xi/', topup: '/cz/' }
+  const pathMap = { jiazheng: '/jz/', xiyifu: '/xi/', topup: '/cz/', sjz: '/sjz/' }
   try {
     const 结果 = await apiMap[businessType]()
     if (结果.code === 1 && 结果.data?.code) {
@@ -1160,8 +1324,9 @@ const 导出订单 = async (businessType) => {
     jiazheng: () => 导出家政订单API({ ...jz搜索条件.value, ...(jz日期范围.value?.length === 2 ? { date_start: jz日期范围.value[0], date_end: jz日期范围.value[1] } : {}) }),
     xiyifu: () => 导出洗衣订单API({ ...xi搜索条件.value, ...(xi日期范围.value?.length === 2 ? { date_start: xi日期范围.value[0], date_end: xi日期范围.value[1] } : {}) }),
     topup: () => 导出充值订单API({ ...tp搜索条件.value, ...(tp日期范围.value?.length === 2 ? { date_start: tp日期范围.value[0], date_end: tp日期范围.value[1] } : {}) }),
+    sjz: () => 导出三角洲订单API({ ...sjz搜索条件.value, ...(sjz日期范围.value?.length === 2 ? { date_start: sjz日期范围.value[0], date_end: sjz日期范围.value[1] } : {}) }),
   }
-  const nameMap = { jiazheng: '家政', xiyifu: '洗衣', topup: '充值' }
+  const nameMap = { jiazheng: '家政', xiyifu: '洗衣', topup: '充值', sjz: '三角洲' }
   导出中.value = true
   try {
     const 响应 = await exportApiMap[businessType]()
@@ -1181,6 +1346,7 @@ const 切换Tab = (tabName) => {
   if (tabName === 'jiazheng' && jz订单列表.value.length === 0) 加载家政订单()
   if (tabName === 'xiyifu' && xi订单列表.value.length === 0) 加载洗衣订单()
   if (tabName === 'topup' && tp订单列表.value.length === 0) 加载充值订单()
+  if (tabName === 'sjz' && sjz订单列表.value.length === 0) 加载三角洲订单()
 }
 
 // ==================== 家政订单状态 ====================
@@ -1644,6 +1810,7 @@ const 快捷备注标签Map = {
   jiazheng: ['已联系客户', '需改期', '客户催单', '特殊要求', '已安排师傅', '客户已确认'],
   xiyifu: ['已取件', '已入厂', '质检中', '已回寄', '客户投诉', '特殊处理'],
   topup: ['账号已确认', '充值处理中', '已完成充值', '账号有误', '需验证', '客户已收到'],
+  sjz: ['已加企业微信', '已分配服务', '正在服务中', '服务已完成', '客户未添加', '特殊要求'],
 }
 const 当前快捷备注标签 = computed(() => 快捷备注标签Map[当前备注业务.value] || [])
 
@@ -1700,6 +1867,7 @@ const 保存备注 = async () => {
     jiazheng: () => 更新订单备注API(id, 内容, 图片),
     xiyifu: () => 更新洗衣订单备注API(id, { remark: 内容, remark_images: JSON.stringify(图片) }),
     topup: () => 更新充值订单备注API(id, { remark: 内容, remark_images: JSON.stringify(图片) }),
+    sjz: () => 更新三角洲订单备注API(id, { remark: 内容, remark_images: JSON.stringify(图片) }),
   }
   try {
     const 结果 = await apiMap[当前备注业务.value]()
@@ -1708,6 +1876,7 @@ const 保存备注 = async () => {
       显示备注弹窗.value = false
       if (当前备注业务.value === 'jiazheng') 加载家政订单()
       else if (当前备注业务.value === 'xiyifu') 加载洗衣订单()
+      else if (当前备注业务.value === 'sjz') 加载三角洲订单()
       else 加载充值订单()
     } else {
       ElMessage.warning(结果.message || '保存失败')
@@ -1720,6 +1889,108 @@ watch(显示备注弹窗, (val) => {
   if (val) document.addEventListener('paste', 处理粘贴上传)
   else document.removeEventListener('paste', 处理粘贴上传)
 })
+
+// ==================== 三角洲订单状态 ====================
+
+const sjz搜索条件 = ref({ keyword: '', status: '' })
+const sjz日期范围 = ref([])
+const sjz订单列表 = ref([])
+const sjz总数 = ref(0)
+const sjz当前页 = ref(1)
+const sjz每页数量 = ref(20)
+const sjz加载中 = ref(false)
+
+const 显示三角洲详情弹窗 = ref(false)
+const 三角洲详情数据 = ref(null)
+
+const 加载三角洲订单 = async () => {
+  sjz加载中.value = true
+  try {
+    const 参数 = {
+      page: sjz当前页.value,
+      limit: sjz每页数量.value,
+      ...sjz搜索条件.value,
+    }
+    if (sjz日期范围.value?.length === 2) {
+      参数.date_start = sjz日期范围.value[0]
+      参数.date_end = sjz日期范围.value[1]
+    }
+    const 结果 = await 获取三角洲订单列表API(参数)
+    if (结果.code === 1) {
+      sjz订单列表.value = (结果.data.list || 结果.data.rows || []).map(o => ({
+        ...o,
+        order_log: 安全解析JSON(o.order_log, []),
+      }))
+      sjz总数.value = 结果.data.total || 结果.data.count || 0
+    }
+  } catch { ElMessage.error('加载三角洲订单失败') } finally { sjz加载中.value = false }
+}
+
+const sjz搜索 = () => { sjz当前页.value = 1; 加载三角洲订单() }
+const sjz重置 = () => {
+  sjz搜索条件.value = { keyword: '', status: '' }
+  sjz日期范围.value = []
+  sjz当前页.value = 1
+  加载三角洲订单()
+}
+
+const sjz查看详情 = async (id) => {
+  try {
+    const 结果 = await 获取三角洲订单详情API(id)
+    if (结果.code === 1) {
+      三角洲详情数据.value = { ...结果.data, order_log: 安全解析JSON(结果.data.order_log, []) }
+      显示三角洲详情弹窗.value = true
+    }
+  } catch { ElMessage.error('获取详情失败') }
+}
+
+const sjz标记完成 = async (行) => {
+  try {
+    await ElMessageBox.confirm('确认将此三角洲订单标记为已完成？', '确认', { type: 'success' })
+    const 结果 = await 更新三角洲订单状态API(行.id, { status: 5 })
+    if (结果.code === 1) { ElMessage.success('已标记为完成'); 加载三角洲订单() }
+    else ElMessage.warning(结果.message || '操作失败')
+  } catch {}
+}
+
+const sjz申请退款 = async (行) => {
+  try {
+    await ElMessageBox.confirm('申请退款后订单状态改为"已取消"，确认继续？', '申请退款', { type: 'warning' })
+    const 结果 = await 申请三角洲退款API(行.id)
+    if (结果.code === 1) { ElMessage.success('已申请退款'); 加载三角洲订单() }
+    else ElMessage.warning(结果.message || '操作失败')
+  } catch {}
+}
+
+const sjz确认退款完成 = async (行) => {
+  try {
+    await ElMessageBox.confirm('确认退款完成后，卡密将被作废。确认继续？', '确认退款完成', { confirmButtonText: '确认', cancelButtonText: '取消', type: 'warning' })
+    const 结果 = await 确认三角洲退款完成API(行.id)
+    if (结果.code === 1) { ElMessage.success('退款完成，卡密已作废'); 加载三角洲订单() }
+    else ElMessage.warning(结果.message || '操作失败')
+  } catch {}
+}
+
+const sjz重置订单 = async (行) => {
+  try {
+    await ElMessageBox.confirm('确认重置此三角洲订单？', '确认', { type: 'warning' })
+    const 结果 = await 重置三角洲订单API(行.id)
+    if (结果.code === 1) { ElMessage.success('已重置'); 加载三角洲订单() }
+    else ElMessage.warning(结果.message || '操作失败')
+  } catch {}
+}
+
+const sjz复制订单 = (行) => {
+  const 文本 = [
+    `手机号：${行.phone || '-'}`,
+    `游戏昵称：${行.sjz_game_nickname || '-'}`,
+    `哈夫币数量：${行.sjz_hafubi_amount || '-'}`,
+    `保险格数：${行.sjz_insurance_slots != null ? 行.sjz_insurance_slots + '格' : '-'}`,
+    `卡密：${行.card_code || '-'}`,
+    `订单号：${行.order_no || '-'}`,
+  ].join('\n')
+  复制到剪贴板(文本, '订单信息已复制')
+}
 
 // ==================== 初始化 ====================
 
