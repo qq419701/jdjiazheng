@@ -3,14 +3,17 @@
   <div class="成功页容器">
     <!-- 顶部成功区 -->
     <div class="成功动画区">
-      <div class="成功圆圈">
-        <svg class="成功勾" viewBox="0 0 52 52">
-          <circle class="成功圆" cx="26" cy="26" r="25" fill="none" />
-          <path class="成功路径" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
-        </svg>
+      <div class="成功光晕容器">
+        <div class="成功光晕"></div>
+        <div class="成功圆圈">
+          <svg class="成功勾" viewBox="0 0 52 52">
+            <circle class="成功圆" cx="26" cy="26" r="25" fill="none" />
+            <path class="成功路径" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8" />
+          </svg>
+        </div>
       </div>
-      <div class="成功标题">✅ 下单成功！</div>
-      <div class="成功副标题">我们已收到您的服务订单</div>
+      <div class="成功标题">{{ store.sjz_success_title }}</div>
+      <div class="成功副标题">{{ store.sjz_success_subtitle }}</div>
     </div>
 
     <!-- 订单信息卡片 -->
@@ -27,19 +30,18 @@
 
     <!-- 企业微信入口（核心！） -->
     <div class="微信入口卡片">
-      <div class="微信入口标题">🎮 下一步：添加专属客服</div>
-      <div class="微信入口说明">添加企业微信后第一时间安排哈夫币充值服务</div>
+      <div class="微信入口标题">{{ store.sjz_success_next_title }}</div>
+      <div class="微信入口说明">{{ store.sjz_success_next_subtitle }}</div>
 
       <!-- 无数据时的提示 -->
       <div v-if="!有企业微信数据" class="无微信提示">
-        <p>📞 客服会主动联系您</p>
-        <p>请保持手机畅通，耐心等待联系</p>
+        <p v-for="(行, 索引) in 无微信提示行" :key="索引">{{ 行 }}</p>
       </div>
 
       <template v-if="有企业微信数据">
         <!-- 方案1：链接跳转 -->
         <button v-if="显示链接" class="link-btn" @click="跳转企业微信">
-          💬 点击添加专属客服
+          {{ store.sjz_link_btn_text }}
         </button>
 
         <!-- 分隔线 -->
@@ -50,20 +52,25 @@
         <!-- 方案2：二维码 -->
         <div v-if="显示二维码" class="二维码区">
           <div class="二维码标题">📱 扫码添加专属客服</div>
-          <img :src="store.qywx_qrcode_url" class="qrcode-img" alt="企业微信二维码" />
-          <div class="二维码说明">长按或扫描二维码 → 点击添加</div>
+          <div class="二维码外框">
+            <img :src="store.qywx_qrcode_url" class="qrcode-img" alt="企业微信二维码" />
+          </div>
+          <div class="二维码指引">
+            <span>长按二维码 → 识别添加 → 马上安排</span>
+          </div>
         </div>
       </template>
     </div>
 
     <!-- 服务保障 -->
     <div class="guarantee-card">
-      <div class="保障标题">🛡️ 服务保障</div>
+      <div class="保障标题">{{ store.sjz_success_guarantee_title }}</div>
       <div class="保障格子">
-        <div class="保障项">✅ 追缴包赔</div>
-        <div class="保障项">✅ 手游端游均可</div>
-        <div class="保障项">✅ 24小时客服</div>
-        <div class="保障项">✅ 安全有保障</div>
+        <div
+          v-for="(项, 索引) in store.sjz_success_guarantee_items"
+          :key="索引"
+          class="保障项"
+        >{{ 项 }}</div>
       </div>
     </div>
 
@@ -83,6 +90,11 @@ onMounted(() => {
   if (!store.订单号) {
     store.从缓存恢复()
   }
+})
+
+// 无微信提示按行分割
+const 无微信提示行 = computed(() => {
+  return (store.sjz_success_no_qywx_text || '').split('\n').filter(行 => 行.trim())
 })
 
 // 是否有企业微信数据
@@ -112,7 +124,7 @@ const 跳转企业微信 = () => {
 /* ===== 成功页容器 ===== */
 .成功页容器 {
   min-height: 100vh;
-  background: #1a1a2e;
+  background: linear-gradient(180deg, #0d0d1a 0%, #1a1a2e 50%, #16213e 100%);
   padding: 0 16px 40px;
 }
 
@@ -122,10 +134,30 @@ const 跳转企业微信 = () => {
   padding: 50px 0 24px;
 }
 
-.成功圆圈 {
+.成功光晕容器 {
+  position: relative;
   width: 80px;
   height: 80px;
   margin: 0 auto 16px;
+}
+
+.成功光晕 {
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(245,197,24,0.25) 0%, rgba(245,197,24,0) 70%);
+  animation: 光晕脉冲 2.5s ease-in-out infinite;
+}
+
+@keyframes 光晕脉冲 {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.2); opacity: 0.4; }
+}
+
+.成功圆圈 {
+  position: relative;
+  width: 80px;
+  height: 80px;
 }
 
 .成功勾 {
@@ -157,10 +189,11 @@ const 跳转企业微信 = () => {
 }
 
 .成功标题 {
-  font-size: 22px;
-  font-weight: 700;
-  color: #e0e0e0;
-  margin-bottom: 6px;
+  font-size: 24px;
+  font-weight: 800;
+  color: #f5c518;
+  margin-bottom: 8px;
+  text-shadow: 0 0 20px rgba(245,197,24,0.4);
 }
 
 .成功副标题 {
@@ -171,7 +204,7 @@ const 跳转企业微信 = () => {
 /* ===== 信息卡片 ===== */
 .信息卡片 {
   background: #16213e;
-  border: 1px solid #0f3460;
+  border: 1px solid #1a3a6e;
   border-radius: 12px;
   padding: 16px;
   margin-bottom: 12px;
@@ -197,16 +230,17 @@ const 跳转企业微信 = () => {
 /* ===== 企业微信入口 ===== */
 .微信入口卡片 {
   background: #16213e;
-  border: 1px solid #0f3460;
-  border-radius: 12px;
+  border: 2px solid rgba(7, 193, 96, 0.3);
+  border-radius: 16px;
   padding: 20px 16px;
   margin-bottom: 12px;
   text-align: center;
+  box-shadow: 0 0 20px rgba(7, 193, 96, 0.1);
 }
 
 .微信入口标题 {
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 800;
   color: #f5c518;
   margin-bottom: 6px;
 }
@@ -214,7 +248,7 @@ const 跳转企业微信 = () => {
 .微信入口说明 {
   font-size: 13px;
   color: #aaa;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .无微信提示 {
@@ -229,22 +263,28 @@ const 跳转企业微信 = () => {
   line-height: 2;
 }
 
-/* 链接按钮 */
+/* 链接按钮（更大更绿） */
 .link-btn {
   background: linear-gradient(135deg, #07c160, #06a854);
   color: white;
   width: 100%;
-  padding: 14px;
+  padding: 18px;
   border-radius: 28px;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 800;
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(7, 193, 96, 0.4);
-  transition: opacity 0.2s;
+  box-shadow: 0 4px 20px rgba(7, 193, 96, 0.55);
+  animation: 绿按钮脉冲 2s ease-in-out infinite;
+  letter-spacing: 0.5px;
 }
 
-.link-btn:active { opacity: 0.85; }
+@keyframes 绿按钮脉冲 {
+  0%, 100% { box-shadow: 0 4px 20px rgba(7,193,96,0.55); transform: scale(1); }
+  50% { box-shadow: 0 6px 28px rgba(7,193,96,0.75); transform: scale(1.015); }
+}
+
+.link-btn:active { opacity: 0.85; transform: scale(0.98); animation: none; }
 
 /* 分隔线 */
 .分隔线 {
@@ -268,23 +308,34 @@ const 跳转企业微信 = () => {
 .二维码区 { margin-top: 8px; }
 .二维码标题 { font-size: 14px; color: #aaa; margin-bottom: 4px; }
 
+.二维码外框 {
+  display: inline-block;
+  border: 3px solid #f5c518;
+  border-radius: 12px;
+  padding: 6px;
+  background: #fff;
+  box-shadow: 0 0 20px rgba(245,197,24,0.35);
+  margin: 12px 0 8px;
+}
+
 .qrcode-img {
   width: 200px;
   height: 200px;
-  border: 4px solid #f5c518;
-  border-radius: 12px;
   display: block;
-  margin: 12px auto;
   object-fit: contain;
-  background: #fff;
 }
 
-.二维码说明 { font-size: 13px; color: #888; margin-top: 8px; }
+.二维码指引 {
+  font-size: 13px;
+  color: #07c160;
+  font-weight: 600;
+  margin-top: 4px;
+}
 
 /* ===== 服务保障 ===== */
 .guarantee-card {
   background: #16213e;
-  border: 1px solid #0f3460;
+  border: 1px solid #1a3a6e;
   border-radius: 12px;
   padding: 16px;
 }
@@ -304,7 +355,10 @@ const 跳转企业微信 = () => {
 
 .保障项 {
   font-size: 13px;
-  color: #aaa;
-  padding: 4px 0;
+  color: #07c160;
+  font-weight: 600;
+  padding: 6px 8px;
+  background: rgba(7, 193, 96, 0.08);
+  border-radius: 8px;
 }
 </style>

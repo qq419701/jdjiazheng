@@ -125,9 +125,13 @@ const 验证三角洲卡密 = async (req, res) => {
         sjz_hafubi_amount: 卡密.sjz_hafubi_amount || null,
         sjz_show_nickname: 卡密.sjz_show_nickname != null ? 卡密.sjz_show_nickname : 1,
         sjz_show_insurance: 卡密.sjz_show_insurance != null ? 卡密.sjz_show_insurance : 1,
+        sjz_insurance_options: 卡密.sjz_insurance_options || '0,1,2,3,4,5,6',
         sjz_show_is_adult: 卡密.sjz_show_is_adult != null ? 卡密.sjz_show_is_adult : 0,
+        sjz_adult_options: 卡密.sjz_adult_options || '已成年,未成年',
         sjz_show_warehouse: 卡密.sjz_show_warehouse != null ? 卡密.sjz_show_warehouse : 0,
         sjz_require_phone: 卡密.sjz_require_phone != null ? 卡密.sjz_require_phone : 1,
+        sjz_show_login_method: 卡密.sjz_show_login_method != null ? 卡密.sjz_show_login_method : 0,
+        sjz_login_method_options: 卡密.sjz_login_method_options || '扫码',
         // 全局配置
         banner_url: 设置对象.sjz_banner_url || '',
         title: 设置对象.sjz_title || '三角洲哈夫币服务',
@@ -145,10 +149,17 @@ const 验证三角洲卡密 = async (req, res) => {
           sjz_popup1_icon: 设置对象.sjz_popup1_icon || '⚔️',
           sjz_popup1_auto_close: 设置对象.sjz_popup1_auto_close || '0',
           sjz_popup1_btn_text: 设置对象.sjz_popup1_btn_text || '我知道了',
-          sjz_popup2_enabled: 设置对象.sjz_popup2_enabled || '0',
-          sjz_popup2_title: 设置对象.sjz_popup2_title || '信息确认',
-          sjz_popup2_content: 设置对象.sjz_popup2_content || '请再次确认您填写的信息是否正确。',
-          sjz_popup2_btn_text: 设置对象.sjz_popup2_btn_text || '确认提交',
+        },
+        // 成功页文字配置
+        success_config: {
+          sjz_success_title: 设置对象.sjz_success_title || '✅ 下单成功！',
+          sjz_success_subtitle: 设置对象.sjz_success_subtitle || '我们已收到您的服务订单',
+          sjz_success_next_title: 设置对象.sjz_success_next_title || '🎮 下一步：添加专属客服',
+          sjz_success_next_subtitle: 设置对象.sjz_success_next_subtitle || '添加企业微信后第一时间安排哈夫币充值服务',
+          sjz_success_no_qywx_text: 设置对象.sjz_success_no_qywx_text || '📞 客服会主动联系您\n请保持手机畅通，耐心等待联系',
+          sjz_success_guarantee_title: 设置对象.sjz_success_guarantee_title || '🛡️ 服务保障',
+          sjz_success_guarantee_items: 安全解析JSON(设置对象.sjz_success_guarantee_items, ['✅ 追缴包赔', '✅ 手游端游均可', '✅ 24小时客服', '✅ 安全有保障']),
+          sjz_link_btn_text: 设置对象.sjz_link_btn_text || '💬 点击添加专属客服',
         },
       },
     });
@@ -238,6 +249,7 @@ const 提交三角洲订单 = async (req, res) => {
       sjz_insurance_slots,
       sjz_is_adult,
       sjz_warehouse_images,  // 数组或JSON字符串
+      sjz_login_method,      // 用户选择的上号方式
     } = req.body;
 
     if (!card_code) {
@@ -301,6 +313,7 @@ const 提交三角洲订单 = async (req, res) => {
       sjz_is_adult: sjz_is_adult != null ? parseInt(sjz_is_adult) : -1,
       sjz_warehouse_images: 仓库截图JSON,
       sjz_hafubi_amount: 卡密.sjz_hafubi_amount || null,
+      sjz_login_method: sjz_login_method || null,
       login_ip: 纯IP || '',
       ecommerce_order_no: 卡密.ecommerce_order_no || null,
       created_at: new Date(),

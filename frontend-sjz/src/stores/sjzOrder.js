@@ -12,8 +12,12 @@ export const useSjzOrderStore = defineStore('sjzOrder', {
     需要手机号: true,
     需要游戏昵称: true,
     需要保险格数: true,
+    保险格选项: [0, 1, 2, 3, 4, 5, 6],
     需要成年认证: false,
+    成年选项: ['已成年', '未成年'],
     需要仓库截图: false,
+    需要上号方式: false,
+    上号方式选项: ['扫码'],
 
     // 全局配置
     banner图URL: '',
@@ -44,11 +48,16 @@ export const useSjzOrderStore = defineStore('sjzOrder', {
     sjz_popup1_icon: '⚔️',
     sjz_popup1_auto_close: '0',
     sjz_popup1_btn_text: '我知道了',
-    // 弹窗2配置（信息确认弹窗）
-    sjz_popup2_enabled: '0',
-    sjz_popup2_title: '信息确认',
-    sjz_popup2_content: '请再次确认您填写的信息是否正确。',
-    sjz_popup2_btn_text: '确认提交',
+
+    // 成功页文字配置
+    sjz_success_title: '✅ 下单成功！',
+    sjz_success_subtitle: '我们已收到您的服务订单',
+    sjz_success_next_title: '🎮 下一步：添加专属客服',
+    sjz_success_next_subtitle: '添加企业微信后第一时间安排哈夫币充值服务',
+    sjz_success_no_qywx_text: '📞 客服会主动联系您\n请保持手机畅通，耐心等待联系',
+    sjz_success_guarantee_title: '🛡️ 服务保障',
+    sjz_success_guarantee_items: ['✅ 追缴包赔', '✅ 手游端游均可', '✅ 24小时客服', '✅ 安全有保障'],
+    sjz_link_btn_text: '💬 点击添加专属客服',
   }),
 
   getters: {
@@ -68,8 +77,18 @@ export const useSjzOrderStore = defineStore('sjzOrder', {
       this.需要手机号 = 信息.sjz_require_phone !== 0
       this.需要游戏昵称 = !!信息.sjz_show_nickname
       this.需要保险格数 = !!信息.sjz_show_insurance
+      // 解析保险格选项
+      const 保险格原始 = 信息.sjz_insurance_options || '0,1,2,3,4,5,6'
+      this.保险格选项 = 保险格原始.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n))
       this.需要成年认证 = !!信息.sjz_show_is_adult
+      // 解析成年选项
+      const 成年原始 = 信息.sjz_adult_options || '已成年,未成年'
+      this.成年选项 = 成年原始.split(',').map(s => s.trim()).filter(s => s)
       this.需要仓库截图 = !!信息.sjz_show_warehouse
+      this.需要上号方式 = !!信息.sjz_show_login_method
+      // 解析上号方式选项
+      const 上号原始 = 信息.sjz_login_method_options || '扫码'
+      this.上号方式选项 = 上号原始.split(',').map(s => s.trim()).filter(s => s)
       this.banner图URL = 信息.banner_url || ''
       this.主标题 = 信息.title || '三角洲哈夫币服务'
       this.副标题 = 信息.subtitle || '追缴包赔 · 手游端游均可 · 安全有保障'
@@ -85,10 +104,18 @@ export const useSjzOrderStore = defineStore('sjzOrder', {
       this.sjz_popup1_icon = pc.sjz_popup1_icon || '⚔️'
       this.sjz_popup1_auto_close = pc.sjz_popup1_auto_close || '0'
       this.sjz_popup1_btn_text = pc.sjz_popup1_btn_text || '我知道了'
-      this.sjz_popup2_enabled = pc.sjz_popup2_enabled || '0'
-      this.sjz_popup2_title = pc.sjz_popup2_title || '信息确认'
-      this.sjz_popup2_content = pc.sjz_popup2_content || '请再次确认您填写的信息是否正确。'
-      this.sjz_popup2_btn_text = pc.sjz_popup2_btn_text || '确认提交'
+      // 成功页文字配置
+      const sc = 信息.success_config || {}
+      this.sjz_success_title = sc.sjz_success_title || '✅ 下单成功！'
+      this.sjz_success_subtitle = sc.sjz_success_subtitle || '我们已收到您的服务订单'
+      this.sjz_success_next_title = sc.sjz_success_next_title || '🎮 下一步：添加专属客服'
+      this.sjz_success_next_subtitle = sc.sjz_success_next_subtitle || '添加企业微信后第一时间安排哈夫币充值服务'
+      this.sjz_success_no_qywx_text = sc.sjz_success_no_qywx_text || '📞 客服会主动联系您\n请保持手机畅通，耐心等待联系'
+      this.sjz_success_guarantee_title = sc.sjz_success_guarantee_title || '🛡️ 服务保障'
+      this.sjz_success_guarantee_items = Array.isArray(sc.sjz_success_guarantee_items)
+        ? sc.sjz_success_guarantee_items
+        : ['✅ 追缴包赔', '✅ 手游端游均可', '✅ 24小时客服', '✅ 安全有保障']
+      this.sjz_link_btn_text = sc.sjz_link_btn_text || '💬 点击添加专属客服'
     },
 
     // 设置登录城市
@@ -118,6 +145,15 @@ export const useSjzOrderStore = defineStore('sjzOrder', {
           qywx_link: this.qywx_link,
           qywx_add_friend_mode: this.qywx_add_friend_mode,
           哈夫币数量: this.哈夫币数量,
+          // 成功页配置也缓存
+          sjz_success_title: this.sjz_success_title,
+          sjz_success_subtitle: this.sjz_success_subtitle,
+          sjz_success_next_title: this.sjz_success_next_title,
+          sjz_success_next_subtitle: this.sjz_success_next_subtitle,
+          sjz_success_no_qywx_text: this.sjz_success_no_qywx_text,
+          sjz_success_guarantee_title: this.sjz_success_guarantee_title,
+          sjz_success_guarantee_items: this.sjz_success_guarantee_items,
+          sjz_link_btn_text: this.sjz_link_btn_text,
         }))
       } catch {}
     },
@@ -133,6 +169,14 @@ export const useSjzOrderStore = defineStore('sjzOrder', {
           this.qywx_link = data.qywx_link || null
           this.qywx_add_friend_mode = data.qywx_add_friend_mode || 'link'
           this.哈夫币数量 = data.哈夫币数量 || null
+          if (data.sjz_success_title) this.sjz_success_title = data.sjz_success_title
+          if (data.sjz_success_subtitle) this.sjz_success_subtitle = data.sjz_success_subtitle
+          if (data.sjz_success_next_title) this.sjz_success_next_title = data.sjz_success_next_title
+          if (data.sjz_success_next_subtitle) this.sjz_success_next_subtitle = data.sjz_success_next_subtitle
+          if (data.sjz_success_no_qywx_text) this.sjz_success_no_qywx_text = data.sjz_success_no_qywx_text
+          if (data.sjz_success_guarantee_title) this.sjz_success_guarantee_title = data.sjz_success_guarantee_title
+          if (data.sjz_success_guarantee_items) this.sjz_success_guarantee_items = data.sjz_success_guarantee_items
+          if (data.sjz_link_btn_text) this.sjz_link_btn_text = data.sjz_link_btn_text
         }
       } catch {}
     },

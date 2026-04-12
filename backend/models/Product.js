@@ -98,12 +98,16 @@ const Product = 数据库连接.define('Product', {
     comment: '验证失败提示语',
   },
   // ===== 三角洲套餐专用字段 =====
-  sjz_hafubi_amount: { type: DataTypes.DECIMAL(10, 2), allowNull: true, comment: '哈夫币数量' },
+  sjz_hafubi_amount: { type: DataTypes.STRING(50), allowNull: true, comment: '哈夫币数量（文本，如1000万）' },
   sjz_show_nickname: { type: DataTypes.TINYINT, defaultValue: 1, comment: '要求游戏昵称' },
   sjz_show_insurance: { type: DataTypes.TINYINT, defaultValue: 1, comment: '要求保险格数' },
+  sjz_insurance_options: { type: DataTypes.STRING(50), defaultValue: '0,1,2,3,4,5,6', comment: '保险格数选项（逗号分隔）' },
   sjz_show_is_adult: { type: DataTypes.TINYINT, defaultValue: 0, comment: '要求成年认证' },
+  sjz_adult_options: { type: DataTypes.STRING(100), defaultValue: '已成年,未成年', comment: '成年认证选项（逗号分隔）' },
   sjz_show_warehouse: { type: DataTypes.TINYINT, defaultValue: 0, comment: '要求仓库截图' },
   sjz_require_phone: { type: DataTypes.TINYINT, defaultValue: 1, comment: '必填手机号' },
+  sjz_show_login_method: { type: DataTypes.TINYINT, defaultValue: 0, comment: '要求上号方式' },
+  sjz_login_method_options: { type: DataTypes.STRING(100), defaultValue: '扫码', comment: '上号方式选项（逗号分隔）' },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,
