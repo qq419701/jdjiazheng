@@ -23,6 +23,22 @@
         @close="关闭弹窗1"
       />
 
+      <!-- 弹窗2：信息确认弹窗（填写完成点击提交后触发） -->
+      <NoticePopup
+        :show="显示弹窗2"
+        :title="store.sjz_popup2_title"
+        :content="store.sjz_popup2_content"
+        :icon-emoji="'✅'"
+        :btn-text="store.sjz_popup2_btn_text"
+        btn-color="#e94560"
+        bg-color="#16213e"
+        title-color="#f5c518"
+        content-color="#e0e0e0"
+        :auto-close-seconds="parseInt(store.sjz_popup2_auto_close) || 0"
+        :mask-closable="false"
+        @close="确认弹窗2并提交"
+      />
+
       <!-- 顶部Banner -->
       <div class="顶部Banner">
         <!-- 正在接单状态条 -->
@@ -265,6 +281,7 @@ const 提交中 = ref(false)
 
 // 弹窗状态
 const 显示弹窗1 = ref(false)
+const 显示弹窗2 = ref(false)
 
 // 须知展开
 const 展开须知 = ref(false)
@@ -351,7 +368,7 @@ const 删除截图 = (索引) => {
 // 弹窗关闭
 const 关闭弹窗1 = () => { 显示弹窗1.value = false }
 
-// 点击下单（直接提交，不再有弹窗2）
+// 点击下单
 const 点击下单 = async () => {
   // 验证手机号
   if (store.需要手机号) {
@@ -361,7 +378,18 @@ const 点击下单 = async () => {
       return
     }
   }
-  // 直接提交
+  // 若 popup2 启用，先弹出确认弹窗
+  if (store.sjz_popup2_enabled === '1') {
+    显示弹窗2.value = true
+    return
+  }
+  // 否则直接提交
+  await 执行提交()
+}
+
+// 确认弹窗2并提交
+const 确认弹窗2并提交 = async () => {
+  显示弹窗2.value = false
   await 执行提交()
 }
 

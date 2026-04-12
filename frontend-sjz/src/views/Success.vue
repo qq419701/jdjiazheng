@@ -1,5 +1,20 @@
 <template>
   <!-- 三角洲下单成功页 -->
+  <!-- 成功页专属弹窗：出现二维码/链接时的提示弹窗 -->
+  <NoticePopup
+    :show="显示成功弹窗"
+    title="🎉 预约成功！"
+    :content="`您的专属客服二维码已生成！\n请立即扫码或点击链接添加专属客服\n客服会第一时间为您安排服务`"
+    icon-emoji="⚔️"
+    btn-text="立即查看"
+    btn-color="#e94560"
+    bg-color="#16213e"
+    title-color="#f5c518"
+    content-color="#e0e0e0"
+    :auto-close-seconds="5"
+    :mask-closable="true"
+    @close="显示成功弹窗 = false"
+  />
   <div class="成功页容器">
     <!-- 顶部成功区 -->
     <div class="成功动画区">
@@ -80,16 +95,26 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useSjzOrderStore } from '../stores/sjzOrder'
+import NoticePopup from '../components/NoticePopup.vue'
 
 const store = useSjzOrderStore()
+
+// 成功页弹窗状态
+const 显示成功弹窗 = ref(false)
 
 // 从sessionStorage恢复（防止页面刷新）
 onMounted(() => {
   if (!store.订单号) {
     store.从缓存恢复()
   }
+  // 若有企业微信数据（二维码或链接），延迟 800ms 弹出提示弹窗
+  setTimeout(() => {
+    if (store.qywx_link || store.qywx_qrcode_url) {
+      显示成功弹窗.value = true
+    }
+  }, 800)
 })
 
 // 无微信提示按行分割

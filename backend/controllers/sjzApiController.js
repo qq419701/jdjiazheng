@@ -185,6 +185,12 @@ const 验证三角洲卡密 = async (req, res) => {
           sjz_popup1_icon: 设置对象.sjz_popup1_icon || '⚔️',
           sjz_popup1_auto_close: 设置对象.sjz_popup1_auto_close || '0',
           sjz_popup1_btn_text: 设置对象.sjz_popup1_btn_text || '我知道了',
+          // popup2 字段
+          sjz_popup2_enabled: 设置对象.sjz_popup2_enabled || '0',
+          sjz_popup2_title: 设置对象.sjz_popup2_title || '信息确认',
+          sjz_popup2_content: 设置对象.sjz_popup2_content || '请再次确认您填写的信息是否正确。',
+          sjz_popup2_btn_text: 设置对象.sjz_popup2_btn_text || '确认提交',
+          sjz_popup2_auto_close: 设置对象.sjz_popup2_auto_close || '0',
         },
         // 成功页文字配置
         success_config: {
