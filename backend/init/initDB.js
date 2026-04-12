@@ -541,9 +541,13 @@ const 初始化数据库 = async () => {
       { key_name: 'qywx_auto_group',         key_value: '0', description: '是否在客户添加好友后自动创建服务群（0=不建群，1=自动建群）。建群成功后订单状态变为"已建群"。' },
       { key_name: 'qywx_group_name_template',key_value: '三角洲服务_{order_no}', description: '自动建群时的群名称模板。可用变量同备注模板。例如：{player_name}的哈夫币服务群' },
       { key_name: 'qywx_group_remark_template', key_value: '', description: '建群成功后更新群名称的模板（二次确认群名，可用于加入更多订单信息）。留空则不更新。可用变量同备注模板。' },
+      { key_name: 'qywx_extra_group_members', key_value: '', description: '建群时额外加入的员工UserID（除订单分配员工外，如客服主管），多个用英文逗号分隔。例如：supervisor01,admin02' },
+      { key_name: 'qywx_group_welcome_msg', key_value: '您好！欢迎进入专属服务群 🎮\n订单：{order_no}\n套餐：{product_name}\n客服将尽快为您安排服务，请稍候。', description: '建群成功后自动在群内发送的欢迎消息。留空则不发送。可用变量：{order_no} {player_name} {phone} {product_name} {insurance} {date}' },
       // ===== 退款/撤单后自动操作 =====
       { key_name: 'qywx_refund_remark_template',    key_value: '', description: '退款或撤单完成后，自动修改客户备注的模板。留空则不更新备注。可用变量：{order_no},{phone},{player_name},{product_name},{date},{status_text}（已退款），{refund_reason}（退款原因）。例如：【已退款】三角洲_{order_no}' },
       { key_name: 'qywx_refund_group_name_template', key_value: '', description: '退款或撤单完成后，自动修改服务群名称的模板。留空则不更新群名称。可用变量同退款备注模板。例如：【已退款】{player_name}的服务群' },
+      { key_name: 'qywx_refund_group_msg', key_value: '⚠️ 该订单已退款\n订单号：{order_no}\n退款原因：{refund_reason}\n请知悉。', description: '退款或撤单后自动在服务群内发送的通知消息。留空则不发送。可用变量：{order_no} {player_name} {product_name} {date} {status_text} {refund_reason}' },
+      { key_name: 'qywx_remark_max_len', key_value: '30', description: '客户备注最大字符数（企业微信限制最多30个字符，超出自动截断）' },
     ];
     for (const 配置项 of 三角洲企微默认配置) {
       await Setting.findOrCreate({

@@ -1354,7 +1354,7 @@ const 撤销订单 = async (req, res) => {
 
             const 退款备注模板 = 设置对象.qywx_refund_remark_template || '';
             if (退款备注模板 && 关联订单快照.qywx_assigned_user && 关联订单快照.qywx_external_userid) {
-              const 备注内容 = qywxSvc.渲染模板(退款备注模板, 关联订单快照, 额外参数);
+              const 备注内容 = qywxSvc.安全截断(qywxSvc.渲染模板(退款备注模板, 关联订单快照, 额外参数));
               if (备注内容) {
                 await qywxSvc.自动备注客户(关联订单快照.qywx_assigned_user, 关联订单快照.qywx_external_userid, 备注内容).catch(e => {
                   console.warn('[三角洲-SUP撤单] 更新客户备注失败:', e.message);
@@ -1366,8 +1366,19 @@ const 撤销订单 = async (req, res) => {
             if (退款群名称模板 && 关联订单快照.qywx_group_chat_id) {
               const 新群名称 = qywxSvc.渲染模板(退款群名称模板, 关联订单快照, 额外参数);
               if (新群名称) {
-                await qywxSvc.更新群信息(关联订单快照.qywx_group_chat_id, 新群名称).catch(e => {
+                await qywxSvc.更新客户群名称(关联订单快照.qywx_group_chat_id, 新群名称).catch(e => {
                   console.warn('[三角洲-SUP撤单] 更新群名称失败:', e.message);
+                });
+              }
+            }
+
+            // 撤单后往群里发通知消息
+            const 退款群消息模板 = 设置对象.qywx_refund_group_msg || '';
+            if (退款群消息模板 && 关联订单快照.qywx_group_chat_id) {
+              const 通知内容 = qywxSvc.渲染模板(退款群消息模板, 关联订单快照, 额外参数);
+              if (通知内容) {
+                await qywxSvc.发送群消息(关联订单快照.qywx_group_chat_id, 通知内容).catch(e => {
+                  console.warn('[三角洲-SUP撤单] 发送群通知失败:', e.message);
                 });
               }
             }
