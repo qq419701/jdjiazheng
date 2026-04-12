@@ -1,16 +1,18 @@
 #!/bin/bash
 # ============================================================
 #  京东代下单系统 — 一键拉取更新 + 重新构建 + 重启
-#  版本：v4.1（国内服务器专用，多代理轮换 + 自动重试）
+#  版本：v4.2（新增三角洲前端 frontend-sjz + 充值前端 cz 单独命令）
 #
 #  使用方式：
-#    chmod +x update.sh      （首次执行前赋予可执行权限）
-#    ./update.sh             （全量更新：后端 + 前端H5 + 后台管理）
-#    ./update.sh backend     （仅拉代码 + 重启后端）
-#    ./update.sh admin       （仅拉代码 + 重建后台管理）
-#    ./update.sh h5          （仅拉代码 + 重建前端H5）
-#    ./update.sh xi          （仅拉代码 + 重建洗衣前端）
-#    ./update.sh frontend    （拉代码 + 重建全部前端，不重启后端）
+#    chmod +x update.sh        （首次执行前赋予可执行权限）
+#    ./update.sh               （全量更新：后端 + 全部前端）
+#    ./update.sh backend       （仅拉代码 + 重启后端）
+#    ./update.sh admin         （仅拉代码 + 重建后台管理）
+#    ./update.sh h5            （仅拉代码 + 重建家政前端 frontend-h5）
+#    ./update.sh xi            （仅拉代码 + 重建洗衣前端 frontend-xi）
+#    ./update.sh cz            （仅拉代码 + 重建充值前端 frontend-cz）
+#    ./update.sh sjz           （仅拉代码 + 重建三角洲前端 frontend-sjz）
+#    ./update.sh frontend      （拉代码 + 重建全部前端，不重启后端）
 # ============================================================
 
 set -e
@@ -43,7 +45,7 @@ log_error()   { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 log_section() {
   echo -e "\n${CYAN}══════════════════════════════════════${NC}"
   echo -e "${CYAN}  $1${NC}"
-  echo -e "${CYAN}════════════════════════════════════��═${NC}"
+  echo -e "${CYAN}══════════════════════════════════════${NC}"
 }
 
 START_TIME=$(date +%s)
@@ -107,8 +109,7 @@ smart_npm_install() {
   local PKG_HASH_FILE="$DIR/.pkg_hash"
   local CURRENT_HASH
   CURRENT_HASH=$(md5sum package.json | awk '{print $1}')
-  if [ -f "$PKG_HASH_FILE" ] && [ "
-$(cat "$PKG_HASH_FILE")" = "$CURRENT_HASH" ] && [ -d "node_modules" ]; then
+  if [ -f "$PKG_HASH_FILE" ] && [ "$(cat "$PKG_HASH_FILE")" = "$CURRENT_HASH" ] && [ -d "node_modules" ]; then
     log_ok "$LABEL 依赖无变化，跳过 npm install"
   else
     log_info "$LABEL 安装依赖..."
@@ -138,12 +139,12 @@ update_backend() {
 }
 
 update_h5() {
-  log_section "🌐 前端H5（frontend-h5）— 构建"
+  log_section "🏠 家政前端（frontend-h5）— 构建"
   if [ ! -d "$PROJECT_DIR/frontend-h5" ]; then log_warn "目录 frontend-h5 不存在，跳过"; return; fi
-  smart_npm_install "$PROJECT_DIR/frontend-h5" "前端H5" "dev"
+  smart_npm_install "$PROJECT_DIR/frontend-h5" "家政前端" "dev"
   cd "$PROJECT_DIR/frontend-h5"
   npm run build
-  log_ok "前端H5构建完成 → dist/"
+  log_ok "家政前端构建完成 → backend/public/h5/"
 }
 
 update_xi() {
@@ -152,7 +153,25 @@ update_xi() {
   smart_npm_install "$PROJECT_DIR/frontend-xi" "洗衣前端" "dev"
   cd "$PROJECT_DIR/frontend-xi"
   npm run build
-  log_ok "洗衣前端构建完成 → dist/"
+  log_ok "洗衣前端构建完成 → backend/public/xi/"
+}
+
+update_cz() {
+  log_section "💎 充值前端（frontend-cz）— 构建"
+  if [ ! -d "$PROJECT_DIR/frontend-cz" ]; then log_warn "目录 frontend-cz 不存在，跳过"; return; fi
+  smart_npm_install "$PROJECT_DIR/frontend-cz" "充值前端" "dev"
+  cd "$PROJECT_DIR/frontend-cz"
+  npm run build
+  log_ok "充值前端构建完成 → backend/public/cz/"
+}
+
+update_sjz() {
+  log_section "⚔️  三角洲前端（frontend-sjz）— 构建"
+  if [ ! -d "$PROJECT_DIR/frontend-sjz" ]; then log_warn "目录 frontend-sjz 不存在，跳过"; return; fi
+  smart_npm_install "$PROJECT_DIR/frontend-sjz" "三角洲前端" "dev"
+  cd "$PROJECT_DIR/frontend-sjz"
+  npm run build
+  log_ok "三角洲前端构建完成 → backend/public/sjz/"
 }
 
 update_admin() {
@@ -161,7 +180,7 @@ update_admin() {
   smart_npm_install "$PROJECT_DIR/frontend-admin" "后台管理" "dev"
   cd "$PROJECT_DIR/frontend-admin"
   npm run build
-  log_ok "后台管理构建完成 → dist/"
+  log_ok "后台管理构建完成 → backend/public/admin/"
 }
 
 show_status() {
@@ -175,7 +194,7 @@ show_status() {
 main() {
   echo ""
   echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"
-  echo -e "${GREEN}║  京东代下单 — 一键更新脚本 v4.1            ║${NC}"
+  echo -e "${GREEN}║  京东代下单 — 一键更新脚本 v4.2            ║${NC}"
   echo -e "${GREEN}║  $(date '+%Y-%m-%d %H:%M:%S')  国内服务器代理版        ║${NC}"
   echo -e "${GREEN}╚════════════════════════════════════════════╝${NC}"
   echo ""
@@ -189,6 +208,8 @@ main() {
       update_backend
       update_h5
       update_xi
+      update_cz
+      update_sjz
       update_admin
       show_status
       ;;
@@ -209,20 +230,32 @@ main() {
       pull_code
       update_xi
       ;;
+    cz)
+      pull_code
+      update_cz
+      ;;
+    sjz)
+      pull_code
+      update_sjz
+      ;;
     frontend)
       pull_code
       update_h5
       update_xi
+      update_cz
+      update_sjz
       update_admin
       ;;
     *)
-      echo "用法: $0 [all|backend|admin|h5|xi|frontend]"
-      echo -e "  ${GREEN}all${NC}       全量更新（默认）"
-      echo -e "  ${GREEN}backend${NC}   仅拉代码+重启后端"
-      echo -e "  ${GREEN}admin${NC}     仅拉代码+重建后台管理"
-      echo -e "  ${GREEN}h5${NC}        仅拉代码+重建前端H5（家政）"
-      echo -e "  ${GREEN}xi${NC}        仅拉代码+重建洗衣前端"
-      echo -e "  ${GREEN}frontend${NC}  拉代码+重建全部前端"
+      echo "用法: $0 [all|backend|admin|h5|xi|cz|sjz|frontend]"
+      echo -e "  ${GREEN}all${NC}       全量更新（默认）：后端 + 全部前端"
+      echo -e "  ${GREEN}backend${NC}   仅拉代码 + 重启后端"
+      echo -e "  ${GREEN}admin${NC}     仅拉代码 + 重建后台管理"
+      echo -e "  ${GREEN}h5${NC}        仅拉代码 + 重建家政前端（frontend-h5）"
+      echo -e "  ${GREEN}xi${NC}        仅拉代码 + 重建洗衣前端（frontend-xi）"
+      echo -e "  ${GREEN}cz${NC}        仅拉代码 + 重建充值前端（frontend-cz）"
+      echo -e "  ${GREEN}sjz${NC}       仅拉代码 + 重建三角洲前端（frontend-sjz）"
+      echo -e "  ${GREEN}frontend${NC}  拉代码 + 重建全部前端（不重启后端）"
       exit 1;
       ;;
   esac
