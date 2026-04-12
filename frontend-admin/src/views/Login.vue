@@ -126,7 +126,11 @@ const 提交登录 = async () => {
       const role = 结果.data.role
       const permissions = 结果.data.permissions || []
       if (role === 'admin' || role === 'super') {
+        // 管理员/超管：直接跳数据看板
         router.push({ name: 'Dashboard' })
+      } else if (role === 'vendor') {
+        // 供货商：固定跳转到订单中心（供货商只有订单中心权限）
+        router.push({ name: 'OrderCenter' })
       } else {
         // 子账号：跳转到第一个有权限的页面，避免登录后卡在"登录中"
         const 路由优先级 = [
@@ -139,7 +143,13 @@ const 提交登录 = async () => {
           { key: 'sub_accounts', name: 'SubAccounts' },
         ]
         const 目标 = 路由优先级.find(r => permissions.includes(r.key))
-        router.push({ name: 目标 ? 目标.name : 'Login' })
+        if (目标) {
+          router.push({ name: 目标.name })
+        } else {
+          // 没有任何权限（异常情况），回到登录页
+          ElMessage.warning('账号暂无访问权限，请联系管理员')
+          authStore.退出登录()
+        }
       }
     } else {
       ElMessage.error(结果.message || '登录失败')

@@ -35,15 +35,13 @@
             <template v-if="row.role === 'admin'">
               <el-tag type="success" size="small">全部权限</el-tag>
             </template>
-            <!-- 供货商：显示绑定批次信息 -->
+            <!-- 供货商：显示可见业务范围，批次绑定在卡密工作台设置 -->
             <template v-else-if="row.role === 'vendor'">
-              <el-tag v-if="解析批次IDs(row.vendor_batch_ids).length" type="primary" size="small" style="margin:2px">
-                绑定{{ 解析批次IDs(row.vendor_batch_ids).length }}个批次
+              <el-tag v-if="row.vendor_business_types" type="primary" size="small" style="margin:2px">
+                可见：{{ 格式化可见业务(row.vendor_business_types) }}
               </el-tag>
-              <span v-else class="无值">未绑定批次</span>
-              <el-tag v-if="row.vendor_business_types" type="info" size="small" style="margin:2px">
-                {{ row.vendor_business_types }}
-              </el-tag>
+              <el-tag v-else type="info" size="small">可见全部业务</el-tag>
+              <div style="font-size:11px;color:#999;margin-top:2px">批次绑定见卡密工作台</div>
             </template>
             <!-- 子账号：显示权限模块 -->
             <template v-else>
@@ -120,39 +118,24 @@
           </el-checkbox-group>
         </el-form-item>
 
-        <!-- 供货商：批次绑定选择 -->
+        <!-- 供货商：可见业务选择 -->
         <template v-if="编辑表单.role === 'vendor'">
           <el-form-item label="可见业务">
+            <!-- 仅显示后端已开启的业务（根据服务器环境变量 BUSINESS_*_ENABLED 控制） -->
             <el-checkbox-group v-model="编辑表单.vendor_business_types">
-              <el-checkbox value="jiazheng">🏠 家政</el-checkbox>
-              <el-checkbox value="xiyifu">🧺 洗衣</el-checkbox>
-              <el-checkbox value="topup">💳 充值</el-checkbox>
-              <el-checkbox value="sjz">⚔️ 三角洲</el-checkbox>
+              <el-checkbox
+                v-for="业务 in moduleStore.已开启业务列表"
+                :key="业务.type"
+                :value="业务.type"
+              >{{ 业务.label }}</el-checkbox>
             </el-checkbox-group>
-            <div style="font-size:12px;color:#999;margin-top:4px">不选则显示所有业务的订单</div>
-          </el-form-item>
-          <el-form-item label="绑定批次">
-            <div v-if="批次加载中" style="color:#999">加载批次中...</div>
-            <div v-else>
-              <el-checkbox-group v-model="编辑表单.vendor_batch_ids">
-                <div v-for="(批次组, 业务类型) in 批次按业务分组" :key="业务类型" style="margin-bottom:8px">
-                  <div style="font-size:12px;color:#666;margin-bottom:4px">
-                    {{ { jiazheng:'🏠 家政', xiyifu:'🧺 洗衣', topup:'💳 充值', sjz:'⚔️ 三角洲' }[业务类型] || 业务类型 }}
-                  </div>
-                  <el-checkbox
-                    v-for="批次 in 批次组"
-                    :key="批次.id"
-                    :value="批次.id"
-                    style="margin:2px 8px 2px 0"
-                  >
-                    {{ 批次.batch_no }}
-                    <el-tag v-if="批次.service_type" size="small" style="margin-left:4px">{{ 批次.service_type }}</el-tag>
-                  </el-checkbox>
-                </div>
-              </el-checkbox-group>
-              <div v-if="!批次列表.length" style="font-size:12px;color:#ccc">暂无批次，请先生成卡密批次</div>
+            <div style="font-size:12px;color:#999;margin-top:4px">
+              不选则显示所有已开启业务的订单
             </div>
           </el-form-item>
+          <div style="font-size:12px;color:#909399;margin-top:8px;padding:8px;background:#f5f7fa;border-radius:4px">
+            💡 供货商的<strong>批次绑定</strong>请在「卡密工作台 → 批次记录」中操作，在每个批次的操作栏点击「绑定供货商」按钮设置
+          </div>
         </template>
       </el-form>
       <template #footer>
@@ -193,10 +176,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import { 获取子账号列表API, 新增子账号API, 更新子账号API, 重置子账号密码API, 删除子账号API, 修改自己密码API, 统一获取批次列表API } from '../api/index'
+import { useModuleStore } from '../stores/module'
+import { 获取子账号列表API, 新增子账号API, 更新子账号API, 重置子账号密码API, 删除子账号API, 修改自己密码API } from '../api/index'
+
+// 业务模块开关（用于可见业务动态渲染）
+const moduleStore = useModuleStore()
 
 // 所有可授权的模块（新版权限key，与最新路由一致）
 const 权限模块标签 = {
@@ -230,28 +217,16 @@ const 解析权限 = (permissionsJson) => {
   } catch { return [] }
 }
 
-// 解析供货商绑定的批次ID列表
-const 解析批次IDs = (batchIdsJson) => {
-  try { return JSON.parse(batchIdsJson || '[]') } catch { return [] }
+// 格式化供货商可见业务显示文字
+const 格式化可见业务 = (业务类型str) => {
+  if (!业务类型str) return '全部'
+  const 标签 = { jiazheng: '家政', xiyifu: '洗衣', topup: '充值', sjz: '三角洲' }
+  return 业务类型str.split(',').map(t => 标签[t] || t).join('、')
 }
 
 const 加载中 = ref(false)
 const 账号列表 = ref([])
 const 保存中 = ref(false)
-
-// 批次列表（用于供货商绑定选择）
-const 批次列表 = ref([])
-const 批次加载中 = ref(false)
-// 按业务类型分组的批次
-const 批次按业务分组 = computed(() => {
-  const 分组 = {}
-  for (const 批次 of 批次列表.value) {
-    const 类型 = 批次.business_type || 'jiazheng'
-    if (!分组[类型]) 分组[类型] = []
-    分组[类型].push(批次)
-  }
-  return 分组
-})
 
 // 编辑弹窗
 const 显示编辑弹窗 = ref(false)
@@ -260,7 +235,6 @@ const 当前编辑ID = ref(null)
 const 编辑表单 = ref({
   username: '', password: '', nickname: '', role: 'sub',
   permissions: [], is_active: 1, remark: '',
-  vendor_batch_ids: [],        // 供货商绑定的批次ID列表
   vendor_business_types: [],   // 供货商可见的业务类型列表
 })
 
@@ -273,15 +247,7 @@ const 新密码 = ref('')
 const 显示修改密码弹窗 = ref(false)
 const 修改密码表单 = ref({ old_password: '', new_password: '' })
 
-// 加载所有批次列表（供货商绑定用）
-const 加载批次列表 = async () => {
-  批次加载中.value = true
-  try {
-    const 结果 = await 统一获取批次列表API({})
-    if (结果.code === 1) 批次列表.value = 结果.data?.list || 结果.data || []
-  } catch { } finally { 批次加载中.value = false }
-}
-
+// 加载账号列表
 const 加载账号列表 = async () => {
   加载中.value = true
   try {
@@ -296,11 +262,9 @@ const 打开新增弹窗 = () => {
   编辑表单.value = {
     username: '', password: '', nickname: '', role: 'sub',
     permissions: [], is_active: 1, remark: '',
-    vendor_batch_ids: [], vendor_business_types: [],
+    vendor_business_types: [],
   }
   显示编辑弹窗.value = true
-  // 加载批次列表（供货商绑定选择用）
-  加载批次列表()
 }
 
 const 打开编辑弹窗 = (行) => {
@@ -313,13 +277,10 @@ const 打开编辑弹窗 = (行) => {
     permissions: 解析权限(行.permissions),
     is_active: 行.is_active,
     remark: 行.remark || '',
-    // 供货商字段
-    vendor_batch_ids: 解析批次IDs(行.vendor_batch_ids),
+    // 供货商字段（批次绑定在卡密工作台操作，此处只管可见业务）
     vendor_business_types: (行.vendor_business_types || '').split(',').filter(Boolean),
   }
   显示编辑弹窗.value = true
-  // 加载批次列表（供货商角色需要显示批次选择）
-  加载批次列表()
 }
 
 const 保存账号 = async () => {
@@ -327,7 +288,7 @@ const 保存账号 = async () => {
   try {
     if (是新增.value) {
       if (!编辑表单.value.username) return ElMessage.warning('请输入用户名')
-      // 构建创建数据（vendor角色不传permissions）
+      // 构建创建数据（vendor角色只传业务类型，不传permissions和batch_ids）
       const 创建数据 = {
         username: 编辑表单.value.username,
         password: 编辑表单.value.password,
@@ -336,7 +297,6 @@ const 保存账号 = async () => {
         remark: 编辑表单.value.remark,
       }
       if (编辑表单.value.role === 'vendor') {
-        创建数据.vendor_batch_ids = 编辑表单.value.vendor_batch_ids
         创建数据.vendor_business_types = 编辑表单.value.vendor_business_types
       } else {
         创建数据.permissions = 编辑表单.value.permissions
@@ -345,7 +305,7 @@ const 保存账号 = async () => {
       if (结果.code === 1) { ElMessage.success('创建成功'); 显示编辑弹窗.value = false; 加载账号列表() }
       else ElMessage.warning(结果.message)
     } else {
-      // 构建更新数据（vendor角色不传permissions）
+      // 构建更新数据（vendor角色只传业务类型，不传permissions和batch_ids）
       const 更新数据 = {
         nickname: 编辑表单.value.nickname,
         role: 编辑表单.value.role,
@@ -353,7 +313,6 @@ const 保存账号 = async () => {
         remark: 编辑表单.value.remark,
       }
       if (编辑表单.value.role === 'vendor') {
-        更新数据.vendor_batch_ids = 编辑表单.value.vendor_batch_ids
         更新数据.vendor_business_types = 编辑表单.value.vendor_business_types
       } else {
         更新数据.permissions = 编辑表单.value.permissions

@@ -331,12 +331,19 @@ const 统一获取卡密列表 = async (req, res) => {
 /**
  * 统一获取批次列表（支持三业务混合查询）
  * GET /admin/api/unified-batches
+ * 支持 business_type 和 vendor_id 参数过滤
  */
 const 统一获取批次列表 = async (req, res) => {
   try {
-    const { business_type } = req.query;
+    const { business_type, vendor_id } = req.query;
     const 条件 = {};
     if (business_type && business_type !== '') 条件.business_type = business_type;
+
+    // 供货商过滤：vendor_id=0 查询无供货商的批次，vendor_id=具体ID 查询该供货商的批次
+    if (vendor_id !== undefined && vendor_id !== '') {
+      const vid = parseInt(vendor_id);
+      条件.vendor_id = isNaN(vid) || vid === 0 ? null : vid;
+    }
 
     const 批次列表 = await CardBatch.findAll({
       where: 条件,
