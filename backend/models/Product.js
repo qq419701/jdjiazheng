@@ -112,6 +112,12 @@ const Product = 数据库连接.define('Product', {
   sjz_region_options: { type: DataTypes.STRING(200), defaultValue: 'VX,QQ', comment: '区/系统选项（逗号分隔，空=自由填写）' },
   sjz_region_is_input: { type: DataTypes.TINYINT, defaultValue: 0, comment: '区/系统是否为输入框：1=输入框 0=单选按钮' },
   sjz_field_order: { type: DataTypes.STRING(200), defaultValue: '', comment: '三角洲字段显示顺序（逗号分隔字段key）' },
+  // ===== 供货商关联字段 =====
+  vendor_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    comment: '关联的供货商admin_id（NULL=无供货商）',
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,

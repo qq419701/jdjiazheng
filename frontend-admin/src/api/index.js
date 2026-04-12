@@ -208,3 +208,13 @@ export const 删除三角洲批次API = (id) => 请求实例.delete(`/sjz-card-b
 // ===== 阿奇所SUP日志 =====
 export const 获取SUP日志列表API = (参数) => 请求实例.get('/sup-logs', { params: 参数 })
 export const 获取SUP日志统计API = () => 请求实例.get('/sup-logs/stats')
+
+// ===== 供货商管理 =====
+// 获取供货商账号列表（用于套餐管理绑定供货商下拉选择）
+export const 获取供货商列表API = () => 请求实例.get('/vendors')
+
+// ===== 手动创建订单 =====
+// 管理员手动新建订单（自动分配卡密或手动输入卡密）
+export const 手动创建订单API = (数据) => 请求实例.post('/orders/manual-create', 数据)
+// 根据套餐ID预分配卡密（预览卡密用，提交时后端二次确认）
+export const 预分配卡密API = (product_id, business_type) => 请求实例.get('/orders/pre-allocate-card', { params: { product_id, business_type } })

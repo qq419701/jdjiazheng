@@ -21,9 +21,9 @@ const Admin = 数据库连接.define('Admin', {
     comment: '密码（bcrypt加密）',
   },
   role: {
-    type: DataTypes.ENUM('super', 'admin', 'sub'),
+    type: DataTypes.ENUM('super', 'admin', 'sub', 'vendor'),
     defaultValue: 'admin',
-    comment: '角色：super超级管理员 admin普通管理员 sub子账号',
+    comment: '角色：super超级管理员 admin普通管理员 sub子账号 vendor供货商',
   },
   nickname: {
     type: DataTypes.STRING(50),
@@ -49,6 +49,17 @@ const Admin = 数据库连接.define('Admin', {
     type: DataTypes.STRING(255),
     allowNull: true,
     comment: '备注信息',
+  },
+  // ===== 供货商专用字段（仅 vendor 角色生效）=====
+  vendor_batch_ids: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    comment: '供货商绑定的批次ID列表（JSON数组格式，仅vendor角色生效）：[1,3,5]',
+  },
+  vendor_business_types: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    comment: '供货商可见的业务类型（逗号分隔，仅vendor角色生效）：jiazheng,topup,sjz,xiyifu',
   },
   created_at: {
     type: DataTypes.DATE,
