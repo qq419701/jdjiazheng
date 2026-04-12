@@ -1042,7 +1042,35 @@ router.put('/unified-batches/:id/vendor', 验证Token, async (req, res) => {
     if (!批次) return res.json({ code: 0, message: '批次不存在' });
     // vendor_id 为 null 时取消绑定，为具体ID时绑定供货商
     const vendor_id = req.body.vendor_id ?? null;
+    const 旧供货商ID = 批次.vendor_id;
     await 批次.update({ vendor_id });
+
+    // 同步更新 admins.vendor_batch_ids
+    if (vendor_id) {
+      // 绑定新供货商：重新计算该供货商绑定的所有批次ID
+      const 所有绑定批次 = await CardBatch.findAll({
+        where: { vendor_id },
+        attributes: ['id'],
+      });
+      const 批次ID列表 = 所有绑定批次.map(b => b.id);
+      await Admin.update(
+        { vendor_batch_ids: JSON.stringify(批次ID列表) },
+        { where: { id: vendor_id } }
+      );
+    }
+    // 取消绑定或更换供货商时，更新旧供货商的 vendor_batch_ids
+    if (旧供货商ID && 旧供货商ID !== vendor_id) {
+      const 剩余批次 = await CardBatch.findAll({
+        where: { vendor_id: 旧供货商ID },
+        attributes: ['id'],
+      });
+      const 剩余ID列表 = 剩余批次.map(b => b.id);
+      await Admin.update(
+        { vendor_batch_ids: JSON.stringify(剩余ID列表) },
+        { where: { id: 旧供货商ID } }
+      );
+    }
+
     res.json({ code: 1, message: vendor_id ? '供货商绑定成功' : '已取消供货商绑定' });
   } catch (错误) {
     console.error('绑定批次供货商出错:', 错误);

@@ -900,13 +900,17 @@
             </el-form-item>
           </template>
 
-          <el-form-item label="确认弹窗（开启）">
+          <el-form-item label="下单成功页弹窗（开启）">
             <el-switch v-model="设置表单.sjz_popup2_enabled" active-value="1" inactive-value="0" />
           </el-form-item>
           <template v-if="设置表单.sjz_popup2_enabled === '1'">
-            <el-form-item label="确认弹窗标题"><el-input v-model="设置表单.sjz_popup2_title" /></el-form-item>
-            <el-form-item label="确认弹窗内容"><el-input v-model="设置表单.sjz_popup2_content" type="textarea" :rows="3" /></el-form-item>
-            <el-form-item label="确认按钮文字"><el-input v-model="设置表单.sjz_popup2_btn_text" placeholder="确认提交" /></el-form-item>
+            <el-form-item label="下单成功页弹窗标题"><el-input v-model="设置表单.sjz_popup2_title" /></el-form-item>
+            <el-form-item label="下单成功页弹窗内容"><el-input v-model="设置表单.sjz_popup2_content" type="textarea" :rows="3" /></el-form-item>
+            <el-form-item label="关闭按钮文字"><el-input v-model="设置表单.sjz_popup2_btn_text" placeholder="确认提交" /></el-form-item>
+            <el-form-item label="自动关闭（秒）">
+              <el-input-number v-model="设置表单.sjz_popup2_auto_close" :min="0" :max="30" />
+              <div class="字段说明">0=不自动关闭</div>
+            </el-form-item>
           </template>
 
           <!-- 企业微信配置分组 -->
@@ -1273,7 +1277,7 @@ const 设置表单 = ref({
   sjz_popup1_icon: '⚔️', sjz_popup1_btn_text: '我知道了', sjz_popup1_auto_close: 0,
   // 三角洲弹窗2
   sjz_popup2_enabled: '0', sjz_popup2_title: '信息确认',
-  sjz_popup2_content: '请再次确认您填写的信息是否正确。', sjz_popup2_btn_text: '确认提交',
+  sjz_popup2_content: '请再次确认您填写的信息是否正确。', sjz_popup2_btn_text: '确认提交', sjz_popup2_auto_close: 0,
   // 企业微信
   qywx_enabled: '0', qywx_corpid: '', qywx_secret: '',
   qywx_token: '', qywx_encoding_aes_key: '',
@@ -1471,6 +1475,7 @@ const 加载设置 = async () => {
         sjz_popup2_title: 数据.sjz_popup2_title || '信息确认',
         sjz_popup2_content: 数据.sjz_popup2_content || '请再次确认您填写的信息是否正确。',
         sjz_popup2_btn_text: 数据.sjz_popup2_btn_text || '确认提交',
+        sjz_popup2_auto_close: parseInt(数据.sjz_popup2_auto_close) || 0,
         // 企业微信
         qywx_enabled: 数据.qywx_enabled || '0',
         qywx_corpid: 数据.qywx_corpid || '',

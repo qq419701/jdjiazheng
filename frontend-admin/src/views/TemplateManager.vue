@@ -362,13 +362,15 @@ const 供货商列表 = ref([])
 const 加载供货商列表 = async () => {
   try {
     const 结果 = await 获取供货商列表API()
-    if (结果.code === 1) 供货商列表.value = 结果.data || []
+    if (结果?.data?.code === 1) {
+      供货商列表.value = 结果.data.data || []
+    }
   } catch {}
 }
 // 根据 vendor_id 获取供货商显示名称
 const 获取供货商名称 = (vendorId) => {
   const 供货商 = 供货商列表.value.find(v => v.id === vendorId)
-  return 供货商 ? (供货商.nickname || 供货商.username) : vendorId
+  return 供货商 ? (供货商.nickname || 供货商.username) : '-'
 }
 
 // ===== 状态 =====
