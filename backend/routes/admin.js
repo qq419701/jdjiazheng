@@ -8,7 +8,7 @@ const fs = require('fs');
 const 配置 = require('../config/config');
 const { Admin, Order } = require('../models');
 const { 验证Token } = require('../middleware/auth');
-const { 获取订单列表, 获取订单详情, 更新订单状态, 触发自动下单, 重置订单, 更新订单备注, 导出订单, 确认退款完成 } = require('../controllers/orderController');
+const { 获取订单列表, 获取订单详情, 更新订单状态, 触发自动下单, 重置订单, 更新订单备注, 导出订单, 确认退款完成, 手动创建订单, 预分配卡密 } = require('../controllers/orderController');
 const { 获取卡密列表, 生成卡密, 导出卡密, 作废卡密, 删除卡密, 获取批次列表, 获取批次卡密, 删除批次, 统一获取卡密列表, 统一获取批次列表, 统一获取卡密统计 } = require('../controllers/cardController');
 const { 获取账号列表, 新增账号, 更新账号, 删除账号, 触发自动登录 } = require('../controllers/jdAccountController');
 const { 获取规则列表, 新增规则, 更新规则, 删除规则 } = require('../controllers/timeRuleController');
@@ -141,6 +141,14 @@ router.post('/login', async (req, res) => {
     let permissions = [];
     try { permissions = JSON.parse(管理员.permissions || '[]') } catch {}
 
+    // vendor角色：解析绑定批次ID列表
+    let vendor_batch_ids = [];
+    let vendor_business_types = [];
+    if (管理员.role === 'vendor') {
+      try { vendor_batch_ids = JSON.parse(管理员.vendor_batch_ids || '[]'); } catch {}
+      vendor_business_types = (管理员.vendor_business_types || '').split(',').filter(Boolean);
+    }
+
     // 生成JWT（包含权限信息）
     const token = jwt.sign(
       { id: 管理员.id, username: 管理员.username, role: 管理员.role, permissions },
@@ -157,6 +165,8 @@ router.post('/login', async (req, res) => {
         nickname: 管理员.nickname || 管理员.username,
         role: 管理员.role,
         permissions,
+        vendor_batch_ids,        // 供货商绑定批次ID列表（非vendor角色为空数组）
+        vendor_business_types,   // 供货商可见业务类型（非vendor角色为空数组）
       },
     });
   } catch (错误) {
@@ -241,6 +251,10 @@ router.get('/orders/export', 验证Token, async (req, res) => {
   req.query.business_type = 'jiazheng';
   return 导出订单(req, res);
 });
+// 手动创建订单（必须在 /orders/:id 之前注册，防止被参数路由拦截）
+router.post('/orders/manual-create', 验证Token, 手动创建订单);
+// 预分配卡密（让前端提前看到将要使用的卡密；必须在 /orders/:id 之前注册）
+router.get('/orders/pre-allocate-card', 验证Token, 预分配卡密);
 // 订单管理页搜索家政卡密（按卡密码或手机号查找，用于卡密作废功能；必须在 /orders/:id 之前注册）
 router.get('/orders/search-card', 验证Token, async (req, res) => {
   try {
@@ -549,7 +563,7 @@ router.get('/auth/me', 验证Token, async (req, res) => {
   try {
     // 从JWT解码数据中取用户id，查询最新账号信息
     const 账号 = await Admin.findByPk(req.管理员.id, {
-      attributes: ['id', 'username', 'nickname', 'role', 'permissions', 'is_active'],
+      attributes: ['id', 'username', 'nickname', 'role', 'permissions', 'vendor_batch_ids', 'vendor_business_types', 'is_active'],
     });
     if (!账号) {
       return res.json({ code: 0, message: '账号不存在' });
@@ -565,6 +579,13 @@ router.get('/auth/me', 验证Token, async (req, res) => {
     } catch {
       权限列表 = [];
     }
+    // vendor角色：解析绑定批次ID列表和可见业务类型
+    let vendor_batch_ids = [];
+    let vendor_business_types = [];
+    if (账号.role === 'vendor') {
+      try { vendor_batch_ids = JSON.parse(账号.vendor_batch_ids || '[]'); } catch {}
+      vendor_business_types = (账号.vendor_business_types || '').split(',').filter(Boolean);
+    }
     res.json({
       code: 1,
       message: '获取成功',
@@ -573,6 +594,8 @@ router.get('/auth/me', 验证Token, async (req, res) => {
         role: 账号.role,
         nickname: 账号.nickname || 账号.username,
         username: 账号.username,
+        vendor_batch_ids,
+        vendor_business_types,
       },
     });
   } catch (错误) {
@@ -591,12 +614,12 @@ const 仅超管 = (req, res, next) => {
   next();
 };
 
-// 获取子账号列表
+// 获取子账号列表（包含 admin/sub/vendor 角色）
 router.get('/sub-accounts', 验证Token, 仅超管, async (req, res) => {
   try {
     const 列表 = await Admin.findAll({
-      where: { role: ['admin', 'sub'] },
-      attributes: ['id', 'username', 'nickname', 'role', 'permissions', 'is_active', 'last_login', 'remark', 'created_at'],
+      where: { role: ['admin', 'sub', 'vendor'] },
+      attributes: ['id', 'username', 'nickname', 'role', 'permissions', 'vendor_batch_ids', 'vendor_business_types', 'is_active', 'last_login', 'remark', 'created_at'],
       order: [['created_at', 'DESC']],
     });
     res.json({ code: 1, message: 'ok', data: 列表 });
@@ -606,25 +629,40 @@ router.get('/sub-accounts', 验证Token, 仅超管, async (req, res) => {
   }
 });
 
-// 新增子账号
+// 新增子账号（支持 admin/sub/vendor 角色）
 router.post('/sub-accounts', 验证Token, 仅超管, async (req, res) => {
   try {
-    const { username, password, nickname, role = 'sub', permissions = [], remark } = req.body;
+    const { username, password, nickname, role = 'sub', permissions = [], remark, vendor_batch_ids, vendor_business_types } = req.body;
     if (!username || !password) return res.json({ code: 0, message: '用户名和密码不能为空' });
     if (password.length < 6) return res.json({ code: 0, message: '密码至少6位' });
     const 已存在 = await Admin.findOne({ where: { username } });
     if (已存在) return res.json({ code: 0, message: '用户名已存在' });
     const 加密密码 = await bcrypt.hash(password, 10);
-    const 新账号 = await Admin.create({
+    // 允许的角色：admin/sub/vendor（super角色不允许通过此接口创建）
+    const 合法角色 = ['admin', 'sub', 'vendor'].includes(role) ? role : 'sub';
+    const 创建数据 = {
       username,
       password: 加密密码,
       nickname: nickname || username,
-      role: ['admin', 'sub'].includes(role) ? role : 'sub',
-      permissions: JSON.stringify(permissions),
+      role: 合法角色,
       is_active: 1,
       remark: remark || null,
       created_at: new Date(),
-    });
+    };
+    // vendor角色不需要 permissions，其他角色保存权限列表
+    if (合法角色 !== 'vendor') {
+      创建数据.permissions = JSON.stringify(permissions);
+    }
+    // vendor角色：保存绑定批次ID（JSON数组）和可见业务类型（逗号分隔）
+    if (合法角色 === 'vendor') {
+      创建数据.vendor_batch_ids = JSON.stringify(
+        Array.isArray(vendor_batch_ids) ? vendor_batch_ids : []
+      );
+      创建数据.vendor_business_types = Array.isArray(vendor_business_types)
+        ? vendor_business_types.join(',')
+        : (vendor_business_types || '');
+    }
+    const 新账号 = await Admin.create(创建数据);
     res.json({ code: 1, message: '子账号创建成功', data: { id: 新账号.id, username: 新账号.username } });
   } catch (错误) {
     console.error('新增子账号出错:', 错误);
@@ -632,18 +670,36 @@ router.post('/sub-accounts', 验证Token, 仅超管, async (req, res) => {
   }
 });
 
-// 修改子账号（权限/状态/昵称，不含密码）
+// 修改子账号（权限/状态/昵称，不含密码；支持 vendor 角色的批次绑定更新）
 router.put('/sub-accounts/:id', 验证Token, 仅超管, async (req, res) => {
   try {
     const 账号 = await Admin.findByPk(req.params.id);
     if (!账号 || 账号.role === 'super') return res.json({ code: 0, message: '账号不存在或无法修改' });
-    const { nickname, permissions, is_active, role, remark } = req.body;
+    const { nickname, permissions, is_active, role, remark, vendor_batch_ids, vendor_business_types } = req.body;
     const 更新 = {};
     if (nickname !== undefined) 更新.nickname = nickname;
-    if (permissions !== undefined) 更新.permissions = JSON.stringify(permissions);
     if (is_active !== undefined) 更新.is_active = is_active ? 1 : 0;
-    if (role !== undefined && ['admin', 'sub'].includes(role)) 更新.role = role;
     if (remark !== undefined) 更新.remark = remark || null;
+    // 允许修改为 admin/sub/vendor 角色（不允许改为 super）
+    if (role !== undefined && ['admin', 'sub', 'vendor'].includes(role)) {
+      更新.role = role;
+    }
+    // vendor角色更新批次绑定和业务类型；非vendor角色更新permissions
+    const 目标角色 = 更新.role || 账号.role;
+    if (目标角色 === 'vendor') {
+      if (vendor_batch_ids !== undefined) {
+        更新.vendor_batch_ids = JSON.stringify(
+          Array.isArray(vendor_batch_ids) ? vendor_batch_ids : []
+        );
+      }
+      if (vendor_business_types !== undefined) {
+        更新.vendor_business_types = Array.isArray(vendor_business_types)
+          ? vendor_business_types.join(',')
+          : (vendor_business_types || '');
+      }
+    } else {
+      if (permissions !== undefined) 更新.permissions = JSON.stringify(permissions);
+    }
     await 账号.update(更新);
     res.json({ code: 1, message: '更新成功' });
   } catch (错误) {
@@ -693,6 +749,23 @@ router.delete('/sub-accounts/:id', 验证Token, 仅超管, async (req, res) => {
     res.json({ code: 1, message: '删除成功' });
   } catch (错误) {
     console.error('删除子账号出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器错误' });
+  }
+});
+
+// ===== 获取供货商列表（用于套餐管理的供货商下拉选择）=====
+// GET /admin/api/vendors
+// 返回所有角色为 vendor 的账号，字段：id/username/nickname
+router.get('/vendors', 验证Token, async (req, res) => {
+  try {
+    const 列表 = await Admin.findAll({
+      where: { role: 'vendor', is_active: 1 },
+      attributes: ['id', 'username', 'nickname'],
+      order: [['id', 'ASC']],
+    });
+    res.json({ code: 1, message: 'ok', data: 列表 });
+  } catch (错误) {
+    console.error('获取供货商列表出错:', 错误);
     res.status(500).json({ code: -1, message: '服务器错误' });
   }
 });

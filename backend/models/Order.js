@@ -294,6 +294,12 @@ const Order = 数据库连接.define('Order', {
   qywx_group_chat_id: { type: DataTypes.STRING(100), allowNull: true, comment: '客户群ID' },
   qywx_add_friend_at: { type: DataTypes.DATE, allowNull: true, comment: '加好友时间' },
   qywx_group_created_at: { type: DataTypes.DATE, allowNull: true, comment: '建群时间' },
+  // ===== 订单来源 =====
+  order_source: {
+    type: DataTypes.STRING(20),
+    defaultValue: 'customer',
+    comment: '订单来源：customer=客户H5提交 manual=管理员手动创建',
+  },
 }, {
   tableName: 'orders',
   timestamps: false,

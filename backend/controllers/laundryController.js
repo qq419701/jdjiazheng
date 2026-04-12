@@ -41,6 +41,24 @@ const 获取洗衣订单列表 = async (req, res) => {
       查询条件.created_at = { [Op.lte]: new Date(date_end + ' 23:59:59') };
     }
 
+    // ===== 供货商数据隔离过滤 =====
+    // 若当前登录者是供货商（vendor角色），只返回其绑定批次下的订单
+    if (req.管理员?.role === 'vendor') {
+      const batchIds = req.管理员.vendor_batch_ids || [];
+      if (!batchIds.length) {
+        return res.json({ code: 1, message: '获取成功', data: { list: [], total: 0 } });
+      }
+      const 该批次卡密 = await Card.findAll({
+        where: { batch_id: { [Op.in]: batchIds } },
+        attributes: ['code'],
+      });
+      const 可见卡密codes = 该批次卡密.map(c => c.code);
+      if (!可见卡密codes.length) {
+        return res.json({ code: 1, message: '获取成功', data: { list: [], total: 0 } });
+      }
+      查询条件.card_code = { [Op.in]: 可见卡密codes };
+    }
+
     const 偏移量 = (parseInt(page) - 1) * parseInt(limit);
     const { count: 总数, rows: 列表 } = await Order.findAndCountAll({
       where: 查询条件,

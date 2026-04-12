@@ -16,44 +16,45 @@
         active-text-color="#ffffff"
         class="侧边菜单"
       >
-        <el-menu-item v-if="authStore.有权限('dashboard')" index="/admin/dashboard">
+        <el-menu-item v-if="authStore.有权限('dashboard') && !authStore.是供货商" index="/admin/dashboard">
           <el-icon><DataAnalysis /></el-icon>
           <span>数据看板</span>
         </el-menu-item>
 
         <el-menu-item-group v-if="显示卡密管理分组" title="卡密管理">
-          <el-menu-item v-if="authStore.有权限('card_workbench')" index="/admin/card-workbench">
+          <el-menu-item v-if="authStore.有权限('card_workbench') && !authStore.是供货商" index="/admin/card-workbench">
             <el-icon><Ticket /></el-icon>
             <span>🎫 卡密工作台</span>
           </el-menu-item>
-          <el-menu-item v-if="authStore.有权限('template_manager')" index="/admin/template-manager">
+          <el-menu-item v-if="authStore.有权限('template_manager') && !authStore.是供货商" index="/admin/template-manager">
             <el-icon><Goods /></el-icon>
             <span>📦 套餐管理</span>
           </el-menu-item>
         </el-menu-item-group>
 
         <el-menu-item-group v-if="显示业务管理分组" title="业务管理">
-          <el-menu-item v-if="authStore.有权限('order_center')" index="/admin/order-center">
+          <!-- 订单中心：供货商角色必须可见 -->
+          <el-menu-item v-if="authStore.有权限('order_center') || authStore.是供货商" index="/admin/order-center">
             <el-icon><List /></el-icon>
             <span>📋 订单中心</span>
           </el-menu-item>
-          <el-menu-item v-if="authStore.有权限('sup_logs')" index="/admin/sup-logs">
+          <el-menu-item v-if="authStore.有权限('sup_logs') && !authStore.是供货商" index="/admin/sup-logs">
             <el-icon><Document /></el-icon>
             <span>🗂️ SUP日志</span>
           </el-menu-item>
-          <el-menu-item v-if="authStore.有权限('business_settings')" index="/admin/business-settings">
+          <el-menu-item v-if="authStore.有权限('business_settings') && !authStore.是供货商" index="/admin/business-settings">
             <el-icon><Setting /></el-icon>
             <span>⚙️ 业务设置</span>
           </el-menu-item>
         </el-menu-item-group>
 
         <el-menu-item-group v-if="显示系统分组" title="系统管理">
-          <el-menu-item v-if="authStore.有权限('regions')" index="/admin/regions">
+          <el-menu-item v-if="authStore.有权限('regions') && !authStore.是供货商" index="/admin/regions">
             <el-icon><MapLocation /></el-icon>
             <span>地区管理</span>
           </el-menu-item>
-          <!-- 子账号管理（仅 super/admin 可见） -->
-          <el-menu-item v-if="authStore.有权限('sub_accounts')" index="/admin/sub-accounts">
+          <!-- 子账号管理（仅 super/admin 可见，供货商不可见） -->
+          <el-menu-item v-if="authStore.有权限('sub_accounts') && !authStore.是供货商" index="/admin/sub-accounts">
             <el-icon><UserFilled /></el-icon>
             <span>子账号管理</span>
           </el-menu-item>
@@ -117,9 +118,18 @@ const 当前路由 = computed(() => route.path)
 const 当前页标题 = computed(() => route.meta?.标题 || '京东代下单系统')
 
 // 分组可见性：有任意菜单项可见则显示该分组
-const 显示卡密管理分组 = computed(() => ['card_workbench', 'template_manager'].some(k => authStore.有权限(k)))
-const 显示业务管理分组 = computed(() => ['order_center', 'business_settings', 'sup_logs'].some(k => authStore.有权限(k)))
-const 显示系统分组 = computed(() => ['regions', 'sub_accounts'].some(k => authStore.有权限(k)))
+// vendor角色：卡密管理分组不显示
+const 显示卡密管理分组 = computed(() =>
+  !authStore.是供货商 && ['card_workbench', 'template_manager'].some(k => authStore.有权限(k))
+)
+// vendor角色：业务管理分组只显示 order_center
+const 显示业务管理分组 = computed(() =>
+  authStore.是供货商 || ['order_center', 'business_settings', 'sup_logs'].some(k => authStore.有权限(k))
+)
+// vendor角色：系统分组不显示
+const 显示系统分组 = computed(() =>
+  !authStore.是供货商 && ['regions', 'sub_accounts'].some(k => authStore.有权限(k))
+)
 
 // 退出登录
 const 退出登录 = async () => {

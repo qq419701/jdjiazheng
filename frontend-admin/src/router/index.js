@@ -170,9 +170,20 @@ router.beforeEach((to, from, next) => {
     return
   }
 
-  // 权限判断：仅当路由定义了 权限Key 且角色为 sub 时检查（使用当前缓存权限，不阻塞跳转）
+  // 权限判断：仅当路由定义了 权限Key 且角色为 sub 或 vendor 时检查（使用当前缓存权限，不阻塞跳转）
   const role = localStorage.getItem('admin_role')
   const 权限Key = to.meta?.权限Key
+
+  // vendor角色：只允许访问 order_center，访问其他页面时自动重定向到 OrderCenter
+  if (role === 'vendor') {
+    if (to.name !== 'OrderCenter') {
+      next({ name: 'OrderCenter' })
+      return
+    }
+    next()
+    return
+  }
+
   if (权限Key && role === 'sub') {
     const permissions = JSON.parse(localStorage.getItem('admin_permissions') || '[]')
     if (!permissions.includes(权限Key)) {

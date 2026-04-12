@@ -153,6 +153,8 @@
             <el-form-item>
               <el-button type="primary" @click="jz搜索">搜索</el-button>
               <el-button @click="jz重置">重置</el-button>
+              <!-- 管理员和供货商都可以手动添加订单 -->
+              <el-button type="success" :icon="Plus" @click="打开手动创建弹窗('jiazheng')">+ 添加订单</el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -270,6 +272,7 @@
             <el-form-item>
               <el-button type="primary" @click="xi搜索">搜索</el-button>
               <el-button @click="xi重置">重置</el-button>
+              <el-button type="success" :icon="Plus" @click="打开手动创建弹窗('xiyifu')">+ 添加订单</el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -384,6 +387,7 @@
             <el-form-item>
               <el-button type="primary" @click="tp搜索">搜索</el-button>
               <el-button @click="tp重置">重置</el-button>
+              <el-button type="success" :icon="Plus" @click="打开手动创建弹窗('topup')">+ 添加订单</el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -518,6 +522,7 @@
             <el-form-item>
               <el-button type="primary" @click="sjz搜索">搜索</el-button>
               <el-button @click="sjz重置">重置</el-button>
+              <el-button type="success" :icon="Plus" @click="打开手动创建弹窗('sjz')">+ 添加订单</el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -1007,6 +1012,186 @@
       </template>
     </el-dialog>
 
+    <!-- ============ 手动添加订单弹窗 ============ -->
+    <el-dialog
+      v-model="显示手动创建弹窗"
+      :title="`➕ 手动添加订单 - ${业务类型标签[手动创建业务类型] || 手动创建业务类型}`"
+      width="700px"
+      :close-on-click-modal="false"
+      @closed="重置手动创建表单"
+    >
+      <el-form :model="手动创建表单" label-width="110px">
+        <!-- 顶部：套餐选择 + 卡密预览 -->
+        <el-form-item label="选择套餐">
+          <el-select
+            v-model="手动创建表单.product_id"
+            placeholder="请选择套餐"
+            style="width:280px"
+            clearable
+            @change="套餐选择变化"
+          >
+            <el-option
+              v-for="套餐 in 手动创建套餐列表"
+              :key="套餐.id"
+              :value="套餐.id"
+              :label="`${套餐.product_name}（剩余${套餐.stock_unused ?? '?'}张）`"
+            />
+          </el-select>
+        </el-form-item>
+
+        <!-- 卡密信息区域 -->
+        <el-form-item label="卡密">
+          <div v-if="手动创建表单.product_id || 手动创建表单.card_code">
+            <div v-if="预分配卡密信息" style="color:#67c23a;margin-bottom:6px">
+              ✅ 已自动分配卡密：<b>{{ 预分配卡密信息.code }}</b>（剩余 {{ 预分配卡密信息.stock_unused }} 张）
+            </div>
+            <div v-else-if="手动创建表单.product_id && !手动创建表单.card_code" style="color:#f56c6c;margin-bottom:6px">
+              ⚠️ 当前套餐无可用卡密，请先生成卡密
+            </div>
+          </div>
+          <el-button link type="primary" size="small" @click="显示手动输入卡密 = !显示手动输入卡密">
+            {{ 显示手动输入卡密 ? '收起手动指定' : '手动指定卡密' }}
+          </el-button>
+          <div v-if="显示手动输入卡密" style="margin-top:8px">
+            <el-input
+              v-model="手动创建表单.card_code"
+              placeholder="输入卡密（为空则自动分配）"
+              style="width:240px"
+              clearable
+            />
+          </div>
+        </el-form-item>
+
+        <!-- 通用字段 -->
+        <template v-if="手动创建业务类型 !== 'sjz'">
+          <el-form-item label="姓名">
+            <el-input v-model="手动创建表单.name" placeholder="请输入" style="width:200px" />
+          </el-form-item>
+          <el-form-item label="手机号">
+            <el-input v-model="手动创建表单.phone" placeholder="请输入" style="width:200px" />
+          </el-form-item>
+        </template>
+
+        <!-- ===== 家政字段 ===== -->
+        <template v-if="手动创建业务类型 === 'jiazheng'">
+          <el-form-item label="省/市/区">
+            <el-input v-model="手动创建表单.province" placeholder="省" style="width:80px" />
+            <el-input v-model="手动创建表单.city" placeholder="市" style="width:80px;margin:0 4px" />
+            <el-input v-model="手动创建表单.district" placeholder="区县" style="width:80px" />
+          </el-form-item>
+          <el-form-item label="街道（可选）">
+            <el-input v-model="手动创建表单.street" placeholder="街道/镇（可选）" style="width:240px" />
+          </el-form-item>
+          <el-form-item label="详细地址">
+            <el-input v-model="手动创建表单.address" placeholder="门牌号、小区等" style="width:280px" />
+          </el-form-item>
+          <el-form-item label="预约日期">
+            <el-date-picker v-model="手动创建表单.visit_date" type="date" value-format="YYYY-MM-DD" placeholder="选择日期" style="width:200px" />
+          </el-form-item>
+          <el-form-item label="预约时间段">
+            <el-input v-model="手动创建表单.visit_time" placeholder="如：09:00-11:00" style="width:200px" />
+          </el-form-item>
+          <el-form-item label="服务类型">
+            <el-input v-model="手动创建表单.service_type" placeholder="如：日常保洁" style="width:200px" />
+          </el-form-item>
+          <el-form-item label="服务时长(小时)">
+            <el-input-number v-model="手动创建表单.service_hours" :min="0" :max="24" />
+          </el-form-item>
+        </template>
+
+        <!-- ===== 洗衣字段 ===== -->
+        <template v-if="手动创建业务类型 === 'xiyifu'">
+          <el-form-item label="取件省/市/区">
+            <el-input v-model="手动创建表单.province" placeholder="省" style="width:80px" />
+            <el-input v-model="手动创建表单.city" placeholder="市" style="width:80px;margin:0 4px" />
+            <el-input v-model="手动创建表单.district" placeholder="区县" style="width:80px" />
+          </el-form-item>
+          <el-form-item label="取件详细地址">
+            <el-input v-model="手动创建表单.address" placeholder="详细地址" style="width:280px" />
+          </el-form-item>
+          <el-form-item label="取件日期">
+            <el-date-picker v-model="手动创建表单.visit_date" type="date" value-format="YYYY-MM-DD" placeholder="选择日期" style="width:200px" />
+          </el-form-item>
+          <el-form-item label="取件时间段">
+            <el-input v-model="手动创建表单.visit_time" placeholder="如：09:00-11:00" style="width:200px" />
+          </el-form-item>
+          <el-form-item label="收件地址">
+            <el-checkbox v-model="手动创建表单.return_same_as_pickup">与取件地址相同</el-checkbox>
+          </el-form-item>
+          <template v-if="!手动创建表单.return_same_as_pickup">
+            <el-form-item label="收件人姓名">
+              <el-input v-model="手动创建表单.return_name" placeholder="收件人" style="width:200px" />
+            </el-form-item>
+            <el-form-item label="收件人手机">
+              <el-input v-model="手动创建表单.return_phone" placeholder="收件手机号" style="width:200px" />
+            </el-form-item>
+            <el-form-item label="收件省/市/区">
+              <el-input v-model="手动创建表单.return_province" placeholder="省" style="width:80px" />
+              <el-input v-model="手动创建表单.return_city" placeholder="市" style="width:80px;margin:0 4px" />
+              <el-input v-model="手动创建表单.return_district" placeholder="区县" style="width:80px" />
+            </el-form-item>
+            <el-form-item label="收件详细地址">
+              <el-input v-model="手动创建表单.return_address" placeholder="收件详细地址" style="width:280px" />
+            </el-form-item>
+          </template>
+        </template>
+
+        <!-- ===== 充值字段 ===== -->
+        <template v-if="手动创建业务类型 === 'topup'">
+          <el-form-item label="充值账号">
+            <el-input v-model="手动创建表单.topup_account" placeholder="请输入充值账号" style="width:240px" />
+          </el-form-item>
+          <el-form-item label="是否已过期">
+            <el-select v-model="手动创建表单.topup_is_expired" style="width:160px">
+              <el-option :value="-1" label="未知" />
+              <el-option :value="0" label="未过期" />
+              <el-option :value="1" label="已过期" />
+            </el-select>
+          </el-form-item>
+        </template>
+
+        <!-- ===== 三角洲字段 ===== -->
+        <template v-if="手动创建业务类型 === 'sjz'">
+          <el-form-item label="手机号（可选）">
+            <el-input v-model="手动创建表单.phone" placeholder="联系手机号" style="width:200px" />
+          </el-form-item>
+          <el-form-item label="游戏昵称">
+            <el-input v-model="手动创建表单.sjz_game_nickname" placeholder="游戏内昵称（可选）" style="width:200px" />
+          </el-form-item>
+          <el-form-item label="保险格数">
+            <el-input-number v-model="手动创建表单.sjz_insurance_slots" :min="0" :max="6" :precision="0" placeholder="可选" />
+          </el-form-item>
+          <el-form-item label="成年认证">
+            <el-select v-model="手动创建表单.sjz_is_adult" style="width:160px">
+              <el-option :value="-1" label="未知" />
+              <el-option :value="1" label="已成年" />
+              <el-option :value="0" label="未成年" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="上号方式">
+            <el-input v-model="手动创建表单.sjz_login_method" placeholder="如：扫码（可选）" style="width:200px" />
+          </el-form-item>
+          <el-form-item label="区/系统">
+            <el-input v-model="手动创建表单.sjz_region" placeholder="如：VX（可选）" style="width:200px" />
+          </el-form-item>
+        </template>
+
+        <!-- 备注 -->
+        <el-form-item label="备注">
+          <el-input v-model="手动创建表单.remark" type="textarea" :rows="2" placeholder="选填" style="width:300px" />
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="显示手动创建弹窗 = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="手动创建中"
+          @click="提交手动创建订单"
+        >确认创建</el-button>
+      </template>
+    </el-dialog>
+
   </div>
 </template>
 
@@ -1014,7 +1199,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowDown } from '@element-plus/icons-vue'
+import { ArrowDown, Plus } from '@element-plus/icons-vue'
 import { useModuleStore } from '../stores/module'
 import {
   获取订单列表API, 获取订单详情API, 更新订单状态API, 触发自动下单API, 重置订单API, 更新订单备注API,
@@ -1031,7 +1216,8 @@ import {
   申请三角洲退款API, 确认三角洲退款完成API, 导出三角洲订单API, 订单页搜索三角洲卡密API, 作废三角洲卡密API,
   获取三角洲预览卡密API, 重置三角洲订单API,
   统一获取卡密列表API,
-  获取设置API, 获取订单角标数量API
+  获取设置API, 获取订单角标数量API,
+  手动创建订单API, 预分配卡密API, 获取套餐列表API
 } from '../api/index'
 
 const router = useRouter()
@@ -2027,6 +2213,148 @@ const sjz复制订单 = (行) => {
     `订单号：${行.order_no || '-'}`,
   ].join('\n')
   复制到剪贴板(文本, '订单信息已复制')
+}
+
+// ==================== 手动创建订单 ====================
+
+// 业务类型显示标签
+const 业务类型标签 = {
+  jiazheng: '家政',
+  xiyifu: '洗衣',
+  topup: '充值',
+  sjz: '三角洲',
+}
+
+// 手动创建订单相关状态
+const 显示手动创建弹窗 = ref(false)
+const 手动创建业务类型 = ref('jiazheng')
+const 手动创建中 = ref(false)
+const 预分配卡密信息 = ref(null)     // { code: 'XXXX', stock_unused: 5 }
+const 显示手动输入卡密 = ref(false)   // 是否展开手动输入卡密
+const 手动创建套餐列表 = ref([])       // 当前业务类型的套餐列表
+
+// 手动创建表单数据（包含所有业务的字段）
+const 手动创建表单 = ref({
+  product_id: null,
+  card_code: '',           // 手动输入的卡密（为空则自动分配）
+  // 通用字段
+  name: '', phone: '', remark: '',
+  // 家政/洗衣地址
+  province: '', city: '', district: '', street: '', address: '',
+  visit_date: '', visit_time: '',
+  service_type: '', service_hours: 2,
+  // 洗衣
+  return_same_as_pickup: true,
+  return_name: '', return_phone: '', return_province: '', return_city: '', return_district: '', return_address: '',
+  // 充值
+  topup_account: '', topup_is_expired: -1,
+  // 三角洲
+  sjz_game_nickname: '', sjz_insurance_slots: null, sjz_is_adult: -1, sjz_login_method: '', sjz_region: '',
+})
+
+// 加载对应业务类型的套餐列表
+const 加载手动创建套餐列表 = async (businessType) => {
+  try {
+    const 结果 = await 获取套餐列表API({ business_type: businessType })
+    手动创建套餐列表.value = 结果.data || []
+  } catch {
+    手动创建套餐列表.value = []
+  }
+}
+
+// 套餐选择变化：自动预分配卡密
+const 套餐选择变化 = async (product_id) => {
+  预分配卡密信息.value = null
+  if (!product_id) return
+  // 从套餐列表里找到已选套餐，自动填入服务类型等
+  const 套餐 = 手动创建套餐列表.value.find(p => p.id === product_id)
+  if (套餐) {
+    手动创建表单.value.service_type = 套餐.service_type || ''
+    手动创建表单.value.service_hours = 套餐.service_hours || 2
+  }
+  // 调用预分配接口查询将要使用的卡密
+  try {
+    const 结果 = await 预分配卡密API(product_id, 手动创建业务类型.value)
+    if (结果.code === 1) {
+      预分配卡密信息.value = 结果.data  // { code, stock_unused }
+    } else {
+      预分配卡密信息.value = null
+    }
+  } catch {
+    预分配卡密信息.value = null
+  }
+}
+
+// 打开手动创建弹窗
+const 打开手动创建弹窗 = async (businessType) => {
+  手动创建业务类型.value = businessType
+  重置手动创建表单()
+  显示手动创建弹窗.value = true
+  // 加载对应业务的套餐列表
+  await 加载手动创建套餐列表(businessType)
+}
+
+// 重置手动创建表单
+const 重置手动创建表单 = () => {
+  预分配卡密信息.value = null
+  显示手动输入卡密.value = false
+  手动创建表单.value = {
+    product_id: null, card_code: '',
+    name: '', phone: '', remark: '',
+    province: '', city: '', district: '', street: '', address: '',
+    visit_date: '', visit_time: '', service_type: '', service_hours: 2,
+    return_same_as_pickup: true,
+    return_name: '', return_phone: '', return_province: '', return_city: '', return_district: '', return_address: '',
+    topup_account: '', topup_is_expired: -1,
+    sjz_game_nickname: '', sjz_insurance_slots: null, sjz_is_adult: -1, sjz_login_method: '', sjz_region: '',
+  }
+}
+
+// 提交手动创建订单
+const 提交手动创建订单 = async () => {
+  if (!手动创建表单.value.product_id && !手动创建表单.value.card_code) {
+    ElMessage.warning('请先选择套餐')
+    return
+  }
+  if (手动创建表单.value.product_id && !预分配卡密信息.value && !手动创建表单.value.card_code) {
+    ElMessage.warning('当前套餐无可用卡密，请先生成卡密')
+    return
+  }
+  手动创建中.value = true
+  try {
+    const 提交数据 = {
+      business_type: 手动创建业务类型.value,
+      ...手动创建表单.value,
+    }
+    // 洗衣：若收件地址与取件地址相同，自动复制取件地址到收件地址
+    if (手动创建业务类型.value === 'xiyifu' && 手动创建表单.value.return_same_as_pickup) {
+      提交数据.return_name = 手动创建表单.value.name
+      提交数据.return_phone = 手动创建表单.value.phone
+      提交数据.return_province = 手动创建表单.value.province
+      提交数据.return_city = 手动创建表单.value.city
+      提交数据.return_district = 手动创建表单.value.district
+      提交数据.return_address = 手动创建表单.value.address
+    }
+    const 结果 = await 手动创建订单API(提交数据)
+    if (结果.code === 1) {
+      ElMessage.success(`订单创建成功，订单号：${结果.data.order_no}`)
+      显示手动创建弹窗.value = false
+      // 刷新对应业务的订单列表
+      const 刷新方法 = {
+        jiazheng: 加载家政订单,
+        xiyifu: 加载洗衣订单,
+        topup: 加载充值订单,
+        sjz: 加载三角洲订单,
+      }
+      刷新方法[手动创建业务类型.value]?.()
+    } else {
+      ElMessage.error(结果.message || '创建失败')
+    }
+  } catch {
+    ElMessage.error('网络错误，请稍后重试')
+  } finally {
+    手动创建中.value = false
+  }
 }
 
 // ==================== 初始化 ====================
