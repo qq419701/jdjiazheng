@@ -108,6 +108,10 @@ const Product = 数据库连接.define('Product', {
   sjz_require_phone: { type: DataTypes.TINYINT, defaultValue: 1, comment: '必填手机号' },
   sjz_show_login_method: { type: DataTypes.TINYINT, defaultValue: 0, comment: '要求上号方式' },
   sjz_login_method_options: { type: DataTypes.STRING(100), defaultValue: '扫码', comment: '上号方式选项（逗号分隔）' },
+  sjz_show_region: { type: DataTypes.TINYINT, defaultValue: 0, comment: '要求区/系统' },
+  sjz_region_options: { type: DataTypes.STRING(200), defaultValue: 'VX,QQ', comment: '区/系统选项（逗号分隔，空=自由填写）' },
+  sjz_region_is_input: { type: DataTypes.TINYINT, defaultValue: 0, comment: '区/系统是否为输入框：1=输入框 0=单选按钮' },
+  sjz_field_order: { type: DataTypes.STRING(200), defaultValue: '', comment: '三角洲字段显示顺序（逗号分隔字段key）' },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,

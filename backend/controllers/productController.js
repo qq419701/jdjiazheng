@@ -65,6 +65,7 @@ const 新增商品 = async (req, res) => {
       sjz_hafubi_amount, sjz_show_nickname, sjz_show_insurance, sjz_insurance_options,
       sjz_show_is_adult, sjz_adult_options, sjz_show_warehouse, sjz_require_phone,
       sjz_show_login_method, sjz_login_method_options,
+      sjz_show_region, sjz_region_options, sjz_region_is_input, sjz_field_order,
     } = req.body;
 
     if (!product_name || !business_type) {
@@ -136,6 +137,10 @@ const 新增商品 = async (req, res) => {
       sjz_require_phone: sjz_require_phone !== undefined ? parseInt(sjz_require_phone) : 1,
       sjz_show_login_method: sjz_show_login_method !== undefined ? parseInt(sjz_show_login_method) : 0,
       sjz_login_method_options: sjz_login_method_options || '扫码',
+      sjz_show_region: sjz_show_region !== undefined ? parseInt(sjz_show_region) : 0,
+      sjz_region_options: sjz_region_options || 'VX,QQ',
+      sjz_region_is_input: sjz_region_is_input !== undefined ? parseInt(sjz_region_is_input) : 0,
+      sjz_field_order: sjz_field_order || '',
       created_at: new Date(),
     });
 
@@ -165,6 +170,7 @@ const 更新商品 = async (req, res) => {
       sjz_hafubi_amount, sjz_show_nickname, sjz_show_insurance, sjz_insurance_options,
       sjz_show_is_adult, sjz_adult_options, sjz_show_warehouse, sjz_require_phone,
       sjz_show_login_method, sjz_login_method_options,
+      sjz_show_region, sjz_region_options, sjz_region_is_input, sjz_field_order,
     } = req.body;
 
     const 更新数据 = {};
@@ -195,6 +201,10 @@ const 更新商品 = async (req, res) => {
     if (sjz_require_phone !== undefined) 更新数据.sjz_require_phone = parseInt(sjz_require_phone);
     if (sjz_show_login_method !== undefined) 更新数据.sjz_show_login_method = parseInt(sjz_show_login_method);
     if (sjz_login_method_options !== undefined) 更新数据.sjz_login_method_options = sjz_login_method_options || '扫码';
+    if (sjz_show_region !== undefined) 更新数据.sjz_show_region = parseInt(sjz_show_region);
+    if (sjz_region_options !== undefined) 更新数据.sjz_region_options = sjz_region_options || 'VX,QQ';
+    if (sjz_region_is_input !== undefined) 更新数据.sjz_region_is_input = parseInt(sjz_region_is_input);
+    if (sjz_field_order !== undefined) 更新数据.sjz_field_order = sjz_field_order || '';
 
     await 商品.update(更新数据);
     res.json({ code: 1, message: '套餐更新成功', data: 商品 });

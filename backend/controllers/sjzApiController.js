@@ -137,6 +137,7 @@ const 验证三角洲卡密 = async (req, res) => {
       'sjz_hafubi_amount', 'sjz_show_nickname', 'sjz_show_insurance', 'sjz_insurance_options',
       'sjz_show_is_adult', 'sjz_adult_options', 'sjz_show_warehouse', 'sjz_require_phone',
       'sjz_show_login_method', 'sjz_login_method_options',
+      'sjz_show_region', 'sjz_region_options', 'sjz_region_is_input', 'sjz_field_order',
     ];
     for (const 字段 of sjz字段列表) {
       // 套餐有值则优先用套餐的，否则用卡密的
@@ -163,6 +164,10 @@ const 验证三角洲卡密 = async (req, res) => {
         sjz_require_phone: 配置.sjz_require_phone != null ? 配置.sjz_require_phone : 1,
         sjz_show_login_method: 配置.sjz_show_login_method != null ? 配置.sjz_show_login_method : 0,
         sjz_login_method_options: 配置.sjz_login_method_options || '扫码',
+        sjz_show_region: 配置.sjz_show_region != null ? 配置.sjz_show_region : 0,
+        sjz_region_options: 配置.sjz_region_options || 'VX,QQ',
+        sjz_region_is_input: 配置.sjz_region_is_input != null ? 配置.sjz_region_is_input : 0,
+        sjz_field_order: 配置.sjz_field_order || '',
         // 全局配置
         banner_url: 设置对象.sjz_banner_url || '',
         title: 设置对象.sjz_title || '三角洲哈夫币服务',
@@ -281,6 +286,7 @@ const 提交三角洲订单 = async (req, res) => {
       sjz_is_adult,
       sjz_warehouse_images,  // 数组或JSON字符串
       sjz_login_method,      // 用户选择的上号方式
+      sjz_region,            // 用户选择或填写的区/系统
     } = req.body;
 
     if (!card_code) {
@@ -345,6 +351,7 @@ const 提交三角洲订单 = async (req, res) => {
       sjz_warehouse_images: 仓库截图JSON,
       sjz_hafubi_amount: 卡密.sjz_hafubi_amount || null,
       sjz_login_method: sjz_login_method || null,
+      sjz_region: sjz_region || null,
       login_ip: 纯IP || '',
       ecommerce_order_no: 卡密.ecommerce_order_no || null,
       created_at: new Date(),

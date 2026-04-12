@@ -255,6 +255,40 @@
             </div>
             <div class="字段提示块">💡 用英文逗号分隔，如"扫码,账密"</div>
           </el-form-item>
+          <el-form-item label="要求区/系统">
+            <el-switch v-model="表单数据.sjz_show_region" :active-value="1" :inactive-value="0" />
+            <div class="字段提示块">💡 开启后，H5下单页显示区/系统填写</div>
+          </el-form-item>
+          <template v-if="表单数据.sjz_show_region">
+            <el-form-item label="输入方式">
+              <el-radio-group v-model="表单数据.sjz_region_is_input">
+                <el-radio :value="0">单选按钮</el-radio>
+                <el-radio :value="1">文字输入框</el-radio>
+              </el-radio-group>
+            </el-form-item>
+            <el-form-item v-if="!表单数据.sjz_region_is_input" label="区/系统选项">
+              <el-input v-model="表单数据.sjz_region_options" placeholder="如：VX,QQ,安卓,苹果" style="width:250px" />
+              <div class="快捷选择行">
+                <span class="快捷标签">快捷：</span>
+                <el-button v-for="项 in 区系统快捷" :key="项" size="small" plain @click="表单数据.sjz_region_options = 项">{{ 项 }}</el-button>
+              </div>
+              <div class="字段提示块">💡 用英文逗号分隔</div>
+            </el-form-item>
+          </template>
+          <el-form-item label="字段显示顺序">
+            <div class="字段排序容器">
+              <div v-for="(字段, 索引) in 当前字段排序" :key="字段.key" class="排序行">
+                <span class="排序序号">{{ 索引 + 1 }}</span>
+                <span class="排序字段名">{{ 字段.label }}</span>
+                <el-tag v-if="!字段.启用" size="small" type="info">未启用</el-tag>
+                <div class="排序操作">
+                  <el-button size="small" :disabled="索引 === 0" @click="字段上移(索引)">↑</el-button>
+                  <el-button size="small" :disabled="索引 === 当前字段排序.length - 1" @click="字段下移(索引)">↓</el-button>
+                </div>
+              </div>
+            </div>
+            <div class="字段提示块">💡 调整各字段在H5下单页的显示顺序</div>
+          </el-form-item>
         </template>
 
         <!-- 通用字段 -->
@@ -325,6 +359,62 @@ const 充值到账时间快捷 = ['1小时内', '1-6小时', '24小时内', '即
 const 哈夫币数量快捷 = ['500万', '1000万', '3000万', '1亿', '3亿']
 const 保险格数选项快捷 = ['0,1,2,3,4,5,6', '2,4,6,9', '0,3,6']
 const 上号方式快捷 = ['扫码', '扫码,账密', '扫码,账密,其他']
+const 区系统快捷 = ['VX,QQ', '安卓,苹果', 'VX,QQ,安卓,苹果']
+
+// 所有三角洲字段定义（用于排序UI）
+const 所有字段定义 = [
+  { key: 'nickname', label: '游戏昵称' },
+  { key: 'insurance', label: '保险格数' },
+  { key: 'adult', label: '是否成年' },
+  { key: 'login_method', label: '上号方式' },
+  { key: 'region', label: '区/系统' },
+  { key: 'warehouse', label: '仓库截图' },
+  { key: 'phone', label: '手机号' },
+]
+const 默认字段顺序 = 所有字段定义.map(f => f.key).join(',')
+
+// 当前字段排序（computed from 表单数据.sjz_field_order）
+const 当前字段排序 = computed(() => {
+  const 顺序str = 表单数据.sjz_field_order || 默认字段顺序
+  const 已排序keys = 顺序str.split(',').map(s => s.trim()).filter(s => s)
+  // 补充未在排序中的字段
+  const 已有set = new Set(已排序keys)
+  const 完整keys = [...已排序keys, ...所有字段定义.map(f => f.key).filter(k => !已有set.has(k))]
+  return 完整keys.map(key => {
+    const 定义 = 所有字段定义.find(f => f.key === key)
+    return { key, label: 定义?.label || key, 启用: 字段是否启用(key) }
+  })
+})
+
+const 字段是否启用 = (key) => {
+  if (key === 'nickname') return !!表单数据.sjz_show_nickname
+  if (key === 'insurance') return !!表单数据.sjz_show_insurance
+  if (key === 'adult') return !!表单数据.sjz_show_is_adult
+  if (key === 'login_method') return !!表单数据.sjz_show_login_method
+  if (key === 'region') return !!表单数据.sjz_show_region
+  if (key === 'warehouse') return !!表单数据.sjz_show_warehouse
+  if (key === 'phone') return !!表单数据.sjz_require_phone
+  return false
+}
+
+const 字段上移 = (索引) => {
+  if (索引 === 0) return
+  const keys = 当前字段排序.value.map(f => f.key)
+  const temp = keys[索引 - 1]
+  keys[索引 - 1] = keys[索引]
+  keys[索引] = temp
+  表单数据.sjz_field_order = keys.join(',')
+}
+
+const 字段下移 = (索引) => {
+  const arr = 当前字段排序.value
+  if (索引 === arr.length - 1) return
+  const keys = arr.map(f => f.key)
+  const temp = keys[索引]
+  keys[索引] = keys[索引 + 1]
+  keys[索引 + 1] = temp
+  表单数据.sjz_field_order = keys.join(',')
+}
 
 const 表单数据 = reactive({
   product_name: '',
@@ -353,6 +443,10 @@ const 表单数据 = reactive({
   sjz_require_phone: 1,
   sjz_show_login_method: 0,
   sjz_login_method_options: '扫码',
+  sjz_show_region: 0,
+  sjz_region_options: 'VX,QQ',
+  sjz_region_is_input: 0,
+  sjz_field_order: '',
 })
 
 // 表单验证规则（根据业务类型动态计算）
@@ -448,6 +542,10 @@ const 打开编辑弹窗 = (行) => {
     sjz_require_phone: 行.sjz_require_phone != null ? 行.sjz_require_phone : 1,
     sjz_show_login_method: 行.sjz_show_login_method != null ? 行.sjz_show_login_method : 0,
     sjz_login_method_options: 行.sjz_login_method_options || '扫码',
+    sjz_show_region: 行.sjz_show_region != null ? 行.sjz_show_region : 0,
+    sjz_region_options: 行.sjz_region_options || 'VX,QQ',
+    sjz_region_is_input: 行.sjz_region_is_input != null ? 行.sjz_region_is_input : 0,
+    sjz_field_order: 行.sjz_field_order || '',
   })
   弹窗可见.value = true
 }
@@ -465,6 +563,8 @@ const 重置表单 = () => {
     sjz_show_is_adult: 0, sjz_adult_options: '已成年,未成年',
     sjz_show_warehouse: 0, sjz_require_phone: 1,
     sjz_show_login_method: 0, sjz_login_method_options: '扫码',
+    sjz_show_region: 0, sjz_region_options: 'VX,QQ', sjz_region_is_input: 0,
+    sjz_field_order: '',
   })
   表单引用.value?.clearValidate()
 }
@@ -605,5 +705,38 @@ onMounted(() => {
 .快捷标签 {
   font-size: 12px;
   color: #909399;
+}
+
+.字段排序容器 {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 280px;
+}
+
+.排序行 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f5f7fa;
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+
+.排序序号 {
+  font-size: 12px;
+  color: #909399;
+  min-width: 18px;
+}
+
+.排序字段名 {
+  flex: 1;
+  font-size: 13px;
+  color: #303133;
+}
+
+.排序操作 {
+  display: flex;
+  gap: 4px;
 }
 </style>
