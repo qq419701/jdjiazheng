@@ -43,13 +43,6 @@
       <el-table-column prop="cost_price" label="成本价" width="90">
         <template #default="{ row }">¥{{ row.cost_price || 0 }}</template>
       </el-table-column>
-      <!-- 供货商列（关联的供货商账号） -->
-      <el-table-column label="供货商" width="100">
-        <template #default="{ row }">
-          <span v-if="row.vendor_id">{{ 获取供货商名称(row.vendor_id) }}</span>
-          <span v-else style="color:#ccc">-</span>
-        </template>
-      </el-table-column>
       <el-table-column label="库存（未使用）" width="120">
         <template #default="{ row }">
           <el-tag :type="库存样式(row.stock_unused)">{{ row.stock_unused ?? '-' }}</el-tag>
@@ -303,19 +296,6 @@
           <el-input-number v-model="表单数据.cost_price" :min="0" :precision="2" :step="1" />
           <div class="字段提示块">⚠️ 使用SUP系统必须设置成本价（不能为0），否则奇所平台验收不通过。建议按实际采购成本填写，如无特殊要求可填1。</div>
         </el-form-item>
-        <!-- 关联供货商（可选，选择后供货商账号可见该套餐订单） -->
-        <el-form-item label="关联供货商">
-          <el-select v-model="表单数据.vendor_id" placeholder="无（默认）" clearable style="width:220px">
-            <el-option :value="null" label="无（默认）" />
-            <el-option
-              v-for="供货商 in 供货商列表"
-              :key="供货商.id"
-              :value="供货商.id"
-              :label="供货商.nickname || 供货商.username"
-            />
-          </el-select>
-          <div class="字段提示块">💡 选择后，该供货商账号登录后可看到使用该套餐的订单</div>
-        </el-form-item>
         <el-form-item label="备注">
           <el-input v-model="表单数据.remark" type="textarea" :rows="2" placeholder="内部备注（可选）" style="width:300px" />
         </el-form-item>
@@ -351,27 +331,10 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { 获取套餐列表API, 新增套餐API, 更新套餐API, 删除套餐API, 获取供货商列表API } from '../api/index'
+import { 获取套餐列表API, 新增套餐API, 更新套餐API, 删除套餐API } from '../api/index'
 import { useModuleStore } from '../stores/module'
 
 const moduleStore = useModuleStore()
-
-// ===== 供货商列表（用于套餐关联供货商下拉选择）=====
-const 供货商列表 = ref([])
-// 加载供货商列表
-const 加载供货商列表 = async () => {
-  try {
-    const 结果 = await 获取供货商列表API()
-    if (结果?.data?.code === 1) {
-      供货商列表.value = 结果.data.data || []
-    }
-  } catch {}
-}
-// 根据 vendor_id 获取供货商显示名称
-const 获取供货商名称 = (vendorId) => {
-  const 供货商 = 供货商列表.value.find(v => v.id === vendorId)
-  return 供货商 ? (供货商.nickname || 供货商.username) : '-'
-}
 
 // ===== 状态 =====
 const 当前业务类型 = ref('jiazheng')
@@ -460,7 +423,6 @@ const 表单数据 = reactive({
   cost_price: 1,
   status: 1,
   remark: '',
-  vendor_id: null,   // 关联供货商（null=无供货商）
   topup_account_type: '',
   topup_account_label: '',
   topup_member_name: '',
@@ -584,8 +546,6 @@ const 打开编辑弹窗 = (行) => {
     sjz_region_options: 行.sjz_region_options || 'VX,QQ',
     sjz_region_is_input: 行.sjz_region_is_input != null ? 行.sjz_region_is_input : 0,
     sjz_field_order: 行.sjz_field_order || '',
-    // 供货商关联
-    vendor_id: 行.vendor_id || null,
   })
   弹窗可见.value = true
 }
@@ -605,8 +565,6 @@ const 重置表单 = () => {
     sjz_show_login_method: 0, sjz_login_method_options: '扫码',
     sjz_show_region: 0, sjz_region_options: 'VX,QQ', sjz_region_is_input: 0,
     sjz_field_order: '',
-    // 供货商关联
-    vendor_id: null,
   })
   表单引用.value?.clearValidate()
 }
@@ -692,7 +650,6 @@ watch(() => moduleStore.已加载, (loaded) => {
 
 onMounted(() => {
   加载套餐列表()
-  加载供货商列表()  // 加载供货商列表用于关联选择
 })
 </script>
 

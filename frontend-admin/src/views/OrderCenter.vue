@@ -50,6 +50,28 @@
       </div>
     </el-card>
 
+    <!-- 供货商专属：订单导出工具栏 -->
+    <el-card v-if="authStore.是供货商" style="margin-bottom: 12px">
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap">
+        <!-- 导出CSV下拉（仅导出供货商可见业务的订单） -->
+        <el-dropdown @command="导出订单">
+          <el-button type="success" :loading="导出中">📊 导出CSV <el-icon><ArrowDown /></el-icon></el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item
+                v-for="业务 in 供货商可见业务类型列表"
+                :key="业务"
+                :command="业务"
+              >
+                {{ { jiazheng: '导出家政订单', xiyifu: '导出洗衣订单', topup: '导出充值订单', sjz: '导出三角洲订单' }[业务] || `导出${业务}订单` }}
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
+        <span style="font-size:12px;color:#909399">仅导出您授权批次内的订单数据</span>
+      </div>
+    </el-card>
+
     <!-- 共用：卡密作废弹窗 -->
     <el-dialog
       v-model="显示卡密作废弹窗"
