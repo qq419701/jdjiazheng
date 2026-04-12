@@ -284,6 +284,7 @@ const Order = 数据库连接.define('Order', {
   sjz_warehouse_images: { type: DataTypes.TEXT, allowNull: true, comment: '仓库截图URL JSON数组' },
   sjz_hafubi_amount: { type: DataTypes.STRING(50), allowNull: true, comment: '哈夫币数量（文本）' },
   sjz_login_method: { type: DataTypes.STRING(50), allowNull: true, comment: '用户选择的上号方式' },
+  sjz_region: { type: DataTypes.STRING(100), allowNull: true, comment: '区/系统（客户填写或选择）' },
   // ===== 企业微信字段 =====
   qywx_config_id: { type: DataTypes.STRING(100), allowNull: true, comment: '企业微信联系我config_id' },
   qywx_qrcode_url: { type: DataTypes.TEXT, allowNull: true, comment: '专属二维码URL' },

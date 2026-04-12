@@ -279,6 +279,57 @@ const 执行字段迁移 = async () => {
   } catch (e) {
     console.log('ℹ️ orders.sjz_login_method 迁移跳过:', e.message);
   }
+
+  // 迁移：products/cards/card_batches 新增 sjz_show_region
+  for (const 表名 of ['products', 'cards', 'card_batches']) {
+    try {
+      const [r] = await 数据库连接.query(`SHOW COLUMNS FROM \`${表名}\` LIKE 'sjz_show_region'`);
+      if (r.length === 0) {
+        await 数据库连接.query(`ALTER TABLE \`${表名}\` ADD COLUMN \`sjz_show_region\` TINYINT DEFAULT 0 COMMENT '要求区/系统'`);
+        console.log(`✅ ${表名} 新增 sjz_show_region 字段`);
+      }
+    } catch (e) { console.log(`ℹ️ ${表名}.sjz_show_region 迁移跳过:`, e.message); }
+  }
+  // 迁移：products/cards/card_batches 新增 sjz_region_options
+  for (const 表名 of ['products', 'cards', 'card_batches']) {
+    try {
+      const [r] = await 数据库连接.query(`SHOW COLUMNS FROM \`${表名}\` LIKE 'sjz_region_options'`);
+      if (r.length === 0) {
+        await 数据库连接.query(`ALTER TABLE \`${表名}\` ADD COLUMN \`sjz_region_options\` VARCHAR(200) DEFAULT 'VX,QQ' COMMENT '区/系统选项（逗号分隔）'`);
+        console.log(`✅ ${表名} 新增 sjz_region_options 字段`);
+      }
+    } catch (e) { console.log(`ℹ️ ${表名}.sjz_region_options 迁移跳过:`, e.message); }
+  }
+  // 迁移：products/cards/card_batches 新增 sjz_region_is_input
+  for (const 表名 of ['products', 'cards', 'card_batches']) {
+    try {
+      const [r] = await 数据库连接.query(`SHOW COLUMNS FROM \`${表名}\` LIKE 'sjz_region_is_input'`);
+      if (r.length === 0) {
+        await 数据库连接.query(`ALTER TABLE \`${表名}\` ADD COLUMN \`sjz_region_is_input\` TINYINT DEFAULT 0 COMMENT '区/系统是否为输入框'`);
+        console.log(`✅ ${表名} 新增 sjz_region_is_input 字段`);
+      }
+    } catch (e) { console.log(`ℹ️ ${表名}.sjz_region_is_input 迁移跳过:`, e.message); }
+  }
+  // 迁移：products/cards/card_batches 新增 sjz_field_order
+  for (const 表名 of ['products', 'cards', 'card_batches']) {
+    try {
+      const [r] = await 数据库连接.query(`SHOW COLUMNS FROM \`${表名}\` LIKE 'sjz_field_order'`);
+      if (r.length === 0) {
+        await 数据库连接.query(`ALTER TABLE \`${表名}\` ADD COLUMN \`sjz_field_order\` VARCHAR(200) DEFAULT '' COMMENT '三角洲字段显示顺序（逗号分隔字段key）'`);
+        console.log(`✅ ${表名} 新增 sjz_field_order 字段`);
+      }
+    } catch (e) { console.log(`ℹ️ ${表名}.sjz_field_order 迁移跳过:`, e.message); }
+  }
+  // 迁移：orders 新增 sjz_region
+  try {
+    const [r] = await 数据库连接.query("SHOW COLUMNS FROM `orders` LIKE 'sjz_region'");
+    if (r.length === 0) {
+      await 数据库连接.query("ALTER TABLE `orders` ADD COLUMN `sjz_region` VARCHAR(100) NULL COMMENT '区/系统（客户填写或选择）'");
+      console.log('✅ orders 新增 sjz_region 字段');
+    }
+  } catch (e) {
+    console.log('ℹ️ orders.sjz_region 迁移跳过:', e.message);
+  }
 };
 
 /**

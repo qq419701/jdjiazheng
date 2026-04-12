@@ -1009,6 +1009,10 @@ router.post('/card-templates/generate', 验证Token, async (req, res) => {
       sjz_require_phone: 套餐.sjz_require_phone != null ? 套餐.sjz_require_phone : 1,
       sjz_show_login_method: 套餐.sjz_show_login_method != null ? 套餐.sjz_show_login_method : 0,
       sjz_login_method_options: 套餐.sjz_login_method_options || '扫码',
+      sjz_show_region: 套餐.sjz_show_region != null ? 套餐.sjz_show_region : 0,
+      sjz_region_options: 套餐.sjz_region_options || 'VX,QQ',
+      sjz_region_is_input: 套餐.sjz_region_is_input != null ? 套餐.sjz_region_is_input : 0,
+      sjz_field_order: 套餐.sjz_field_order || '',
     });
 
     // 生成卡密（去重，按业务类型加前缀 JZ/XY/CZ/SJZ）
@@ -1058,6 +1062,10 @@ router.post('/card-templates/generate', 验证Token, async (req, res) => {
           sjz_require_phone: 套餐.sjz_require_phone != null ? 套餐.sjz_require_phone : 1,
           sjz_show_login_method: 套餐.sjz_show_login_method != null ? 套餐.sjz_show_login_method : 0,
           sjz_login_method_options: 套餐.sjz_login_method_options || '扫码',
+          sjz_show_region: 套餐.sjz_show_region != null ? 套餐.sjz_show_region : 0,
+          sjz_region_options: 套餐.sjz_region_options || 'VX,QQ',
+          sjz_region_is_input: 套餐.sjz_region_is_input != null ? 套餐.sjz_region_is_input : 0,
+          sjz_field_order: 套餐.sjz_field_order || '',
         });
         n++;
       }
@@ -1379,6 +1387,10 @@ router.post('/sjz-cards/generate', 验证Token, async (req, res) => {
       sjz_require_phone = 1,
       sjz_show_login_method = 0,
       sjz_login_method_options = '扫码',
+      sjz_show_region = 0,
+      sjz_region_options = 'VX,QQ',
+      sjz_region_is_input = 0,
+      sjz_field_order = '',
     } = req.body;
     const { CardBatch, Card: CardModel } = require('../models');
     const { 生成卡密: 生成卡密码 } = require('../utils/helpers');
@@ -1406,6 +1418,10 @@ router.post('/sjz-cards/generate', 验证Token, async (req, res) => {
       sjz_require_phone,
       sjz_show_login_method,
       sjz_login_method_options,
+      sjz_show_region,
+      sjz_region_options,
+      sjz_region_is_input,
+      sjz_field_order,
     });
 
     const 现有卡密 = await CardModel.findAll({ attributes: ['code'] });
@@ -1440,6 +1456,10 @@ router.post('/sjz-cards/generate', 验证Token, async (req, res) => {
           sjz_require_phone,
           sjz_show_login_method,
           sjz_login_method_options,
+          sjz_show_region,
+          sjz_region_options,
+          sjz_region_is_input,
+          sjz_field_order,
         });
         n++;
       }

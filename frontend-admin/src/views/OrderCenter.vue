@@ -542,6 +542,12 @@
                 <span v-else style="color:#bbb;font-size:12px">-</span>
               </template>
             </el-table-column>
+            <el-table-column label="上号方式" width="100" show-overflow-tooltip>
+              <template #default="{ row }">{{ row.sjz_login_method || '-' }}</template>
+            </el-table-column>
+            <el-table-column label="区/系统" width="100" show-overflow-tooltip>
+              <template #default="{ row }">{{ row.sjz_region || '-' }}</template>
+            </el-table-column>
             <el-table-column label="电商订单号" width="160" show-overflow-tooltip>
               <template #default="{ row }">
                 <span v-if="row.ecommerce_order_no" style="color:#409eff;font-size:12px;font-weight:500">{{ row.ecommerce_order_no }}</span>
@@ -881,6 +887,9 @@
           <el-descriptions-item v-if="三角洲详情数据.sjz_game_nickname" label="游戏昵称">{{ 三角洲详情数据.sjz_game_nickname }}</el-descriptions-item>
           <el-descriptions-item v-if="三角洲详情数据.sjz_insurance_slots !== null && 三角洲详情数据.sjz_insurance_slots !== undefined" label="保险格数">{{ 三角洲详情数据.sjz_insurance_slots }}格</el-descriptions-item>
           <el-descriptions-item label="是否成年">{{ 三角洲详情数据.sjz_is_adult === 1 ? '已成年' : 三角洲详情数据.sjz_is_adult === 0 ? '未成年' : '未填写' }}</el-descriptions-item>
+          <el-descriptions-item v-if="三角洲详情数据.sjz_login_method" label="上号方式">{{ 三角洲详情数据.sjz_login_method }}</el-descriptions-item>
+          <el-descriptions-item v-if="三角洲详情数据.sjz_region" label="区/系统">{{ 三角洲详情数据.sjz_region }}</el-descriptions-item>
+          <el-descriptions-item v-if="三角洲详情数据.ecommerce_order_no" label="电商订单号">{{ 三角洲详情数据.ecommerce_order_no }}</el-descriptions-item>
           <el-descriptions-item v-if="三角洲详情数据.sjz_warehouse_images" label="仓库截图" :span="2">
             <div style="display:flex;flex-wrap:wrap;gap:8px">
               <el-image

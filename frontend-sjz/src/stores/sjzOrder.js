@@ -18,6 +18,10 @@ export const useSjzOrderStore = defineStore('sjzOrder', {
     需要仓库截图: false,
     需要上号方式: false,
     上号方式选项: ['扫码'],
+    需要区系统: false,
+    区系统选项: ['VX', 'QQ'],
+    区系统是输入框: false,
+    字段顺序: [],
 
     // 全局配置
     banner图URL: '',
@@ -93,6 +97,13 @@ export const useSjzOrderStore = defineStore('sjzOrder', {
       // 解析上号方式选项
       const 上号原始 = 信息.sjz_login_method_options || '扫码'
       this.上号方式选项 = 上号原始.split(',').map(s => s.trim()).filter(s => s)
+      this.需要区系统 = !!信息.sjz_show_region
+      const 区系统原始 = 信息.sjz_region_options || 'VX,QQ'
+      this.区系统选项 = 区系统原始.split(',').map(s => s.trim()).filter(s => s)
+      this.区系统是输入框 = !!信息.sjz_region_is_input
+      this.字段顺序 = 信息.sjz_field_order
+        ? 信息.sjz_field_order.split(',').map(s => s.trim()).filter(s => s)
+        : ['nickname', 'insurance', 'adult', 'login_method', 'region', 'warehouse', 'phone']
       this.banner图URL = 信息.banner_url || ''
       this.主标题 = 信息.title || '三角洲哈夫币服务'
       this.副标题 = 信息.subtitle || '追缴包赔 · 手游端游均可 · 安全有保障'

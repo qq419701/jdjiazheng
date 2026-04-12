@@ -62,91 +62,115 @@
           <span>⚡ 填写完成后立即为您安排 · 名额有限</span>
         </div>
 
-        <!-- 游戏昵称 -->
-        <div v-if="store.需要游戏昵称" class="表单卡片" :class="{ '已填': 游戏昵称输入.trim() }">
-          <div class="字段标题">🎮 游戏昵称 <span class="选填标记">（选填）</span></div>
-          <input
-            v-model="游戏昵称输入"
-            type="text"
-            placeholder="如：超神、战神"
-            class="输入框"
-          />
-        </div>
+        <!-- 动态排序字段渲染 -->
+        <template v-for="字段key in store.字段顺序" :key="字段key">
 
-        <!-- 几格保险 -->
-        <div v-if="store.需要保险格数" class="表单卡片" :class="{ '已填': 保险格数选择 !== null }">
-          <div class="字段标题">🛡️ 保险格数 <span class="必填标记">*</span></div>
-          <div class="选项按钮组">
-            <button
-              v-for="格数 in store.保险格选项"
-              :key="格数"
-              class="选项按钮"
-              :class="{ '已选': 保险格数选择 === 格数 }"
-              @click="保险格数选择 = 格数"
-            >{{ 格数 }}格</button>
+          <!-- 游戏昵称 -->
+          <div v-if="字段key === 'nickname' && store.需要游戏昵称" class="表单卡片" :class="{ '已填': 游戏昵称输入.trim() }">
+            <div class="字段标题">🎮 游戏昵称 <span class="选填标记">（角色名字）</span></div>
+            <input
+              v-model="游戏昵称输入"
+              type="text"
+              placeholder="如：超神、战神"
+              class="输入框"
+            />
           </div>
-        </div>
 
-        <!-- 是否成年 -->
-        <div v-if="store.需要成年认证" class="表单卡片" :class="{ '已填': 成年选择 !== -1 }">
-          <div class="字段标题">🔞 是否成年 <span class="必填标记">*</span></div>
-          <div class="选项按钮组">
-            <button
-              v-for="(选项, 索引) in store.成年选项"
-              :key="索引"
-              class="选项按钮"
-              :class="{ '已选': 成年选择 === 索引 }"
-              @click="成年选择 = 索引"
-            >{{ 选项 }}</button>
-          </div>
-        </div>
-
-        <!-- 上号方式 -->
-        <div v-if="store.需要上号方式" class="表单卡片" :class="{ '已填': 上号方式选择 !== null }">
-          <div class="字段标题">📱 上号方式 <span class="必填标记">*</span></div>
-          <div class="选项按钮组">
-            <button
-              v-for="(方式, 索引) in store.上号方式选项"
-              :key="索引"
-              class="选项按钮"
-              :class="{ '已选': 上号方式选择 === 方式 }"
-              @click="上号方式选择 = 方式"
-            >{{ 方式 }}</button>
-          </div>
-        </div>
-
-        <!-- 仓库截图 -->
-        <div v-if="store.需要仓库截图" class="表单卡片" :class="{ '已填': 截图预览列表.length > 0 }">
-          <div class="字段标题">📦 仓库截图 <span class="选填标记">（最多3张）</span></div>
-          <div class="截图区域">
-            <div v-for="(预览, 索引) in 截图预览列表" :key="索引" class="截图预览项">
-              <img :src="预览" class="截图缩略图" alt="仓库截图" />
-              <button class="删除截图按钮" @click="删除截图(索引)">✕</button>
+          <!-- 几格保险 -->
+          <div v-if="字段key === 'insurance' && store.需要保险格数" class="表单卡片" :class="{ '已填': 保险格数选择 !== null }">
+            <div class="字段标题">🛡️ 保险格数 <span class="必填标记">*</span></div>
+            <div class="选项按钮组">
+              <button
+                v-for="格数 in store.保险格选项"
+                :key="格数"
+                class="选项按钮"
+                :class="{ '已选': 保险格数选择 === 格数 }"
+                @click="保险格数选择 = 格数"
+              >{{ 格数 }}格</button>
             </div>
-            <label v-if="截图预览列表.length < 3" class="截图添加按钮">
-              <input type="file" accept="image/*" multiple @change="选择截图" style="display:none" />
-              <span class="添加图标">+</span>
-              <span class="添加文字">添加截图</span>
-            </label>
           </div>
-          <div v-if="截图上传中" class="截图提示">上传中...</div>
-        </div>
 
-        <!-- 手机号（放最后） -->
-        <div v-if="store.需要手机号" class="表单卡片" :class="{ '已填': 手机号验证通过, '有错': 手机号错误提示 }">
-          <div class="字段标题">📱 手机号 <span class="必填标记">*</span></div>
-          <input
-            v-model="手机号输入"
-            type="tel"
-            inputmode="numeric"
-            placeholder="请输入手机号"
-            class="输入框"
-            :class="{ '输入错误': 手机号错误提示, '输入正确': 手机号验证通过 }"
-            @blur="触发手机号验证"
-            @input="重置手机号状态"
-          />
-          <div v-if="手机号错误提示" class="错误提示">{{ 手机号错误提示 }}</div>
-        </div>
+          <!-- 是否成年 -->
+          <div v-if="字段key === 'adult' && store.需要成年认证" class="表单卡片" :class="{ '已填': 成年选择 !== -1 }">
+            <div class="字段标题">🔞 是否成年 <span class="必填标记">*</span></div>
+            <div class="选项按钮组">
+              <button
+                v-for="(选项, 索引) in store.成年选项"
+                :key="索引"
+                class="选项按钮"
+                :class="{ '已选': 成年选择 === (索引 === 0 ? 1 : 0) }"
+                @click="成年选择 = (索引 === 0 ? 1 : 0)"
+              >{{ 选项 }}</button>
+            </div>
+          </div>
+
+          <!-- 上号方式 -->
+          <div v-if="字段key === 'login_method' && store.需要上号方式" class="表单卡片" :class="{ '已填': 上号方式选择 !== null }">
+            <div class="字段标题">📱 上号方式 <span class="必填标记">*</span></div>
+            <div class="选项按钮组">
+              <button
+                v-for="(方式, 索引) in store.上号方式选项"
+                :key="索引"
+                class="选项按钮"
+                :class="{ '已选': 上号方式选择 === 方式 }"
+                @click="上号方式选择 = 方式"
+              >{{ 方式 }}</button>
+            </div>
+          </div>
+
+          <!-- 区/系统 -->
+          <div v-if="字段key === 'region' && store.需要区系统" class="表单卡片" :class="{ '已填': store.区系统是输入框 ? 区系统输入.trim() : 区系统选择 !== null }">
+            <div class="字段标题">🌐 区/系统 <span class="必填标记">*</span></div>
+            <template v-if="store.区系统是输入框">
+              <input v-model="区系统输入" type="text" placeholder="请输入区/系统" class="输入框" />
+            </template>
+            <template v-else>
+              <div class="选项按钮组">
+                <button
+                  v-for="(选项, 索引) in store.区系统选项"
+                  :key="索引"
+                  class="选项按钮"
+                  :class="{ '已选': 区系统选择 === 选项 }"
+                  @click="区系统选择 = 选项"
+                >{{ 选项 }}</button>
+              </div>
+            </template>
+          </div>
+
+          <!-- 仓库截图 -->
+          <div v-if="字段key === 'warehouse' && store.需要仓库截图" class="表单卡片" :class="{ '已填': 截图预览列表.length > 0 }">
+            <div class="字段标题">📦 仓库截图 <span class="选填标记">（最多3张）</span></div>
+            <div class="截图区域">
+              <div v-for="(预览, 索引) in 截图预览列表" :key="索引" class="截图预览项">
+                <img :src="预览" class="截图缩略图" alt="仓库截图" />
+                <button class="删除截图按钮" @click="删除截图(索引)">✕</button>
+              </div>
+              <label v-if="截图预览列表.length < 3" class="截图添加按钮">
+                <input type="file" accept="image/*" multiple @change="选择截图" style="display:none" />
+                <span class="添加图标">+</span>
+                <span class="添加文字">添加截图</span>
+              </label>
+            </div>
+            <div v-if="截图上传中" class="截图提示">上传中...</div>
+          </div>
+
+          <!-- 手机号 -->
+          <div v-if="字段key === 'phone' && store.需要手机号" class="表单卡片" :class="{ '已填': 手机号验证通过, '有错': 手机号错误提示 }">
+            <div class="字段标题">📱 手机号 <span class="必填标记">*</span></div>
+            <input
+              v-model="手机号输入"
+              type="tel"
+              inputmode="numeric"
+              placeholder="请输入手机号"
+              class="输入框"
+              :class="{ '输入错误': 手机号错误提示, '输入正确': 手机号验证通过 }"
+              @blur="触发手机号验证"
+              @input="重置手机号状态"
+            />
+            <div v-if="手机号错误提示" class="错误提示">{{ 手机号错误提示 }}</div>
+          </div>
+
+        </template>
 
         <!-- 服务内容宫格 -->
         <div v-if="store.服务内容列表.length > 0" class="表单卡片">
@@ -225,6 +249,8 @@ const 游戏昵称输入 = ref('')
 const 保险格数选择 = ref(null)
 const 成年选择 = ref(-1)
 const 上号方式选择 = ref(null)
+const 区系统选择 = ref(null)
+const 区系统输入 = ref('')
 const 截图文件列表 = ref([])
 const 截图预览列表 = ref([])
 const 截图URLs = ref([])
@@ -354,6 +380,10 @@ const 执行提交 = async () => {
     // 若需要上号方式，附加字段
     if (store.需要上号方式 && 上号方式选择.value) {
       请求数据.sjz_login_method = 上号方式选择.value
+    }
+    // 若需要区/系统，附加字段
+    if (store.需要区系统) {
+      请求数据.sjz_region = (store.区系统是输入框 ? 区系统输入.value : 区系统选择.value) || null
     }
 
     const 响应 = await 提交三角洲订单API(请求数据)
