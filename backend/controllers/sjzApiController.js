@@ -1,7 +1,7 @@
 // 三角洲哈夫币H5前端接口控制器
 // 提供给 frontend-sjz（三角洲H5）调用的公开接口
 const axios = require('axios');
-const { Card, Order, Setting } = require('../models');
+const { Card, Order, Setting, Product, CardBatch } = require('../models');
 const { 验证卡密有效性 } = require('../services/cardService');
 const { 安全解析JSON } = require('../utils/helpers');
 const qywxService = require('../services/qywxService');
@@ -116,22 +116,53 @@ const 验证三角洲卡密 = async (req, res) => {
 
     const 卡密 = 结果.卡密;
 
+    // 查找关联套餐，用套餐字段覆盖卡密字段（保证套餐编辑后立即生效）
+    let 套餐 = null;
+    try {
+      if (卡密.product_id) {
+        套餐 = await Product.findByPk(卡密.product_id);
+      } else if (卡密.batch_id) {
+        const 批次 = await CardBatch.findOne({ where: { id: 卡密.batch_id } });
+        if (批次 && 批次.product_id) {
+          套餐 = await Product.findByPk(批次.product_id);
+        }
+      }
+    } catch (e) {
+      console.warn('[三角洲] 查找关联套餐失败（不影响主流程）:', e.message);
+    }
+
+    // 套餐字段优先覆盖卡密字段
+    const 配置 = {};
+    const sjz字段列表 = [
+      'sjz_hafubi_amount', 'sjz_show_nickname', 'sjz_show_insurance', 'sjz_insurance_options',
+      'sjz_show_is_adult', 'sjz_adult_options', 'sjz_show_warehouse', 'sjz_require_phone',
+      'sjz_show_login_method', 'sjz_login_method_options',
+    ];
+    for (const 字段 of sjz字段列表) {
+      // 套餐有值则优先用套餐的，否则用卡密的
+      if (套餐 && 套餐[字段] !== null && 套餐[字段] !== undefined) {
+        配置[字段] = 套餐[字段];
+      } else {
+        配置[字段] = 卡密[字段];
+      }
+    }
+
     return res.json({
       code: 1,
       message: '卡密有效',
       data: {
         card_code: 卡密.code,
-        // 套餐配置
-        sjz_hafubi_amount: 卡密.sjz_hafubi_amount || null,
-        sjz_show_nickname: 卡密.sjz_show_nickname != null ? 卡密.sjz_show_nickname : 1,
-        sjz_show_insurance: 卡密.sjz_show_insurance != null ? 卡密.sjz_show_insurance : 1,
-        sjz_insurance_options: 卡密.sjz_insurance_options || '0,1,2,3,4,5,6',
-        sjz_show_is_adult: 卡密.sjz_show_is_adult != null ? 卡密.sjz_show_is_adult : 0,
-        sjz_adult_options: 卡密.sjz_adult_options || '已成年,未成年',
-        sjz_show_warehouse: 卡密.sjz_show_warehouse != null ? 卡密.sjz_show_warehouse : 0,
-        sjz_require_phone: 卡密.sjz_require_phone != null ? 卡密.sjz_require_phone : 1,
-        sjz_show_login_method: 卡密.sjz_show_login_method != null ? 卡密.sjz_show_login_method : 0,
-        sjz_login_method_options: 卡密.sjz_login_method_options || '扫码',
+        // 套餐配置（套餐字段优先，回退到卡密字段）
+        sjz_hafubi_amount: 配置.sjz_hafubi_amount || null,
+        sjz_show_nickname: 配置.sjz_show_nickname != null ? 配置.sjz_show_nickname : 1,
+        sjz_show_insurance: 配置.sjz_show_insurance != null ? 配置.sjz_show_insurance : 1,
+        sjz_insurance_options: 配置.sjz_insurance_options || '0,1,2,3,4,5,6',
+        sjz_show_is_adult: 配置.sjz_show_is_adult != null ? 配置.sjz_show_is_adult : 0,
+        sjz_adult_options: 配置.sjz_adult_options || '已成年,未成年',
+        sjz_show_warehouse: 配置.sjz_show_warehouse != null ? 配置.sjz_show_warehouse : 0,
+        sjz_require_phone: 配置.sjz_require_phone != null ? 配置.sjz_require_phone : 1,
+        sjz_show_login_method: 配置.sjz_show_login_method != null ? 配置.sjz_show_login_method : 0,
+        sjz_login_method_options: 配置.sjz_login_method_options || '扫码',
         // 全局配置
         banner_url: 设置对象.sjz_banner_url || '',
         title: 设置对象.sjz_title || '三角洲哈夫币服务',

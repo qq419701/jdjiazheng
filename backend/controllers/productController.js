@@ -61,6 +61,10 @@ const 新增商品 = async (req, res) => {
       topup_account_type, topup_account_label, topup_member_name,
       topup_member_icon, topup_arrival_time, topup_show_expired,
       topup_steps, topup_account_regex, topup_account_error_msg,
+      // 三角洲专用字段
+      sjz_hafubi_amount, sjz_show_nickname, sjz_show_insurance, sjz_insurance_options,
+      sjz_show_is_adult, sjz_adult_options, sjz_show_warehouse, sjz_require_phone,
+      sjz_show_login_method, sjz_login_method_options,
     } = req.body;
 
     if (!product_name || !business_type) {
@@ -121,6 +125,17 @@ const 新增商品 = async (req, res) => {
       topup_steps: topup_steps || null,
       topup_account_regex: topup_account_regex || null,
       topup_account_error_msg: topup_account_error_msg || null,
+      // 三角洲专用字段
+      sjz_hafubi_amount: sjz_hafubi_amount || null,
+      sjz_show_nickname: sjz_show_nickname !== undefined ? parseInt(sjz_show_nickname) : 1,
+      sjz_show_insurance: sjz_show_insurance !== undefined ? parseInt(sjz_show_insurance) : 1,
+      sjz_insurance_options: sjz_insurance_options || '0,1,2,3,4,5,6',
+      sjz_show_is_adult: sjz_show_is_adult !== undefined ? parseInt(sjz_show_is_adult) : 0,
+      sjz_adult_options: sjz_adult_options || '已成年,未成年',
+      sjz_show_warehouse: sjz_show_warehouse !== undefined ? parseInt(sjz_show_warehouse) : 0,
+      sjz_require_phone: sjz_require_phone !== undefined ? parseInt(sjz_require_phone) : 1,
+      sjz_show_login_method: sjz_show_login_method !== undefined ? parseInt(sjz_show_login_method) : 0,
+      sjz_login_method_options: sjz_login_method_options || '扫码',
       created_at: new Date(),
     });
 
@@ -146,6 +161,10 @@ const 更新商品 = async (req, res) => {
       topup_account_type, topup_account_label, topup_member_name,
       topup_member_icon, topup_arrival_time, topup_show_expired,
       topup_steps, topup_account_regex, topup_account_error_msg,
+      // 三角洲专用字段
+      sjz_hafubi_amount, sjz_show_nickname, sjz_show_insurance, sjz_insurance_options,
+      sjz_show_is_adult, sjz_adult_options, sjz_show_warehouse, sjz_require_phone,
+      sjz_show_login_method, sjz_login_method_options,
     } = req.body;
 
     const 更新数据 = {};
@@ -165,6 +184,17 @@ const 更新商品 = async (req, res) => {
     if (topup_steps !== undefined) 更新数据.topup_steps = topup_steps || null;
     if (topup_account_regex !== undefined) 更新数据.topup_account_regex = topup_account_regex || null;
     if (topup_account_error_msg !== undefined) 更新数据.topup_account_error_msg = topup_account_error_msg || null;
+    // 三角洲专用字段
+    if (sjz_hafubi_amount !== undefined) 更新数据.sjz_hafubi_amount = sjz_hafubi_amount || null;
+    if (sjz_show_nickname !== undefined) 更新数据.sjz_show_nickname = parseInt(sjz_show_nickname);
+    if (sjz_show_insurance !== undefined) 更新数据.sjz_show_insurance = parseInt(sjz_show_insurance);
+    if (sjz_insurance_options !== undefined) 更新数据.sjz_insurance_options = sjz_insurance_options || '0,1,2,3,4,5,6';
+    if (sjz_show_is_adult !== undefined) 更新数据.sjz_show_is_adult = parseInt(sjz_show_is_adult);
+    if (sjz_adult_options !== undefined) 更新数据.sjz_adult_options = sjz_adult_options || '已成年,未成年';
+    if (sjz_show_warehouse !== undefined) 更新数据.sjz_show_warehouse = parseInt(sjz_show_warehouse);
+    if (sjz_require_phone !== undefined) 更新数据.sjz_require_phone = parseInt(sjz_require_phone);
+    if (sjz_show_login_method !== undefined) 更新数据.sjz_show_login_method = parseInt(sjz_show_login_method);
+    if (sjz_login_method_options !== undefined) 更新数据.sjz_login_method_options = sjz_login_method_options || '扫码';
 
     await 商品.update(更新数据);
     res.json({ code: 1, message: '套餐更新成功', data: 商品 });
