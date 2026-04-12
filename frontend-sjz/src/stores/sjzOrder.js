@@ -79,7 +79,11 @@ export const useSjzOrderStore = defineStore('sjzOrder', {
       this.需要保险格数 = !!信息.sjz_show_insurance
       // 解析保险格选项
       const 保险格原始 = 信息.sjz_insurance_options || '0,1,2,3,4,5,6'
-      this.保险格选项 = 保险格原始.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n))
+      this.保险格选项 = [...new Set(
+        保险格原始.split(',')
+          .map(s => parseInt(s.trim()))
+          .filter(n => !isNaN(n) && n >= 0 && n <= 99)
+      )]
       this.需要成年认证 = !!信息.sjz_show_is_adult
       // 解析成年选项
       const 成年原始 = 信息.sjz_adult_options || '已成年,未成年'
