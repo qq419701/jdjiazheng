@@ -1340,12 +1340,14 @@ const 撤销订单 = async (req, res) => {
     // ===== 同步撤单模式：直接执行并返回最终结果（20/30）=====
     const 结果 = await 执行撤单逻辑(卡密记录, orderNo, 拒绝凭证URL);
 
-    const 响应数据 = { orderNo };
-    响应数据.cancelStatus = 结果.cancelStatus;
-    if (结果.cancelStatus === 30) {
-      响应数据.refuseReason = 结果.refuseReason;
-      响应数据.refuseProof = 结果.refuseProof;
-    }
+    // 官方文档：data.refuseProof 必须返回（必须返回=是）
+    // cancelStatus=20（撤单成功）时传空字符串，cancelStatus=30（失败）时传实际凭证URL
+    const 响应数据 = {
+      orderNo,
+      cancelStatus: 结果.cancelStatus,
+      refuseProof: 结果.refuseProof || '',   // 必须始终包含，成功时为空字符串
+      refuseReason: 结果.refuseReason || '', // 失败时为拒绝原因，成功时为空字符串
+    };
 
     res.json({
       code: 200,
