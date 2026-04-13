@@ -1197,14 +1197,17 @@ const 执行撤单逻辑 = async (卡密记录, orderNo, 拒绝凭证URL) => {
  */
 const 发送撤单回调 = async (callbackUrl, orderNo, cancelStatus, refuseReason, refuseProof, appSecret, merchantKey) => {
   try {
+    // cancelStatus=20（成功）时只传必要字段，不传 refuseReason/refuseProof
+    // cancelStatus=30（失败）时才加入拒绝原因和凭证
     const 回调数据 = {
       orderNo,
       cancelStatus,
-      // 空值参数也必须参与签名（文档要求）
-      refuseProof: cancelStatus === 30 ? (refuseProof || '') : '',
-      refuseReason: cancelStatus === 30 ? (refuseReason || '') : '',
       timestamp: Math.floor(Date.now() / 1000),
     };
+    if (cancelStatus === 30) {
+      回调数据.refuseReason = refuseReason || '';
+      回调数据.refuseProof = refuseProof || '';
+    }
 
     // 按ASCII排序所有参数（空值也参与签名）
     const crypto = require('crypto');
