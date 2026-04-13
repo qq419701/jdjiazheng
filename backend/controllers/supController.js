@@ -1318,11 +1318,23 @@ const 撤销订单 = async (req, res) => {
         try {
           const 结果 = await 执行撤单逻辑(卡密记录, orderNo, 拒绝凭证URL);
 
-          // 查询 orderCost（从卡密关联商品取成本价），用于向阿奇所证明全额退款
+          // 查询 orderCost：优先从 SupLog 取下单时记录的 order_cost（含 buyNum，最准确），兜底从商品单价取
           let orderCost = 0;
-          if (卡密记录 && 卡密记录.product_id) {
-            const 商品 = await Product.findByPk(卡密记录.product_id);
-            if (商品) orderCost = Number(parseFloat(商品.cost_price || 0).toFixed(4));
+          if (卡密记录) {
+            const 下单日志 = await SupLog.findOne({
+              where: {
+                order_no: orderNo,
+                log_type: 'createPurchase',
+                result: { [Op.in]: ['success', 'pending'] },
+              },
+              order: [['id', 'DESC']],
+            });
+            if (下单日志 && 下单日志.order_cost) {
+              orderCost = Number(parseFloat(下单日志.order_cost).toFixed(4));
+            } else if (卡密记录.product_id) {
+              const 商品 = await Product.findByPk(卡密记录.product_id);
+              if (商品) orderCost = Number(parseFloat(商品.cost_price || 0).toFixed(4));
+            }
           }
 
           await 发送撤单回调(callbackUrl, orderNo, 结果.cancelStatus, 结果.refuseReason, 结果.refuseProof, appSecret, merchantKey, orderCost);
