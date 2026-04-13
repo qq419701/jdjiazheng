@@ -4,6 +4,25 @@ const axios = require('axios');
 const crypto = require('crypto');
 const { Setting } = require('../models');
 
+/**
+ * 安全截断字符串（防止超过企业微信30字符限制）
+ * 企业微信按字符数不是字节数计算，中文算1个字符
+ * @param {string} 内容
+ * @param {number} 最大长度 默认30
+ * @returns {string}
+ */
+const 安全截断 = (内容, 最大长度 = 30) => {
+  if (!内容) return 内容;
+  let 长度 = 0;
+  let 结果 = '';
+  for (const 字符 of 内容) {
+    长度 += 1;
+    if (长度 > 最大长度) break;
+    结果 += 字符;
+  }
+  return 结果;
+};
+
 // ===== AccessToken 内存缓存（7000秒有效期）=====
 let 缓存Token = null;
 let 缓存过期时间 = 0;
@@ -79,8 +98,11 @@ const 生成专属联系方式 = async (订单号) => {
   }
 
   const 模式 = 配置.qywx_add_friend_mode || 'link';
-  // type=1 单人，type=2 多人；state格式：SJZ_订单号_员工ID
-  const state = `SJZ_${订单号}_${员工ID}`;
+  // state格式（修复超30字符BUG）：S{订单号后12位}E{员工索引}
+  // 例：S260412123456E0 = 15字符 ✅ 远小于30字符限制
+  const ids = (配置.qywx_user_ids || '').split(',').map(s => s.trim()).filter(Boolean);
+  const 员工索引 = ids.indexOf(员工ID);
+  const state = `S${订单号.slice(-12)}E${员工索引 >= 0 ? 员工索引 : 0}`;
 
   const 请求体 = {
     type: 1,
@@ -136,18 +158,31 @@ const 自动备注客户 = async (员工userid, external_userid, 备注内容) =
 };
 
 /**
- * 发送欢迎语
+ * 发送欢迎语（支持附带入群链接卡片）
  * @param {string} welcome_code 企业微信回调中携带的 WelcomeCode
  * @param {string} 文字内容
+ * @param {string|null} 附件链接 可选，入群链接URL，传入后附带link卡片
  */
-const 发送欢迎语 = async (welcome_code, 文字内容) => {
+const 发送欢迎语 = async (welcome_code, 文字内容, 附件链接 = null) => {
   const token = await 获取AccessToken();
+  const body = {
+    welcome_code,
+    text: { content: 文字内容 },
+  };
+  if (附件链接) {
+    body.attachments = [{
+      msgtype: 'link',
+      link: {
+        title: '📌 点击加入专属服务群',
+        picurl: '',
+        desc: '点击进入您的三角洲哈夫币专属服务群',
+        url: 附件链接,
+      },
+    }];
+  }
   const 响应 = await axios.post(
     `https://qyapi.weixin.qq.com/cgi-bin/externalcontact/send_welcome_msg?access_token=${token}`,
-    {
-      welcome_code,
-      text: { content: 文字内容 },
-    },
+    body,
     { timeout: 8000 }
   );
   if (响应.data.errcode !== 0) {
@@ -156,11 +191,128 @@ const 发送欢迎语 = async (welcome_code, 文字内容) => {
 };
 
 /**
- * 创建客户群
+ * 创建外部客户群（使用 externalcontact/groupchat/create）
+ * 客户+员工都在群内，客户可以进入
  * @param {string} 群名称
- * @param {string} 群主userid
- * @param {Array<string>} 员工列表
- * @returns {string} chatid
+ * @param {string} 群主userid 内部员工userid
+ * @param {Array<string>} 员工列表 内部员工userid列表
+ * @param {string} external_userid 客户外部userid
+ * @returns {string} chat_id
+ */
+const 创建外部客户群 = async (群名称, 群主, 员工列表, external_userid) => {
+  const token = await 获取AccessToken();
+  const 响应 = await axios.post(
+    `https://qyapi.weixin.qq.com/cgi-bin/externalcontact/groupchat/create?access_token=${token}`,
+    {
+      chat: {
+        name: 群名称,
+        owner: 群主,
+        userlist: 员工列表,
+        memberlist: [{ userid: external_userid }],
+      },
+    },
+    { timeout: 8000 }
+  );
+  if (响应.data.errcode !== 0) {
+    throw new Error(`创建外部客户群失败: ${响应.data.errmsg}`);
+  }
+  return 响应.data.chat_id;
+};
+
+/**
+ * 更新客户群名称（兼容新旧两种群格式）
+ * 旧格式（sjz_开头）：使用 appchat/update
+ * 新格式（外部客户群）：使用 externalcontact/groupchat/update
+ * @param {string} chat_id 群ID
+ * @param {string} 新群名称
+ */
+const 更新客户群名称 = async (chat_id, 新群名称) => {
+  const token = await 获取AccessToken();
+  if (chat_id.startsWith('sjz_')) {
+    // 旧格式：内部应用群
+    const 响应 = await axios.post(
+      `https://qyapi.weixin.qq.com/cgi-bin/appchat/update?access_token=${token}`,
+      { chatid: chat_id, name: 新群名称 },
+      { timeout: 8000 }
+    );
+    if (响应.data.errcode !== 0) {
+      console.warn('[企业微信] 更新内部群名称失败:', 响应.data.errmsg);
+    }
+  } else {
+    // 新格式：外部客户群
+    const 响应 = await axios.post(
+      `https://qyapi.weixin.qq.com/cgi-bin/externalcontact/groupchat/update?access_token=${token}`,
+      { chat_id, name: 新群名称 },
+      { timeout: 8000 }
+    );
+    if (响应.data.errcode !== 0) {
+      console.warn('[企业微信] 更新外部客户群名称失败:', 响应.data.errmsg);
+    }
+  }
+};
+
+/**
+ * 向客户群发送消息（兼容新旧两种群格式）
+ * 旧格式（sjz_开头）：使用 appchat/send
+ * 新格式（外部客户群）：使用 externalcontact/groupchat/send（若企业微信支持）
+ * 注意：目前企业微信官方暂无直接发外部客户群消息的开放API，
+ * 此处对旧群通过 appchat/send 发送；新群记录日志并跳过（需后续等官方接口开放）
+ * @param {string} chat_id 群ID
+ * @param {string} 文字内容
+ */
+const 发送群消息 = async (chat_id, 文字内容) => {
+  const token = await 获取AccessToken();
+  if (chat_id.startsWith('sjz_')) {
+    // 旧格式：内部应用群，使用 appchat/send
+    const 响应 = await axios.post(
+      `https://qyapi.weixin.qq.com/cgi-bin/appchat/send?access_token=${token}`,
+      {
+        chatid: chat_id,
+        msgtype: 'text',
+        text: { content: 文字内容 },
+        safe: 0,
+      },
+      { timeout: 8000 }
+    );
+    if (响应.data.errcode !== 0) {
+      console.warn('[企业微信] 发送内部群消息失败:', 响应.data.errmsg);
+    }
+  } else {
+    // 新格式外部客户群：官方暂无直接发消息API，仅记录日志
+    console.log('[企业微信] 外部客户群消息（记录备用）:', chat_id, 文字内容);
+  }
+};
+
+/**
+ * 获取外部客户群详情
+ * @param {string} chat_id 群ID
+ * @returns {Object} 群详情
+ */
+const 获取客户群详情 = async (chat_id) => {
+  const token = await 获取AccessToken();
+  const 响应 = await axios.get(
+    `https://qyapi.weixin.qq.com/cgi-bin/externalcontact/groupchat/get?access_token=${token}&chat_id=${encodeURIComponent(chat_id)}&need_name=1`,
+    { timeout: 8000 }
+  );
+  if (响应.data.errcode !== 0) {
+    throw new Error(`获取客户群详情失败: ${响应.data.errmsg}`);
+  }
+  return 响应.data.group_chat || {};
+};
+
+/**
+ * 更新群信息（重命名群）- 兼容旧代码调用，内部转发到 更新客户群名称
+ * @deprecated 请使用 更新客户群名称
+ * @param {string} chatid 群ID
+ * @param {string} 新群名称
+ */
+const 更新群信息 = async (chatid, 新群名称) => {
+  return 更新客户群名称(chatid, 新群名称);
+};
+
+/**
+ * 创建客户群（旧API，仅内部群，客户不在群内）- 兼容旧代码
+ * @deprecated 请使用 创建外部客户群
  */
 const 创建客户群 = async (群名称, 群主, 员工列表) => {
   const token = await 获取AccessToken();
@@ -179,24 +331,6 @@ const 创建客户群 = async (群名称, 群主, 员工列表) => {
     throw new Error(`创建客户群失败: ${响应.data.errmsg}`);
   }
   return chatid;
-};
-
-/**
- * 更新客户群信息（重命名群）
- * 调用 /appchat/update，支持修改群名称
- * @param {string} chatid 群ID
- * @param {string} 新群名称
- */
-const 更新群信息 = async (chatid, 新群名称) => {
-  const token = await 获取AccessToken();
-  const 响应 = await axios.post(
-    `https://qyapi.weixin.qq.com/cgi-bin/appchat/update?access_token=${token}`,
-    { chatid, name: 新群名称 },
-    { timeout: 8000 }
-  );
-  if (响应.data.errcode !== 0) {
-    console.warn('[企业微信] 更新群信息失败:', 响应.data.errmsg);
-  }
 };
 
 /**
@@ -249,9 +383,14 @@ module.exports = {
   生成专属联系方式,
   自动备注客户,
   发送欢迎语,
-  创建客户群,
-  更新群信息,
+  创建外部客户群,
+  创建客户群,       // 兼容旧代码（内部群，客户不在群内）
+  更新客户群名称,
+  更新群信息,       // 兼容旧代码，内部转发到 更新客户群名称
+  发送群消息,
+  获取客户群详情,
   渲染模板,
+  安全截断,
   验证回调签名,
   分配员工,
 };

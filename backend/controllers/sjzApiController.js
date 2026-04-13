@@ -468,16 +468,32 @@ const 企业微信回调事件 = async (req, res) => {
     const welcome_code = 取XML值(xml内容, 'WelcomeCode');
     const state = 取XML值(xml内容, 'State');
 
-    // state格式：SJZ_订单号_员工ID
-    if (!state.startsWith('SJZ_')) return;
-    const 部分 = state.split('_');
-    if (部分.length < 3) return;
-    const 订单号 = 部分[1];
+    // 兼容新旧两种state格式：
+    // 旧格式：SJZ_订单号_员工ID（如 SJZ_SJZ20260412123456_user001）
+    // 新格式：S{订单号后12位}E{员工索引}（如 S260412123456E0）
+    let 订单 = null;
+    if (state.startsWith('SJZ_')) {
+      // 旧格式兼容
+      const 部分 = state.split('_');
+      if (部分.length < 3) return;
+      const 订单号 = 部分[1];
+      订单 = await Order.findOne({ where: { order_no: 订单号, business_type: 'sjz' } });
+    } else if (state.startsWith('S') && state.length >= 14) {
+      // 新格式：S{12位}E{索引}
+      const 订单号后12位 = state.slice(1, 13);
+      const { Op } = require('sequelize');
+      订单 = await Order.findOne({
+        where: {
+          order_no: { [Op.like]: `%${订单号后12位}` },
+          business_type: 'sjz',
+        },
+      });
+    } else {
+      return;
+    }
 
-    // 查找订单
-    const 订单 = await Order.findOne({ where: { order_no: 订单号, business_type: 'sjz' } });
     if (!订单) {
-      console.warn('[三角洲] 企业微信回调：未找到订单', 订单号);
+      console.warn('[三角洲] 企业微信回调：未找到订单，state=', state);
       return;
     }
 
@@ -486,43 +502,50 @@ const 企业微信回调事件 = async (req, res) => {
     const 设置对象 = {};
     设置列表.forEach(s => { 设置对象[s.key_name] = s.key_value; });
 
-    // 并行：备注 + 欢迎语
     const 备注模板 = 设置对象.qywx_remark_template || '';
     const 欢迎模板 = 设置对象.qywx_welcome_template || '';
-    const 备注内容 = qywxService.渲染模板(备注模板, 订单);
+    const 备注内容 = 备注模板 ? qywxService.安全截断(qywxService.渲染模板(备注模板, 订单)) : '';
     const 欢迎内容 = qywxService.渲染模板(欢迎模板, 订单);
 
-    await Promise.allSettled([
-      备注内容 ? qywxService.自动备注客户(员工userid, external_userid, 备注内容) : Promise.resolve(),
-      welcome_code && 欢迎内容 ? qywxService.发送欢迎语(welcome_code, 欢迎内容) : Promise.resolve(),
-    ]);
+    // Step 1: 立即发欢迎语（20秒内！最优先单独执行）
+    if (welcome_code && 欢迎内容) {
+      await qywxService.发送欢迎语(welcome_code, 欢迎内容).catch(e => {
+        console.warn('[三角洲] 发送欢迎语失败:', e.message);
+      });
+    }
 
-    // 更新订单状态 → 2（已加好友）
-    const 更新数据 = {
+    // Step 2: 备注客户
+    if (备注内容) {
+      await qywxService.自动备注客户(员工userid, external_userid, 备注内容).catch(e => {
+        console.warn('[三角洲] 自动备注客户失败:', e.message);
+      });
+    }
+
+    // Step 3: 更新订单状态 → 2（已加好友）
+    await 订单.update({
       status: 2,
       qywx_external_userid: external_userid,
       qywx_add_friend_at: new Date(),
-    };
-    await 订单.update(更新数据);
+    });
 
-    // 若 auto_group=1：创建客户群，建群后同步备注群
+    // Step 4: 若 auto_group=1：创建外部客户群（客户+员工都在）
     if (设置对象.qywx_auto_group === '1') {
       try {
         const 群名称模板 = 设置对象.qywx_group_name_template || '三角洲服务_{order_no}';
         const 群名称 = qywxService.渲染模板(群名称模板, 订单);
-        const 群主 = 员工userid;
-        const 员工列表 = [员工userid];
-        const chatid = await qywxService.创建客户群(群名称, 群主, 员工列表);
-        await 订单.update({ status: 3, qywx_group_chat_id: chatid, qywx_group_created_at: new Date() });
+        const 额外员工列表 = (设置对象.qywx_extra_group_members || '').split(',').map(s => s.trim()).filter(Boolean);
+        const 员工列表 = [员工userid, ...额外员工列表].filter((v, i, a) => a.indexOf(v) === i);
 
-        // 建群成功后：若配置了加好友群备注模板，异步更新群名称（二次确认名称正确）
-        const 群备注模板 = 设置对象.qywx_group_remark_template || '';
-        if (群备注模板) {
-          const 最新订单 = await Order.findOne({ where: { order_no: 订单号, business_type: 'sjz' } });
-          const 群备注名称 = qywxService.渲染模板(群备注模板, 最新订单 || 订单);
-          if (群备注名称) {
-            qywxService.更新群信息(chatid, 群备注名称).catch(e => {
-              console.warn('[三角洲] 更新群备注名称失败（不影响主流程）:', e.message);
+        const chat_id = await qywxService.创建外部客户群(群名称, 员工userid, 员工列表, external_userid);
+        await 订单.update({ status: 3, qywx_group_chat_id: chat_id, qywx_group_created_at: new Date() });
+
+        // 建群成功后发入群欢迎消息
+        const 建群通知模板 = 设置对象.qywx_group_welcome_msg || '';
+        if (建群通知模板) {
+          const 通知内容 = qywxService.渲染模板(建群通知模板, 订单);
+          if (通知内容) {
+            qywxService.发送群消息(chat_id, 通知内容).catch(e => {
+              console.warn('[三角洲] 发送建群欢迎消息失败（不影响主流程）:', e.message);
             });
           }
         }

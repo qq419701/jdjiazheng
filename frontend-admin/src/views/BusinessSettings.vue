@@ -914,7 +914,7 @@
           </template>
 
           <!-- 企业微信配置分组 -->
-          <div class="设置分组标题">── 企业微信配置 ──</div>
+          <div class="设置分组标题">── 🔑 基础连接配置 ──</div>
 
           <el-alert
             title="企业微信配置说明"
@@ -925,17 +925,18 @@
           >
             <template #default>
               需先在企业微信管理后台 → 客户联系 → API → 开启API，获取客户联系Secret。
-              <br/>回调URL：<code>{{ 当前域名 }}/api/sjz/qywx-callback</code>
+              <br/>回调URL（配置事件接收服务器时填写）：<code>{{ 当前域名 }}/api/sjz/qywx-callback</code>
+              <br/>注意：外部客户群功能需要企业认证，客户备注最多30个字符，超出自动截断。
             </template>
           </el-alert>
 
           <el-form-item label="企业微信总开关">
             <el-switch v-model="设置表单.qywx_enabled" active-value="1" inactive-value="0" active-text="开启" inactive-text="关闭" />
-            <div class="字段说明">开启后，提交订单时自动生成专属企业微信联系方式</div>
+            <div class="字段说明">开启后，提交订单时自动生成专属企业微信联系方式，实现自动备注、欢迎语、建群全流程</div>
           </el-form-item>
           <el-form-item label="企业ID（CorpID）">
             <el-input v-model="设置表单.qywx_corpid" placeholder="从企业微信管理后台获取" />
-            <div class="字段说明">企业微信唯一标识，在"我的企业"页面底部可以找到</div>
+            <div class="字段说明">企业微信唯一标识，在管理后台「我的企业」页面底部可以找到</div>
           </el-form-item>
           <el-form-item label="客户联系Secret">
             <el-input v-model="设置表单.qywx_secret" type="password" show-password placeholder="客户联系 → API → Secret" />
@@ -945,24 +946,34 @@
             <el-input v-model="设置表单.qywx_token" placeholder="企业微信配置事件接收时自定义Token" />
             <div class="字段说明">配置接收事件服务器时填写的Token，用于验证回调请求合法性，可自定义任意字符串</div>
           </el-form-item>
-          <el-form-item label="EncodingAESKey">
+          <el-form-item label="EncodingAESKey（消息加密密钥）">
             <el-input v-model="设置表单.qywx_encoding_aes_key" placeholder="43位随机字符串" />
             <div class="字段说明">配置接收事件服务器时的消息加解密密钥，43位随机字符串，在企业微信后台自动生成</div>
           </el-form-item>
           <el-form-item label="回调地址（只读）">
             <el-tag type="info">{{ 当前域名 }}/api/sjz/qywx-callback</el-tag>
+            <div class="字段说明">将此地址填写到企业微信管理后台→客户联系→联系我→API→接收事件服务器URL</div>
           </el-form-item>
           <el-form-item label="添加好友方式">
             <el-radio-group v-model="设置表单.qywx_add_friend_mode">
-              <el-radio value="link">仅链接跳转</el-radio>
-              <el-radio value="qrcode">仅二维码</el-radio>
-              <el-radio value="both">链接+二维码</el-radio>
+              <el-radio value="link">仅链接跳转（手机端推荐）</el-radio>
+              <el-radio value="qrcode">仅二维码（截图扫码）</el-radio>
+              <el-radio value="both">链接+二维码（两种都显示）</el-radio>
             </el-radio-group>
             <div class="字段说明">link=H5成功页仅展示跳转链接按钮（手机端直接跳转），qrcode=仅展示二维码（截图扫码），both=两种都展示</div>
           </el-form-item>
+
+          <!-- 员工配置 -->
+          <div class="设置分组标题">── 👤 员工分配配置 ──</div>
+
           <el-form-item label="员工UserID列表">
-            <el-input v-model="设置表单.qywx_user_ids" placeholder="user1,user2,user3（逗号分隔）" />
-            <div class="字段说明">多个员工用英文逗号分隔。在企业微信后台 → 通讯录 → 成员详情中可查看userid。每笔订单会按分配模式指定其中一名员工接待。</div>
+            <el-input
+              v-model="设置表单.qywx_user_ids"
+              type="textarea"
+              :rows="3"
+              placeholder="每行一个UserID，或用英文逗号分隔&#10;例如：zhangsan&#10;lisi&#10;wangwu"
+            />
+            <div class="字段说明">已配置 {{ qywx员工数量 }} 个员工 | 在企业微信管理后台→通讯录→成员详情中查看userid，多个用英文逗号或换行分隔</div>
           </el-form-item>
           <el-form-item label="员工分配方式">
             <el-radio-group v-model="设置表单.qywx_user_assign_mode">
@@ -971,29 +982,80 @@
             </el-radio-group>
             <div class="字段说明">轮询分配=按订单号均匀分配给所有员工，保证接单量均衡；固定第一个=所有订单都分给列表第一名员工，适合单人运营。</div>
           </el-form-item>
+
+          <!-- 加好友后操作 -->
+          <div class="设置分组标题">── 💬 加好友后自动操作 ──</div>
+
           <el-form-item label="加好友后自动备注">
-            <el-input v-model="设置表单.qywx_remark_template" placeholder="三角洲客户_{order_no}" />
-            <div class="字段说明">客户添加好友后，自动将客户在员工通讯录中的备注改为此内容。留空则不备注。可用变量：{order_no}订单号，{phone}手机号，{player_name}游戏昵称，{product_name}套餐名，{insurance}保险格数，{date}日期</div>
+            <el-input v-model="设置表单.qywx_remark_template" placeholder="三角洲客户_{order_no}" @input="() => {}" />
+            <div class="字数统计" :class="{ '字数超限': 计算模板字数(设置表单.qywx_remark_template) > 30 }">
+              预估字数：{{ 计算模板字数(设置表单.qywx_remark_template) }}/30
+              <span v-if="计算模板字数(设置表单.qywx_remark_template) > 30" class="超限提示"> ⚠️ 超出限制！系统将自动截断到30字</span>
+            </div>
+            <div class="变量列表">
+              <span class="变量标题">可用变量（点击插入）：</span>
+              <el-tag v-for="v in qywx可用变量" :key="v.key" class="变量标签" @click="插入变量('qywx_remark_template', v.key)">{{ v.key }} <span class="变量说明">{{ v.desc }}</span></el-tag>
+            </div>
+            <div class="字段说明">客户添加好友后，自动将客户在员工通讯录中的备注改为此内容。留空则不备注。⚠️ 企业微信备注最多30个字符，超出自动截断。</div>
           </el-form-item>
           <el-form-item label="加好友后欢迎语">
             <el-input v-model="设置表单.qywx_welcome_template" type="textarea" :rows="4" placeholder="您好！感谢您的信任，已收到您的三角洲哈夫币充值需求 {product_name}，稍后为您安排。" />
-            <div class="字段说明">客户添加好友后20秒内自动发送的欢迎消息。注意：欢迎语超过20秒后发送则失效。可用变量同备注模板。</div>
-          </el-form-item>
-          <el-form-item label="自动建群">
-            <el-switch v-model="设置表单.qywx_auto_group" active-value="1" inactive-value="0" />
-            <div class="字段说明">开启后，客户添加好友后自动创建客户服务群，订单状态变为"已建群"</div>
-          </el-form-item>
-          <el-form-item v-if="设置表单.qywx_auto_group === '1'" label="群名称模板">
-            <el-input v-model="设置表单.qywx_group_name_template" placeholder="三角洲服务_{order_no}" />
-            <div class="字段说明">建群时的群名称，可用变量：{order_no} {player_name} {phone} {date}</div>
-          </el-form-item>
-          <el-form-item v-if="设置表单.qywx_auto_group === '1'" label="建群后群备注模板">
-            <el-input v-model="设置表单.qywx_group_remark_template" placeholder="留空则不更新群名称，例如：{player_name}的服务群_{order_no}" />
-            <div class="字段说明">建群成功后二次更新群名称的模板（可加入更多订单信息），留空则跳过。可用变量：{order_no} {player_name} {phone} {product_name} {insurance} {date}</div>
+            <div class="变量列表">
+              <span class="变量标题">可用变量（点击插入）：</span>
+              <el-tag v-for="v in qywx可用变量" :key="v.key" class="变量标签" @click="插入变量('qywx_welcome_template', v.key)">{{ v.key }} <span class="变量说明">{{ v.desc }}</span></el-tag>
+            </div>
+            <div class="字段说明">⚠️ 欢迎语必须在客户添加好友后20秒内发送，超时失效，系统已做优先处理。可用变量同备注模板。</div>
           </el-form-item>
 
+          <!-- 自动建群配置 -->
+          <div class="设置分组标题">── 👥 自动建外部客户群 ──</div>
+
+          <el-alert
+            type="info"
+            :closable="false"
+            show-icon
+            style="margin-bottom:12px"
+          >
+            <template #default>
+              开启后，客户加好友时自动创建<strong>外部客户群</strong>（客户+员工都在群内）。
+              <br/>使用企业微信 externalcontact/groupchat/create 接口，需企业认证。
+            </template>
+          </el-alert>
+
+          <el-form-item label="自动建外部客户群">
+            <el-switch v-model="设置表单.qywx_auto_group" active-value="1" inactive-value="0" />
+            <div class="字段说明">开启后，客户添加好友后自动创建含客户的外部服务群，订单状态变为"已建群"</div>
+          </el-form-item>
+          <template v-if="设置表单.qywx_auto_group === '1'">
+            <el-form-item label="群名称模板">
+              <el-input v-model="设置表单.qywx_group_name_template" placeholder="三角洲服务_{order_no}" />
+              <div class="变量列表">
+                <span class="变量标题">可用变量（点击插入）：</span>
+                <el-tag v-for="v in qywx可用变量" :key="v.key" class="变量标签" @click="插入变量('qywx_group_name_template', v.key)">{{ v.key }} <span class="变量说明">{{ v.desc }}</span></el-tag>
+              </div>
+              <div class="字段说明">建群时的群名称，推荐用 {player_name} 方便识别客户</div>
+            </el-form-item>
+            <el-form-item label="建群额外成员">
+              <el-input
+                v-model="设置表单.qywx_extra_group_members"
+                type="textarea"
+                :rows="2"
+                placeholder="除接待员工外还要加入群的员工UserID，多个用英文逗号分隔&#10;例如：supervisor01,admin02"
+              />
+              <div class="字段说明">除订单分配员工外，建群时自动加入的其他员工（如客服主管）。多个用英文逗号分隔。</div>
+            </el-form-item>
+            <el-form-item label="建群后自动发群消息">
+              <el-input v-model="设置表单.qywx_group_welcome_msg" type="textarea" :rows="4" placeholder="留空则建群后不发消息" />
+              <div class="变量列表">
+                <span class="变量标题">可用变量（点击插入）：</span>
+                <el-tag v-for="v in qywx可用变量" :key="v.key" class="变量标签" @click="插入变量('qywx_group_welcome_msg', v.key)">{{ v.key }} <span class="变量说明">{{ v.desc }}</span></el-tag>
+              </div>
+              <div class="字段说明">建群成功后自动在群内发送的欢迎消息，留空则不发送。可用变量同备注模板。</div>
+            </el-form-item>
+          </template>
+
           <!-- 退款/撤单后企业微信设置 -->
-          <div class="设置分组标题">── 退款/撤单后自动操作 ──</div>
+          <div class="设置分组标题">── 🔄 退款/撤单后自动操作 ──</div>
 
           <el-alert
             type="warning"
@@ -1003,18 +1065,38 @@
           >
             <template #default>
               退款/撤单触发时机：① 管理员在后台点击"确认退款"；② 阿奇所SUP平台发起撤单请求。
-              <br/>两种方式触发后，都会按以下模板自动更新企业微信客户备注和群名称（需企业微信总开关开启）。
+              <br/>两种方式触发后，都会按以下模板自动更新企业微信客户备注、群名称并发送群通知消息（需企业微信总开关开启）。
               <br/>可用变量：<code>{order_no}</code> <code>{phone}</code> <code>{player_name}</code> <code>{product_name}</code> <code>{date}</code> <code>{status_text}</code>（已退款） <code>{refund_reason}</code>（退款原因）
             </template>
           </el-alert>
 
           <el-form-item label="退款后客户备注模板">
             <el-input v-model="设置表单.qywx_refund_remark_template" placeholder="留空则不更新备注，例如：【已退款】三角洲_{order_no}" />
-            <div class="字段说明">退款或撤单成功后，自动将客户的企业微信备注改为此内容。留空则不操作。</div>
+            <div class="字数统计" :class="{ '字数超限': 计算模板字数(设置表单.qywx_refund_remark_template) > 30 }">
+              预估字数：{{ 计算模板字数(设置表单.qywx_refund_remark_template) }}/30
+              <span v-if="计算模板字数(设置表单.qywx_refund_remark_template) > 30" class="超限提示"> ⚠️ 超出限制！系统将自动截断到30字</span>
+            </div>
+            <div class="变量列表">
+              <span class="变量标题">可用变量（点击插入）：</span>
+              <el-tag v-for="v in qywx退款变量" :key="v.key" class="变量标签" @click="插入变量('qywx_refund_remark_template', v.key)">{{ v.key }} <span class="变量说明">{{ v.desc }}</span></el-tag>
+            </div>
+            <div class="字段说明">退款或撤单成功后，自动将客户的企业微信备注改为此内容。留空则不操作。⚠️ 最多30个字符，超出自动截断。</div>
           </el-form-item>
           <el-form-item label="退款后群名称模板">
             <el-input v-model="设置表单.qywx_refund_group_name_template" placeholder="留空则不更新群名称，例如：【已退款】{player_name}的服务群" />
+            <div class="变量列表">
+              <span class="变量标题">可用变量（点击插入）：</span>
+              <el-tag v-for="v in qywx退款变量" :key="v.key" class="变量标签" @click="插入变量('qywx_refund_group_name_template', v.key)">{{ v.key }} <span class="变量说明">{{ v.desc }}</span></el-tag>
+            </div>
             <div class="字段说明">退款或撤单成功后，自动将服务群名称改为此内容。留空则不操作。如订单无关联群则忽略。</div>
+          </el-form-item>
+          <el-form-item label="退款后群通知消息">
+            <el-input v-model="设置表单.qywx_refund_group_msg" type="textarea" :rows="4" placeholder="留空则退款后不发群消息" />
+            <div class="变量列表">
+              <span class="变量标题">可用变量（点击插入）：</span>
+              <el-tag v-for="v in qywx退款变量" :key="v.key" class="变量标签" @click="插入变量('qywx_refund_group_msg', v.key)">{{ v.key }} <span class="变量说明">{{ v.desc }}</span></el-tag>
+            </div>
+            <div class="字段说明">退款或撤单成功后，自动在服务群内发送此通知消息，让群内所有人知悉。留空则不发送。</div>
           </el-form-item>
 
           <el-form-item>
@@ -1286,8 +1368,12 @@ const 设置表单 = ref({
   qywx_welcome_template: '您好！已收到您的三角洲哈夫币充值需求，稍后为您安排服务。',
   qywx_auto_group: '0', qywx_group_name_template: '三角洲服务_{order_no}',
   qywx_group_remark_template: '',
+  qywx_extra_group_members: '',
+  qywx_group_welcome_msg: '',
   qywx_refund_remark_template: '',
   qywx_refund_group_name_template: '',
+  qywx_refund_group_msg: '',
+  qywx_remark_max_len: '30',
 })
 
 // 洗衣回调地址（自动拼接 site_url + /api/laundry/callback）
@@ -1298,6 +1384,53 @@ const 回调地址 = computed(() => {
 
 // 当前域名（用于展示企业微信回调地址）
 const 当前域名 = computed(() => window.location.origin)
+
+// 企业微信员工数量
+const qywx员工数量 = computed(() => {
+  const ids = (设置表单.value.qywx_user_ids || '').split(/[,\n]/).map(s => s.trim()).filter(Boolean)
+  return ids.length
+})
+
+// 计算模板预估字数（忽略变量占位符，用实际订单号长度估算）
+const 计算模板字数 = (模板) => {
+  if (!模板) return 0
+  // 将变量占位符替换为典型长度估算：
+  // {order_no}→18, {phone}→11, {player_name}→4, {product_name}→6, {date}→8, {insurance}→2, {status_text}→3, {refund_reason}→3
+  const 估算 = 模板
+    .replace(/\{order_no\}/g, 'SJZ20260412123456')
+    .replace(/\{phone\}/g, '13800138000')
+    .replace(/\{player_name\}/g, '玩家')
+    .replace(/\{product_name\}/g, '1000万')
+    .replace(/\{insurance\}/g, '3格')
+    .replace(/\{date\}/g, '2026/4/12')
+    .replace(/\{status_text\}/g, '退款')
+    .replace(/\{refund_reason\}/g, '退款')
+  let 长度 = 0
+  for (const 字符 of 估算) { 长度 += 1 }
+  return 长度
+}
+
+// 企业微信可用变量列表
+const qywx可用变量 = [
+  { key: '{order_no}', desc: '订单号' },
+  { key: '{player_name}', desc: '游戏昵称' },
+  { key: '{phone}', desc: '手机号' },
+  { key: '{product_name}', desc: '套餐名' },
+  { key: '{insurance}', desc: '保险格数' },
+  { key: '{date}', desc: '日期' },
+]
+
+const qywx退款变量 = [
+  ...qywx可用变量,
+  { key: '{status_text}', desc: '已退款' },
+  { key: '{refund_reason}', desc: '退款原因' },
+]
+
+// 插入变量到指定字段
+const 插入变量 = (字段名, 变量) => {
+  const 当前值 = 设置表单.value[字段名] || ''
+  设置表单.value[字段名] = 当前值 + 变量
+}
 
 const Token过期时间文字 = computed(() => {
   const expireAt = parseInt(设置表单.value.laundry_token_expire_at || '0')
@@ -1490,8 +1623,12 @@ const 加载设置 = async () => {
         qywx_auto_group: 数据.qywx_auto_group || '0',
         qywx_group_name_template: 数据.qywx_group_name_template || '三角洲服务_{order_no}',
         qywx_group_remark_template: 数据.qywx_group_remark_template || '',
+        qywx_extra_group_members: 数据.qywx_extra_group_members || '',
+        qywx_group_welcome_msg: 数据.qywx_group_welcome_msg || '',
         qywx_refund_remark_template: 数据.qywx_refund_remark_template || '',
         qywx_refund_group_name_template: 数据.qywx_refund_group_name_template || '',
+        qywx_refund_group_msg: 数据.qywx_refund_group_msg || '',
+        qywx_remark_max_len: 数据.qywx_remark_max_len || '30',
       }
     }
   } finally {
@@ -1797,6 +1934,49 @@ onMounted(() => {
   font-size: 12px;
   color: #999;
   margin-top: 4px;
+}
+
+.字数统计 {
+  font-size: 12px;
+  color: #67c23a;
+  margin-top: 4px;
+}
+
+.字数统计.字数超限 {
+  color: #e6a23c;
+}
+
+.超限提示 {
+  color: #f56c6c;
+  font-weight: 500;
+}
+
+.变量列表 {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.变量标题 {
+  font-size: 12px;
+  color: #909399;
+  margin-right: 4px;
+}
+
+.变量标签 {
+  cursor: pointer;
+  user-select: none;
+}
+
+.变量标签:hover {
+  opacity: 0.8;
+}
+
+.变量说明 {
+  font-size: 11px;
+  color: #c0c4cc;
 }
 
 .设置分组标题 {
