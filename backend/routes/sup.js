@@ -13,6 +13,8 @@ const {
   卡密下单,
   查询订单,
   撤销订单,
+  订阅价格推送,
+  取消订阅价格推送,
 } = require('../controllers/supController');
 
 // ===== 应用API =====
@@ -40,5 +42,13 @@ router.post('/agisoAcprSupplierApi/order/get', 验证奇所签名, 查询订单)
 
 // 撤单（退款核心接口）
 router.post('/agisoAcprSupplierApi/order/cancelOrder', 验证奇所签名, 撤销订单);
+
+// ===== 价格订阅API =====
+
+// 订阅价格推送
+router.post('/agisoAcprSupplierApi/product/subscribePriceNotify', 验证奇所签名, 订阅价格推送);
+
+// 取消订阅价格推送
+router.post('/agisoAcprSupplierApi/product/cancelSubscribePriceNotify', 验证奇所签名, 取消订阅价格推送);
 
 module.exports = router;
