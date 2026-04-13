@@ -1197,13 +1197,19 @@ const 执行撤单逻辑 = async (卡密记录, orderNo, 拒绝凭证URL) => {
  */
 const 发送撤单回调 = async (callbackUrl, orderNo, cancelStatus, refuseReason, refuseProof, appSecret, merchantKey) => {
   try {
-    const 回调数据 = {
+    // cancelStatus=20（同意撤单）时，不传 refuseProof/refuseReason
+    // cancelStatus=30（拒绝撤单）时，必须传这两个字段
+    const timestamp = Math.floor(Date.now() / 1000);
+    const 回调数据 = cancelStatus === 30 ? {
       orderNo,
       cancelStatus,
-      // 空值参数也必须参与签名（文档要求）
-      refuseProof: cancelStatus === 30 ? (refuseProof || '') : '',
-      refuseReason: cancelStatus === 30 ? (refuseReason || '') : '',
-      timestamp: Math.floor(Date.now() / 1000),
+      refuseProof: refuseProof || '',
+      refuseReason: refuseReason || '',
+      timestamp,
+    } : {
+      orderNo,
+      cancelStatus,
+      timestamp,
     };
 
     // 按ASCII排序所有参数（空值也参与签名）
