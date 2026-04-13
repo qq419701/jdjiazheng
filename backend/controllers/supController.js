@@ -13,6 +13,9 @@ const { 安全解析JSON } = require('../utils/helpers');
 // 洗衣价格单位换算常量（Setting表中以分存储，转换为元返回）
 const 分转元 = 100;
 
+// 撤单拒绝凭证默认占位图（当 agiso_refuse_proof 未配置时使用）
+const 默认拒绝凭证URL = 'https://img.alicdn.com/imgextra/i3/O1CN01WkDrim1DSoT3sJGxH_!!6000000000220-0-tps-800-600.jpg';
+
 /**
  * 业务类型 → H5路径前缀映射
  * 家政: /jz/  洗衣: /xi/  充值: /cz/
@@ -966,30 +969,316 @@ const 查询订单 = async (req, res) => {
 // =============================================
 // 接口6：撤单（退款核心接口）
 // POST /agisoAcprSupplierApi/order/cancelOrder
-// 请求参数：userId, orderNo, timestamp, version, sign
+// 请求参数：userId, orderNo, callbackUrl(可选), timestamp, version, sign
 // =============================================
+
+/**
+ * 撤单核心逻辑：根据卡密记录和业务类型执行撤单，返回撤单结果
+ * @param {Object|null} 卡密记录 - Card 模型实例，null 表示未找到
+ * @param {string} orderNo - 阿奇所订单号
+ * @param {string} 拒绝凭证URL - 拒绝凭证图片地址（失败时返回）
+ * @returns {{ cancelStatus: number, refuseReason: string, refuseProof: string }}
+ */
+const 执行撤单逻辑 = async (卡密记录, orderNo, 拒绝凭证URL) => {
+  if (!卡密记录) {
+    return { cancelStatus: 30, refuseReason: '订单不存在', refuseProof: 拒绝凭证URL };
+  }
+
+  // 幂等处理：如果已经是已撤单状态，直接返回成功
+  if (卡密记录.sup_status === 2) {
+    return { cancelStatus: 20, refuseReason: '', refuseProof: '' };
+  }
+
+  // ===== 核心规则：卡密 status=0（未使用）→ 直接作废 + 取消关联订单 =====
+  if (卡密记录.status === 0) {
+    const 关联订单 = await Order.findOne({
+      where: { card_code: 卡密记录.code, status: { [Op.ne]: 4 } },
+    });
+    if (关联订单) {
+      const 日志 = 安全解析JSON(关联订单.order_log, []);
+      日志.push({
+        时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+        操作: '阿奇所平台撤单（卡密未使用），订单自动取消',
+        状态: 'cancel',
+      });
+      await 关联订单.update({ status: 4, order_log: JSON.stringify(日志) });
+    }
+    await 卡密记录.update({ status: 2, sup_status: 2, invalidated_at: new Date() });
+    return { cancelStatus: 20, refuseReason: '', refuseProof: '' };
+  }
+
+  const 业务类型 = 卡密记录.business_type || 'jiazheng';
+
+  if (业务类型 === 'jiazheng') {
+    // ===== 家政业务 =====
+    const 关联订单 = await Order.findOne({
+      where: { card_code: 卡密记录.code, status: { [Op.ne]: 4 } },
+    });
+    if (关联订单 && 关联订单.status === 2) {
+      const 拒绝原因 = '家政服务已预约进行中，无法撤单';
+      const 拒绝日志 = 安全解析JSON(关联订单.order_log, []);
+      拒绝日志.push({
+        时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+        操作: `阿奇所平台撤单被拒绝：${拒绝原因}，已返回拒绝凭证`,
+        状态: 'error',
+      });
+      await 关联订单.update({ status: 6, order_log: JSON.stringify(拒绝日志) });
+      return { cancelStatus: 30, refuseReason: 拒绝原因, refuseProof: 拒绝凭证URL };
+    }
+    if (关联订单) {
+      const 现有日志 = 安全解析JSON(关联订单.order_log, []);
+      现有日志.push({
+        时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+        操作: '阿奇所平台撤单，订单自动取消',
+        状态: 'cancel',
+      });
+      await 关联订单.update({ status: 4, order_log: JSON.stringify(现有日志) });
+    }
+    await 卡密记录.update({ status: 2, sup_status: 2, invalidated_at: new Date() });
+    return { cancelStatus: 20, refuseReason: '', refuseProof: '' };
+
+  } else if (业务类型 === 'xiyifu') {
+    // ===== 洗衣业务 =====
+    const 关联订单 = await Order.findOne({
+      where: { card_code: 卡密记录.code },
+    });
+    if (关联订单) {
+      if (关联订单.status === 1 || 关联订单.status === 2) {
+        try {
+          const { 同步订单状态 } = require('../services/laundryApiService');
+          const out_booking_no = `B${关联订单.order_no}`;
+          await 同步订单状态(关联订单.order_no, out_booking_no, -1);
+          console.log(`洗衣撤单通知鲸蚁成功，订单号：${关联订单.order_no}`);
+        } catch (鲸蚁错误) {
+          const 是订单不存在 = 鲸蚁错误.message && (
+            鲸蚁错误.message.includes('"code":10000') ||
+            鲸蚁错误.message.includes('10000') ||
+            鲸蚁错误.message.includes('订单不存在')
+          );
+          if (!是订单不存在 && 关联订单.status === 2) {
+            const 拒绝原因 = `洗衣服务处理中（${关联订单.laundry_status || '已分配'}），鲸蚁取消失败：${鲸蚁错误.message}`;
+            const 拒绝日志 = 安全解析JSON(关联订单.order_log, []);
+            拒绝日志.push({
+              时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+              操作: `阿奇所平台撤单被拒绝：${拒绝原因}，已返回拒绝凭证`,
+              状态: 'error',
+            });
+            await 关联订单.update({ order_log: JSON.stringify(拒绝日志) });
+            return { cancelStatus: 30, refuseReason: 拒绝原因, refuseProof: 拒绝凭证URL };
+          }
+          console.warn(`洗衣撤单鲸蚁通知失败（继续本地取消），订单号：${关联订单.order_no}，错误：${鲸蚁错误.message}`);
+        }
+      }
+      const 现有日志 = 安全解析JSON(关联订单.order_log, []);
+      现有日志.push({
+        时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+        操作: '阿奇所平台撤单，订单自动取消',
+        状态: 'cancel',
+      });
+      await 关联订单.update({ status: 4, laundry_status: '已取消', order_log: JSON.stringify(现有日志) });
+    }
+    await 卡密记录.update({ status: 2, sup_status: 2, invalidated_at: new Date() });
+    return { cancelStatus: 20, refuseReason: '', refuseProof: '' };
+
+  } else if (业务类型 === 'topup') {
+    // ===== 充值业务 =====
+    const 关联订单 = await Order.findOne({
+      where: { card_code: 卡密记录.code },
+    });
+    if (关联订单 && 关联订单.status === 2) {
+      const 拒绝原因 = '充值已完成，无法撤单';
+      return { cancelStatus: 30, refuseReason: 拒绝原因, refuseProof: 拒绝凭证URL };
+    }
+    if (关联订单 && 关联订单.status !== 4) {
+      const 现有日志 = 安全解析JSON(关联订单.order_log, []);
+      现有日志.push({
+        时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+        操作: '阿奇所平台撤单，订单自动取消，卡密已失效',
+        状态: 'cancel',
+      });
+      await 关联订单.update({ status: 4, order_log: JSON.stringify(现有日志) });
+    }
+    await 卡密记录.update({ status: 2, sup_status: 2, invalidated_at: new Date() });
+    return { cancelStatus: 20, refuseReason: '', refuseProof: '' };
+
+  } else if (业务类型 === 'sjz') {
+    // ===== 三角洲业务 =====
+    const 关联订单sjz = await Order.findOne({
+      where: { card_code: 卡密记录.code },
+    });
+    if (关联订单sjz && (关联订单sjz.status === 4 || 关联订单sjz.status === 5)) {
+      const 拒绝原因 = '三角洲服务已处理中或完成，无法撤单';
+      return { cancelStatus: 30, refuseReason: 拒绝原因, refuseProof: 拒绝凭证URL };
+    }
+    if (关联订单sjz && 关联订单sjz.status !== 6) {
+      const 现有日志 = 安全解析JSON(关联订单sjz.order_log, []);
+      现有日志.push({
+        时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
+        操作: '阿奇所平台撤单，三角洲订单自动取消',
+        状态: 'cancel',
+      });
+      await 关联订单sjz.update({ status: 6, order_log: JSON.stringify(现有日志) });
+
+      // 撤单成功后：异步更新企业微信客户备注 + 群名称
+      const 关联订单快照 = 关联订单sjz.toJSON ? 关联订单sjz.toJSON() : { ...关联订单sjz };
+      setImmediate(async () => {
+        try {
+          const { Setting } = require('../models');
+          const qywxSvc = require('../services/qywxService');
+          const 设置列表 = await Setting.findAll();
+          const 设置对象 = {};
+          设置列表.forEach(s => { 设置对象[s.key_name] = s.key_value; });
+          if (设置对象.qywx_enabled !== '1') return;
+
+          const 额外参数 = { status_text: '已撤单/退款', refund_reason: '阿奇所平台撤单' };
+
+          const 退款备注模板 = 设置对象.qywx_refund_remark_template || '';
+          if (退款备注模板 && 关联订单快照.qywx_assigned_user && 关联订单快照.qywx_external_userid) {
+            const 备注内容 = qywxSvc.安全截断(qywxSvc.渲染模板(退款备注模板, 关联订单快照, 额外参数));
+            if (备注内容) {
+              await qywxSvc.自动备注客户(关联订单快照.qywx_assigned_user, 关联订单快照.qywx_external_userid, 备注内容).catch(e => {
+                console.warn('[三角洲-SUP撤单] 更新客户备注失败:', e.message);
+              });
+            }
+          }
+
+          const 退款群名称模板 = 设置对象.qywx_refund_group_name_template || '';
+          if (退款群名称模板 && 关联订单快照.qywx_group_chat_id) {
+            const 新群名称 = qywxSvc.渲染模板(退款群名称模板, 关联订单快照, 额外参数);
+            if (新群名称) {
+              await qywxSvc.更新客户群名称(关联订单快照.qywx_group_chat_id, 新群名称).catch(e => {
+                console.warn('[三角洲-SUP撤单] 更新群名称失败:', e.message);
+              });
+            }
+          }
+
+          const 退款群消息模板 = 设置对象.qywx_refund_group_msg || '';
+          if (退款群消息模板 && 关联订单快照.qywx_group_chat_id) {
+            const 通知内容 = qywxSvc.渲染模板(退款群消息模板, 关联订单快照, 额外参数);
+            if (通知内容) {
+              await qywxSvc.发送群消息(关联订单快照.qywx_group_chat_id, 通知内容).catch(e => {
+                console.warn('[三角洲-SUP撤单] 发送群通知失败:', e.message);
+              });
+            }
+          }
+        } catch (企微错误) {
+          console.error('[三角洲-SUP撤单] 企业微信更新出错（不影响撤单结果）:', 企微错误.message);
+        }
+      });
+    }
+    await 卡密记录.update({ status: 2, sup_status: 2, invalidated_at: new Date() });
+    return { cancelStatus: 20, refuseReason: '', refuseProof: '' };
+
+  } else {
+    // 未知业务类型：查关联订单，未使用则撤单
+    const 关联订单 = await Order.findOne({
+      where: { card_code: 卡密记录.code, status: { [Op.ne]: 4 } },
+    });
+    if (关联订单) {
+      const 拒绝原因 = '卡密已用于服务预约，无法退款';
+      return { cancelStatus: 30, refuseReason: 拒绝原因, refuseProof: 拒绝凭证URL };
+    }
+    await 卡密记录.update({ status: 2, sup_status: 2, invalidated_at: new Date() });
+    return { cancelStatus: 20, refuseReason: '', refuseProof: '' };
+  }
+};
+
+/**
+ * 撤单结果异步回调：向 callbackUrl 发送 POST 请求，携带撤单最终结果
+ * @param {string} callbackUrl - 阿奇所提供的回调地址
+ * @param {string} orderNo - 阿奇所订单号
+ * @param {number} cancelStatus - 撤单状态 20:成功 30:失败
+ * @param {string} refuseReason - 拒绝原因（失败时）
+ * @param {string} refuseProof - 拒绝凭证图片地址（失败时）
+ * @param {string} appSecret - 阿奇所appSecret（用于签名）
+ * @param {string} merchantKey - 商户密钥（用于签名）
+ */
+const 发送撤单回调 = async (callbackUrl, orderNo, cancelStatus, refuseReason, refuseProof, appSecret, merchantKey) => {
+  try {
+    const 回调数据 = {
+      orderNo,
+      cancelStatus,
+      // 空值参数也必须参与签名（文档要求）
+      refuseProof: cancelStatus === 30 ? (refuseProof || '') : '',
+      refuseReason: cancelStatus === 30 ? (refuseReason || '') : '',
+      timestamp: Math.floor(Date.now() / 1000),
+    };
+
+    // 按ASCII排序所有参数（空值也参与签名）
+    const crypto = require('crypto');
+    const 参数键列表 = Object.keys(回调数据).sort();
+    const 查询字符串 = 参数键列表.map(key => `${key}=${回调数据[key] ?? ''}`).join('&');
+    const 密钥串 = appSecret + (merchantKey || '');
+    const sign = crypto.createHash('md5').update(密钥串 + 查询字符串 + 密钥串, 'utf8').digest('hex').toUpperCase();
+
+    const axios = require('axios');
+    await axios.post(callbackUrl, { ...回调数据, sign }, {
+      headers: { 'Content-Type': 'application/json;charset=utf-8' },
+      timeout: 10000,
+    });
+
+    try {
+      await SupLog.create({
+        log_type: 'cancelCallback',
+        order_no: orderNo,
+        cancel_status: cancelStatus,
+        result: cancelStatus === 20 ? 'success' : 'fail',
+        response_data: JSON.stringify({ ...回调数据, sign }),
+      });
+    } catch (日志错误) {
+      console.error('SUP撤单回调日志写入失败:', 日志错误.message);
+    }
+
+    console.log(`SUP撤单回调成功: orderNo=${orderNo}, cancelStatus=${cancelStatus}`);
+  } catch (回调错误) {
+    console.error('SUP撤单回调失败:', { orderNo, error: 回调错误.message });
+    try {
+      await SupLog.create({
+        log_type: 'cancelCallback',
+        order_no: orderNo,
+        cancel_status: cancelStatus,
+        result: 'fail',
+        error_msg: `回调请求失败: ${回调错误.message}`,
+      });
+    } catch {}
+  }
+};
 
 /**
  * 撤单接口（退款核心接口）
  * 接口名称：撤单
- * 请求参数：userId, orderNo, timestamp, version, sign
- * 响应格式：{ code: 200, message: '接口调用成功', data: { cancelStatus: 20 } }
+ * 请求参数：userId, orderNo, callbackUrl(可选), timestamp, version, sign
+ * 响应格式：{ code: 200, message: '接口调用成功', data: { cancelStatus: 10/20/30 } }
  * 业务说明：
- *   - cancelStatus说明：20=撤单成功，30=撤单失败
- *   - 按业务类型分别处理：家政/洗衣/充值
- *   - 撤单成功后卡密 status 改为 2（已失效），防止重复使用
+ *   - cancelStatus说明：10=进行中（异步）, 20=撤单成功, 30=撤单失败
+ *   - callbackUrl 非空时：同步返回 cancelStatus:10，异步处理后向 callbackUrl 回调最终结果
+ *   - callbackUrl 为空时：同步执行并直接返回 20/30
  */
 const 撤销订单 = async (req, res) => {
   try {
-    const { orderNo } = req.body;
+    const { orderNo, callbackUrl = '' } = req.body;
 
     if (!orderNo) {
       return res.json({ code: 400, message: '订单号不能为空' });
     }
 
-    // 读取撤单拒绝凭证配置
-    const 撤单配置 = await 读取配置(['agiso_refuse_proof']);
-    const 拒绝凭证URL = 撤单配置.agiso_refuse_proof || '';
+    // 校验 callbackUrl：仅允许 http/https 协议，防止 SSRF
+    if (callbackUrl) {
+      try {
+        const 回调URL对象 = new URL(callbackUrl);
+        if (!['http:', 'https:'].includes(回调URL对象.protocol)) {
+          return res.json({ code: 400, message: 'callbackUrl协议不合法' });
+        }
+      } catch {
+        return res.json({ code: 400, message: 'callbackUrl格式不合法' });
+      }
+    }
+
+    // 读取撤单所需配置
+    const 撤单配置 = await 读取配置(['agiso_refuse_proof', 'agiso_app_secret', 'agiso_merchant_key']);
+    const 拒绝凭证URL = 撤单配置.agiso_refuse_proof || 默认拒绝凭证URL;
+    const appSecret = 撤单配置.agiso_app_secret || '';
+    const merchantKey = 撤单配置.agiso_merchant_key || '';
 
     // 先按 agiso_order_no 查找卡密记录
     let 卡密记录 = await Card.findOne({
@@ -1003,441 +1292,43 @@ const 撤销订单 = async (req, res) => {
       });
     }
 
-    if (!卡密记录) {
-      // 根据阿奇所文档：找不到订单时返回 code:200, cancelStatus:30
-      const 未找到响应 = { orderNo: orderNo, cancelStatus: 30, refuseReason: '订单不存在', refuseProof: 拒绝凭证URL };
-      try {
-        const reqCopy = { ...req.body };
-        delete reqCopy.sign;
-        await SupLog.create({
-          log_type: 'cancelOrder',
-          order_no: orderNo,
-          user_id: req.body.userId || null,
-          request_data: JSON.stringify(reqCopy),
-          response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: 未找到响应 }),
-          status_code: 200,
-          cancel_status: 30,
-          result: 'fail',
-          error_msg: '订单不存在',
-        });
-      } catch (日志错误) {
-        console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
-      }
-      return res.json({ code: 200, message: '接口调用成功', data: 未找到响应 });
-    }
-
-    // 幂等处理：如果已经是已撤单状态，直接返回成功
-    if (卡密记录.sup_status === 2) {
-      try {
-        const reqCopy = { ...req.body };
-        delete reqCopy.sign;
-        await SupLog.create({
-          log_type: 'cancelOrder',
-          order_no: orderNo,
-          out_trade_no: 卡密记录.id.toString(),
-          user_id: req.body.userId || null,
-          request_data: JSON.stringify(reqCopy),
-          response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { orderNo: orderNo, cancelStatus: 20 } }),
-          status_code: 200,
-          cancel_status: 20,
-          result: 'success',
-          error_msg: '幂等：订单已撤单',
-        });
-      } catch (日志错误) {
-        console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
-      }
-      return res.json({
+    if (callbackUrl) {
+      // ===== 异步撤单模式：先同步返回 cancelStatus:10，再异步执行并回调 =====
+      res.json({
         code: 200,
         message: '接口调用成功',
-        data: { orderNo: orderNo, cancelStatus: 20 },
+        data: { orderNo, cancelStatus: 10 },
       });
+
+      setImmediate(async () => {
+        try {
+          const 结果 = await 执行撤单逻辑(卡密记录, orderNo, 拒绝凭证URL);
+          await 发送撤单回调(callbackUrl, orderNo, 结果.cancelStatus, 结果.refuseReason, 结果.refuseProof, appSecret, merchantKey);
+        } catch (异步错误) {
+          console.error('SUP撤单异步处理失败:', 异步错误);
+          try {
+            await 发送撤单回调(callbackUrl, orderNo, 30, '系统处理失败', 拒绝凭证URL, appSecret, merchantKey);
+          } catch {}
+        }
+      });
+
+      return;
     }
 
-    // ===== 核心规则：卡密 status=0（未使用）→ 直接作废 + 取消关联订单 =====
-    if (卡密记录.status === 0) {
-      // 卡密未使用，无论什么业务直接作废并撤单
-      const 关联订单 = await Order.findOne({
-        where: { card_code: 卡密记录.code, status: { [Op.ne]: 4 } },
-      });
-      if (关联订单) {
-        const 日志 = 安全解析JSON(关联订单.order_log, []);
-        日志.push({
-          时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
-          操作: '阿奇所平台撤单（卡密未使用），订单自动取消',
-          状态: 'cancel',
-        });
-        await 关联订单.update({ status: 4, order_log: JSON.stringify(日志) });
-      }
-      await 卡密记录.update({ status: 2, sup_status: 2, invalidated_at: new Date() });
-      // 写入日志：卡密未使用，直接撤单成功
-      try {
-        const reqCopy = { ...req.body };
-        delete reqCopy.sign;
-        await SupLog.create({
-          log_type: 'cancelOrder',
-          order_no: orderNo,
-          out_trade_no: 卡密记录.id.toString(),
-          user_id: req.body.userId || null,
-          request_data: JSON.stringify(reqCopy),
-          response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { orderNo: orderNo, cancelStatus: 20 } }),
-          status_code: 200,
-          cancel_status: 20,
-          result: 'success',
-          error_msg: '卡密未使用，直接作废撤单',
-        });
-      } catch (日志错误) {
-        console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
-      }
-      return res.json({
-        code: 200,
-        message: '接口调用成功',
-        data: { orderNo: orderNo, cancelStatus: 20 },
-      });
-    }
+    // ===== 同步撤单模式：直接执行并返回最终结果（20/30）=====
+    const 结果 = await 执行撤单逻辑(卡密记录, orderNo, 拒绝凭证URL);
 
-    const 业务类型 = 卡密记录.business_type || 'jiazheng';
-
-    if (业务类型 === 'jiazheng') {
-      // ===== 家政业务 =====
-      // 查找关联且未取消的订单
-      const 关联订单 = await Order.findOne({
-        where: {
-          card_code: 卡密记录.code,
-          status: { [Op.ne]: 4 },
-        },
-      });
-
-      if (关联订单) {
-        // 服务中（status=2，已成功对接京东预约）：不允许撤单，返回凭证并标记为拒绝退款
-        if (关联订单.status === 2) {
-          const 拒绝原因 = '家政服务已预约进行中，无法撤单';
-          const 拒绝日志 = 安全解析JSON(关联订单.order_log, []);
-          拒绝日志.push({
-            时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
-            操作: `阿奇所平台撤单被拒绝：${拒绝原因}，已返回拒绝凭证`,
-            状态: 'error',
-          });
-          await 关联订单.update({ status: 6, order_log: JSON.stringify(拒绝日志) });
-          try {
-            const reqCopy = { ...req.body };
-            delete reqCopy.sign;
-            await SupLog.create({
-              log_type: 'cancelOrder',
-              order_no: orderNo,
-              out_trade_no: 卡密记录.id.toString(),
-              user_id: req.body.userId || null,
-              request_data: JSON.stringify(reqCopy),
-              response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { orderNo: orderNo, cancelStatus: 30, refuseReason: 拒绝原因, refuseProof: 拒绝凭证URL } }),
-              status_code: 200,
-              cancel_status: 30,
-              result: 'fail',
-              error_msg: 拒绝原因,
-            });
-          } catch (日志错误) {
-            console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
-          }
-          return res.json({
-            code: 200,
-            message: '接口调用成功',
-            data: {
-              orderNo: orderNo,
-              cancelStatus: 30,
-              refuseReason: 拒绝原因,
-              refuseProof: 拒绝凭证URL,
-            },
-          });
-        }
-        // 其他状态（待处理/处理中/失败等）：允许撤单，取消订单
-        const 现有日志 = 安全解析JSON(关联订单.order_log, []);
-        现有日志.push({
-          时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
-          操作: '阿奇所平台撤单，订单自动取消',
-          状态: 'cancel',
-        });
-        await 关联订单.update({ status: 4, order_log: JSON.stringify(现有日志) });
-      }
-
-      // 将卡密状态设为已失效，sup_status 设为已撤单
-      await 卡密记录.update({ status: 2, sup_status: 2, invalidated_at: new Date() });
-
-    } else if (业务类型 === 'xiyifu') {
-      // ===== 洗衣业务 =====
-      const 关联订单 = await Order.findOne({
-        where: { card_code: 卡密记录.code },
-      });
-
-      if (关联订单) {
-        // 已推送到鲸蚁（status=1已提交 或 status=2已分配）：先尝试通知鲸蚁取消
-        if (关联订单.status === 1 || 关联订单.status === 2) {
-          try {
-            const { 同步订单状态 } = require('../services/laundryApiService');
-            // 修复：out_booking_no 必须和下单时一致，用 B+order_no
-            const out_booking_no = `B${关联订单.order_no}`;
-            await 同步订单状态(关联订单.order_no, out_booking_no, -1);
-            // 鲸蚁取消成功，继续往下执行取消本地订单
-            console.log(`洗衣撤单通知鲸蚁成功，订单号：${关联订单.order_no}`);
-          } catch (鲸蚁错误) {
-            // 判断是否是"订单不存在"（code:10000），视为鲸蚁侧已取消，允许继续本地取消
-            const 是订单不存在 = 鲸蚁错误.message && (
-              鲸蚁错误.message.includes('"code":10000') ||
-              鲸蚁错误.message.includes('10000') ||
-              鲸蚁错误.message.includes('订单不存在')
-            );
-
-            if (!是订单不存在) {
-              // 真正的取消失败（非订单不存在），仅在 status=2 时拒绝撤单（已分配，风险高）
-              // status=1 时（未分配），即使鲸蚁失败也允许继续本地取消
-              if (关联订单.status === 2) {
-                const 拒绝原因 = `洗衣服务处理中（${关联订单.laundry_status || '已分配'}），鲸蚁取消失败：${鲸蚁错误.message}`;
-                const 拒绝日志 = 安全解析JSON(关联订单.order_log, []);
-                拒绝日志.push({
-                  时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
-                  操作: `阿奇所平台撤单被拒绝：${拒绝原因}，已返回拒绝凭证`,
-                  状态: 'error',
-                });
-                await 关联订单.update({ order_log: JSON.stringify(拒绝日志) });
-                try {
-                  const reqCopy = { ...req.body };
-                  delete reqCopy.sign;
-                  await SupLog.create({
-                    log_type: 'cancelOrder',
-                    order_no: orderNo,
-                    out_trade_no: 卡密记录.id.toString(),
-                    user_id: req.body.userId || null,
-                    request_data: JSON.stringify(reqCopy),
-                    response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { orderNo: orderNo, cancelStatus: 30, refuseReason: 拒绝原因, refuseProof: 拒绝凭证URL } }),
-                    status_code: 200,
-                    cancel_status: 30,
-                    result: 'fail',
-                    error_msg: 拒绝原因,
-                  });
-                } catch (日志错误) {
-                  console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
-                }
-                return res.json({
-                  code: 200,
-                  message: '接口调用成功',
-                  data: {
-                    orderNo: orderNo,
-                    cancelStatus: 30,
-                    refuseReason: 拒绝原因,
-                    refuseProof: 拒绝凭证URL,
-                  },
-                });
-              }
-            }
-            // 订单不存在（鲸蚁侧已取消）或 status=1 时鲸蚁失败，记录警告但继续本地取消
-            console.warn(`洗衣撤单鲸蚁通知失败（继续本地取消），订单号：${关联订单.order_no}，错误：${鲸蚁错误.message}`);
-          }
-        }
-
-        // 取消本地订单
-        const 现有日志 = 安全解析JSON(关联订单.order_log, []);
-        现有日志.push({
-          时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
-          操作: '阿奇所平台撤单，订单自动取消',
-          状态: 'cancel',
-        });
-        await 关联订单.update({ status: 4, laundry_status: '已取消', order_log: JSON.stringify(现有日志) });
-      }
-
-      // 将卡密状态设为已失效，sup_status 设为已撤单
-      await 卡密记录.update({ status: 2, sup_status: 2, invalidated_at: new Date() });
-
-    } else if (业务类型 === 'topup') {
-      // ===== 充值业务 =====
-      const 关联订单 = await Order.findOne({
-        where: { card_code: 卡密记录.code },
-      });
-
-      // 已完成充值（status=2）：拒绝撤单
-      if (关联订单 && 关联订单.status === 2) {
-        const 拒绝原因 = '充值已完成，无法撤单';
-        try {
-          const reqCopy = { ...req.body };
-          delete reqCopy.sign;
-          await SupLog.create({
-            log_type: 'cancelOrder',
-            order_no: orderNo,
-            out_trade_no: 卡密记录.id.toString(),
-            user_id: req.body.userId || null,
-            request_data: JSON.stringify(reqCopy),
-            response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { orderNo: orderNo, cancelStatus: 30, refuseReason: 拒绝原因, refuseProof: 拒绝凭证URL } }),
-            status_code: 200,
-            cancel_status: 30,
-            result: 'fail',
-            error_msg: 拒绝原因,
-          });
-        } catch (日志错误) {
-          console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
-        }
-        return res.json({
-          code: 200,
-          message: '接口调用成功',
-          data: {
-            orderNo: orderNo,
-            cancelStatus: 30,
-            refuseReason: 拒绝原因,
-            refuseProof: 拒绝凭证URL,
-          },
-        });
-      }
-
-      if (关联订单 && 关联订单.status !== 4) {
-        const 现有日志 = 安全解析JSON(关联订单.order_log, []);
-        现有日志.push({
-          时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
-          操作: '阿奇所平台撤单，订单自动取消，卡密已失效',
-          状态: 'cancel',
-        });
-        await 关联订单.update({ status: 4, order_log: JSON.stringify(现有日志) });
-      }
-
-      // 将卡密状态设为已失效，sup_status 设为已撤单
-      await 卡密记录.update({ status: 2, sup_status: 2, invalidated_at: new Date() });
-
-    } else if (业务类型 === 'sjz') {
-      // ===== 三角洲业务 =====
-      // 三角洲服务：服务中（status=4）或已完成（status=5）不允许撤单，其余允许
-      const 关联订单sjz = await Order.findOne({
-        where: { card_code: 卡密记录.code },
-      });
-
-      if (关联订单sjz && (关联订单sjz.status === 4 || 关联订单sjz.status === 5)) {
-        const 拒绝原因 = '三角洲服务已处理中或完成，无法撤单';
-        try {
-          const reqCopy = { ...req.body };
-          delete reqCopy.sign;
-          await SupLog.create({
-            log_type: 'cancelOrder',
-            order_no: orderNo,
-            out_trade_no: 卡密记录.id.toString(),
-            user_id: req.body.userId || null,
-            request_data: JSON.stringify(reqCopy),
-            response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { orderNo: orderNo, cancelStatus: 30, refuseReason: 拒绝原因, refuseProof: 拒绝凭证URL } }),
-            status_code: 200,
-            cancel_status: 30,
-            result: 'fail',
-            error_msg: 拒绝原因,
-          });
-        } catch (日志错误) {
-          console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
-        }
-        return res.json({
-          code: 200,
-          message: '接口调用成功',
-          data: { orderNo: orderNo, cancelStatus: 30, refuseReason: 拒绝原因, refuseProof: 拒绝凭证URL },
-        });
-      }
-
-      if (关联订单sjz && 关联订单sjz.status !== 6) {
-        const 现有日志 = 安全解析JSON(关联订单sjz.order_log, []);
-        现有日志.push({
-          时间: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
-          操作: '阿奇所平台撤单，三角洲订单自动取消',
-          状态: 'cancel',
-        });
-        await 关联订单sjz.update({ status: 6, order_log: JSON.stringify(现有日志) });
-
-        // 撤单成功后：异步更新企业微信客户备注 + 群名称
-        const 关联订单快照 = 关联订单sjz.toJSON ? 关联订单sjz.toJSON() : { ...关联订单sjz };
-        setImmediate(async () => {
-          try {
-            const { Setting } = require('../models');
-            const qywxSvc = require('../services/qywxService');
-            const 设置列表 = await Setting.findAll();
-            const 设置对象 = {};
-            设置列表.forEach(s => { 设置对象[s.key_name] = s.key_value; });
-            if (设置对象.qywx_enabled !== '1') return;
-
-            const 额外参数 = { status_text: '已撤单/退款', refund_reason: '阿奇所平台撤单' };
-
-            const 退款备注模板 = 设置对象.qywx_refund_remark_template || '';
-            if (退款备注模板 && 关联订单快照.qywx_assigned_user && 关联订单快照.qywx_external_userid) {
-              const 备注内容 = qywxSvc.安全截断(qywxSvc.渲染模板(退款备注模板, 关联订单快照, 额外参数));
-              if (备注内容) {
-                await qywxSvc.自动备注客户(关联订单快照.qywx_assigned_user, 关联订单快照.qywx_external_userid, 备注内容).catch(e => {
-                  console.warn('[三角洲-SUP撤单] 更新客户备注失败:', e.message);
-                });
-              }
-            }
-
-            const 退款群名称模板 = 设置对象.qywx_refund_group_name_template || '';
-            if (退款群名称模板 && 关联订单快照.qywx_group_chat_id) {
-              const 新群名称 = qywxSvc.渲染模板(退款群名称模板, 关联订单快照, 额外参数);
-              if (新群名称) {
-                await qywxSvc.更新客户群名称(关联订单快照.qywx_group_chat_id, 新群名称).catch(e => {
-                  console.warn('[三角洲-SUP撤单] 更新群名称失败:', e.message);
-                });
-              }
-            }
-
-            // 撤单后往群里发通知消息
-            const 退款群消息模板 = 设置对象.qywx_refund_group_msg || '';
-            if (退款群消息模板 && 关联订单快照.qywx_group_chat_id) {
-              const 通知内容 = qywxSvc.渲染模板(退款群消息模板, 关联订单快照, 额外参数);
-              if (通知内容) {
-                await qywxSvc.发送群消息(关联订单快照.qywx_group_chat_id, 通知内容).catch(e => {
-                  console.warn('[三角洲-SUP撤单] 发送群通知失败:', e.message);
-                });
-              }
-            }
-          } catch (企微错误) {
-            console.error('[三角洲-SUP撤单] 企业微信更新出错（不影响撤单结果）:', 企微错误.message);
-          }
-        });
-      }
-
-      await 卡密记录.update({ status: 2, sup_status: 2, invalidated_at: new Date() });
-
-    } else {
-      // 未知业务类型：按原逻辑处理（查关联订单，未使用则撤单）
-      const 关联订单 = await Order.findOne({
-        where: {
-          card_code: 卡密记录.code,
-          status: { [Op.ne]: 4 },
-        },
-      });
-
-      if (关联订单) {
-        const 拒绝原因 = '卡密已用于服务预约，无法退款';
-        try {
-          const reqCopy = { ...req.body };
-          delete reqCopy.sign;
-          await SupLog.create({
-            log_type: 'cancelOrder',
-            order_no: orderNo,
-            out_trade_no: 卡密记录.id.toString(),
-            user_id: req.body.userId || null,
-            request_data: JSON.stringify(reqCopy),
-            response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { orderNo: orderNo, cancelStatus: 30, refuseReason: 拒绝原因, refuseProof: 拒绝凭证URL } }),
-            status_code: 200,
-            cancel_status: 30,
-            result: 'fail',
-            error_msg: 拒绝原因,
-          });
-        } catch (日志错误) {
-          console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
-        }
-        return res.json({
-          code: 200,
-          message: '接口调用成功',
-          data: {
-            orderNo: orderNo,
-            cancelStatus: 30,
-            refuseReason: 拒绝原因,
-            refuseProof: 拒绝凭证URL,
-          },
-        });
-      }
-
-      await 卡密记录.update({ status: 2, sup_status: 2, invalidated_at: new Date() });
+    const 响应数据 = { orderNo };
+    响应数据.cancelStatus = 结果.cancelStatus;
+    if (结果.cancelStatus === 30) {
+      响应数据.refuseReason = 结果.refuseReason;
+      响应数据.refuseProof = 结果.refuseProof;
     }
 
     res.json({
       code: 200,
       message: '接口调用成功',
-      data: { orderNo: orderNo, cancelStatus: 20 },
+      data: 响应数据,
     });
 
     // 写入SUP日志（不影响主流程）
@@ -1447,21 +1338,82 @@ const 撤销订单 = async (req, res) => {
       await SupLog.create({
         log_type: 'cancelOrder',
         order_no: orderNo,
-        ecommerce_order_no: 卡密记录.ecommerce_order_no || null,
-        out_trade_no: 卡密记录.id.toString(),
-        card_code: 卡密记录.code,
+        ecommerce_order_no: 卡密记录 ? (卡密记录.ecommerce_order_no || null) : null,
+        out_trade_no: 卡密记录 ? 卡密记录.id.toString() : null,
+        card_code: 卡密记录 ? 卡密记录.code : null,
         user_id: req.body.userId || null,
         request_data: JSON.stringify(reqCopy),
-        response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: { orderNo: orderNo, cancelStatus: 20 } }),
+        response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: 响应数据 }),
         status_code: 200,
-        cancel_status: 20,
-        result: 'success',
+        cancel_status: 结果.cancelStatus,
+        result: 结果.cancelStatus === 20 ? 'success' : 'fail',
+        error_msg: 结果.refuseReason || null,
       });
     } catch (日志错误) {
       console.error('SUP日志写入失败（不影响主流程）:', 日志错误.message);
     }
   } catch (错误) {
     console.error('SUP撤单出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器内部错误' });
+  }
+};
+
+// =============================================
+// 接口7：订阅价格推送
+// POST /agisoAcprSupplierApi/product/subscribePriceNotify
+// =============================================
+
+/**
+ * 订阅价格推送接口
+ */
+const 订阅价格推送 = async (req, res) => {
+  try {
+    try {
+      const reqCopy = { ...req.body };
+      delete reqCopy.sign;
+      await SupLog.create({
+        log_type: 'subscribePriceNotify',
+        product_no: req.body.productNo || null,
+        user_id: req.body.userId || null,
+        request_data: JSON.stringify(reqCopy),
+        response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: null }),
+        status_code: 200,
+        result: 'success',
+      });
+    } catch {}
+    res.json({ code: 200, message: '接口调用成功', data: null });
+  } catch (错误) {
+    console.error('订阅价格推送出错:', 错误);
+    res.status(500).json({ code: -1, message: '服务器内部错误' });
+  }
+};
+
+// =============================================
+// 接口8：取消订阅价格推送
+// POST /agisoAcprSupplierApi/product/cancelSubscribePriceNotify
+// =============================================
+
+/**
+ * 取消订阅价格推送接口
+ */
+const 取消订阅价格推送 = async (req, res) => {
+  try {
+    try {
+      const reqCopy = { ...req.body };
+      delete reqCopy.sign;
+      await SupLog.create({
+        log_type: 'cancelSubscribePriceNotify',
+        product_no: req.body.productNo || null,
+        user_id: req.body.userId || null,
+        request_data: JSON.stringify(reqCopy),
+        response_data: JSON.stringify({ code: 200, message: '接口调用成功', data: null }),
+        status_code: 200,
+        result: 'success',
+      });
+    } catch {}
+    res.json({ code: 200, message: '接口调用成功', data: null });
+  } catch (错误) {
+    console.error('取消订阅价格推送出错:', 错误);
     res.status(500).json({ code: -1, message: '服务器内部错误' });
   }
 };
@@ -1473,4 +1425,6 @@ module.exports = {
   卡密下单,
   查询订单,
   撤销订单,
+  订阅价格推送,
+  取消订阅价格推送,
 };
