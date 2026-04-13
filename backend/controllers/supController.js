@@ -1194,14 +1194,17 @@ const 执行撤单逻辑 = async (卡密记录, orderNo, 拒绝凭证URL) => {
  * @param {string} refuseProof - 拒绝凭证图片地址（失败时）
  * @param {string} appSecret - 阿奇所appSecret（用于签名）
  * @param {string} merchantKey - 商户密钥（用于签名）
+ * @param {number} orderCost - 退款金额（cancelStatus=20时传原采购成本，cancelStatus=30时传0）
  */
-const 发送撤单回调 = async (callbackUrl, orderNo, cancelStatus, refuseReason, refuseProof, appSecret, merchantKey) => {
+const 发送撤单回调 = async (callbackUrl, orderNo, cancelStatus, refuseReason, refuseProof, appSecret, merchantKey, orderCost = 0) => {
   try {
     // cancelStatus=20（成功）时只传必要字段，不传 refuseReason/refuseProof
     // cancelStatus=30（失败）时才加入拒绝原因和凭证
+    // orderCost 告知阿奇所退款金额，等于原采购成本则被判定为全额撤单
     const 回调数据 = {
       orderNo,
       cancelStatus,
+      orderCost: cancelStatus === 20 ? parseFloat(orderCost) : 0,
       timestamp: Math.floor(Date.now() / 1000),
     };
     if (cancelStatus === 30) {
@@ -1316,11 +1319,19 @@ const 撤销订单 = async (req, res) => {
       setImmediate(async () => {
         try {
           const 结果 = await 执行撤单逻辑(卡密记录, orderNo, 拒绝凭证URL);
-          await 发送撤单回调(callbackUrl, orderNo, 结果.cancelStatus, 结果.refuseReason, 结果.refuseProof, appSecret, merchantKey);
+
+          // 查询 orderCost（从卡密关联商品取成本价），用于向阿奇所证明全额退款
+          let orderCost = 0;
+          if (卡密记录 && 卡密记录.product_id) {
+            const 商品 = await Product.findByPk(卡密记录.product_id);
+            if (商品) orderCost = Number(parseFloat(商品.cost_price || 0).toFixed(4));
+          }
+
+          await 发送撤单回调(callbackUrl, orderNo, 结果.cancelStatus, 结果.refuseReason, 结果.refuseProof, appSecret, merchantKey, orderCost);
         } catch (异步错误) {
           console.error('SUP撤单异步处理失败:', 异步错误);
           try {
-            await 发送撤单回调(callbackUrl, orderNo, 30, '系统处理失败', 拒绝凭证URL, appSecret, merchantKey);
+            await 发送撤单回调(callbackUrl, orderNo, 30, '系统处理失败', 拒绝凭证URL, appSecret, merchantKey, 0);
           } catch {}
         }
       });
