@@ -43,6 +43,11 @@ router.post('/agisoAcprSupplierApi/order/get', 验证奇所签名, 查询订单)
 // 撤单（退款核心接口）
 router.post('/agisoAcprSupplierApi/order/cancelOrder', 验证奇所签名, 撤销订单);
 
+// 直充下单（本系统不支持直充，返回不支持提示）
+router.post('/agisoAcprSupplierApi/order/createRecharge', 验证奇所签名, async (req, res) => {
+  res.json({ code: 9999, message: '失败原因:本货源不支持直充商品' });
+});
+
 // ===== 价格订阅API =====
 
 // 订阅价格推送
